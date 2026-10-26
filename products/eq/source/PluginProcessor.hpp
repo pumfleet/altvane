@@ -19,12 +19,12 @@ public:
     zlstate::DummyProcessor dummy_processor_;
     juce::AudioProcessorValueTreeState parameters_;
     juce::AudioProcessorValueTreeState parameters_NA_;
-    // edit history for the Contour editor, kept here so it survives closing the editor
+    // edit history for the Altvane EQ editor, kept here so it survives closing the editor
     juce::UndoManager undo_manager_{30000, 200};
-    // A/B comparison slots for the Contour editor (parameter state only), kept with the processor
+    // A/B comparison slots for the Altvane EQ editor (parameter state only), kept with the processor
     std::array<juce::ValueTree, 2> ab_states_;
     int ab_slot_{0};
-    // the preset file the Contour editor last loaded or saved
+    // the preset file the Altvane EQ editor last loaded or saved
     juce::File current_preset_;
 
     PluginProcessor();

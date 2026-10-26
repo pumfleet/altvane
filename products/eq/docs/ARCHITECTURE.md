@@ -1,8 +1,10 @@
-# Contour architecture
+# Altvane EQ architecture
 
-Contour is ZL Equalizer's engine with a new editor. The rule that shapes everything else: **the engine is not
-modified.** `source/dsp`, `source/zlp` and `source/chore` stay byte-identical to upstream (CI enforces this), so
-upstream fixes merge cleanly. The editor lives in `source/ui` and talks to the engine only through:
+Altvane EQ is ZL Equalizer's engine with a new editor. Paths below are relative to `products/eq/`. The rule that
+shapes everything else: **the engine is not modified.** `source/dsp`, `source/zlp` and `source/chore` are vendored
+byte-identical from the upstream commit pinned in [`UPSTREAM`](../UPSTREAM) (`scripts/check_upstream.sh eq` and CI
+enforce this; `scripts/sync_upstream.sh eq <ref>` moves the pin). The editor lives in `source/ui` and talks to the
+engine only through:
 
 - the parameter tree (`PluginProcessor::parameters_`, IDs like `freq3`, see `source/zlp/zlp_definitions.hpp`),
 - the non-automatable session tree (`parameters_NA_`: analyzer and display settings),
@@ -13,15 +15,26 @@ The processor gained only editor-facing members: the undo manager, A/B slots and
 
 ## Layout of `source/ui`
 
+The editor (namespace `altvane::eq`) is built from the shared Altvane design system in
+[`libs/ui`](../../../libs/ui) (namespace `altvane::ui`, included as `"altvane_ui/..."`); `ui/common.hpp` brings
+it into `altvane::eq`.
+
 | Folder | Contents |
 |---|---|
 | `model/` | `EngineBridge` (typed parameter access, gestures, undo), `Selection`, band / session / preset operations, user settings |
 | `analysis/` | `ResponseModel` (curves), `SpectrumWorker` (analyzer thread), `MatchEngine` (EQ Match) |
 | `graph/` | `GraphView`: everything drawn on and done with the graph |
 | `panels/` | band panel, header / footer / output rail, sheets (presets, settings), match panel |
-| `widgets/` | knob, value field, selector, buttons, chips, switch, icons |
-| `theme/` | design tokens, fonts, look-and-feel |
-| `util/` | frequency / gain scales, value formatting, springs, lock-free triple buffer |
+| `widgets/` | filter-shape icons (they need the engine's filter prototypes) |
+| `theme/` | `eq_tokens.hpp`: band palette, graph and panel sizes, window size, on top of the shared tokens |
+
+From `libs/ui`:
+
+| Folder | Contents |
+|---|---|
+| `theme/` | design tokens, fonts, look-and-feel, the Altvane brand mark and header lockup |
+| `widgets/` | knob, value field, selector, buttons, chips, switch, sheet, outline icons |
+| `util/` | frequency / gain scales, value formatting, springs, lock-free triple buffer, path helpers |
 
 ## Threads
 
@@ -58,8 +71,8 @@ the undo history gets one transaction. One-shot changes use `setNow`. `cancelEdi
 
 ## Verification
 
-- `Tests` (Catch2): formatting and scales, band operations and undo, copy/paste, A/B, curve accuracy, EQ Match end
+- `AltvaneEQTests` (Catch2): formatting and scales, band operations and undo, copy/paste, A/B, curve accuracy, EQ Match end
   to end, accessibility contracts.
-- `ContourSnapshot`: renders the editor headlessly with the real processor running on synthetic audio and writes
+- `AltvaneEQSnapshot`: renders the editor headlessly with the real processor running on synthetic audio and writes
   PNGs of the main states, for visual review.
 - pluginval (strictness 10) and auval in CI and before releases.

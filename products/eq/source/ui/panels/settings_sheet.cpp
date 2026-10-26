@@ -1,11 +1,11 @@
-// Copyright (C) 2026 - Contour contributors, based on ZLEqualizer by zsliu98
-// This file is part of Contour
+// Copyright (C) 2026 - Altvane, based on ZLEqualizer by zsliu98
+// This file is part of Altvane EQ
 //
-// Contour is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
+// Altvane EQ is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
 //
-// Contour is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+// Altvane EQ is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 //
-// You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
+// You should have received a copy of the GNU Affero General Public License along with Altvane EQ. If not, see <https://www.gnu.org/licenses/>.
 #include "settings_sheet.hpp"
 
 #include "altvane_ui/theme/fonts.hpp"
@@ -184,7 +184,7 @@ namespace altvane::eq {
         g.setColour(colour::kTextPrimary);
         g.setFont(fonts.font(type::kBody, Fonts::kSemiBold));
         auto about = about_.toFloat();
-        g.drawText("Contour " + juce::String(VERSION), about.removeFromTop(about.getHeight() * .5f),
+        g.drawText(juce::String(PRODUCT_NAME_WITHOUT_VERSION) + " " + juce::String(VERSION), about.removeFromTop(about.getHeight() * .5f),
                    juce::Justification::bottomLeft);
         g.setColour(colour::kTextTertiary);
         g.setFont(fonts.font(type::kSmall));

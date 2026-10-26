@@ -2,5 +2,6 @@
 juce_add_console_app(AltvaneIcons PRODUCT_NAME "AltvaneIcons" VERSION 1.0.0)
 target_sources(AltvaneIcons PRIVATE main.cpp)
 target_compile_features(AltvaneIcons PRIVATE cxx_std_20)
+target_include_directories(AltvaneIcons PRIVATE "${CMAKE_SOURCE_DIR}/libs/ui/source")
 target_link_libraries(AltvaneIcons PRIVATE altvane_ui_assets juce_gui_basics juce::juce_recommended_config_flags)
 target_compile_definitions(AltvaneIcons PRIVATE JUCE_USE_CURL=0 JUCE_WEB_BROWSER=0)

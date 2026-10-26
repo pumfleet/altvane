@@ -1,16 +1,16 @@
-// Copyright (C) 2026 - Contour contributors, based on ZLEqualizer by zsliu98
-// This file is part of Contour
+// Copyright (C) 2026 - Altvane, based on ZLEqualizer by zsliu98
+// This file is part of Altvane EQ
 //
-// Contour is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
+// Altvane EQ is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
 //
-// Contour is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+// Altvane EQ is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 //
-// You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
+// You should have received a copy of the GNU Affero General Public License along with Altvane EQ. If not, see <https://www.gnu.org/licenses/>.
 
-// Renders the Contour editor headlessly with the real processor running on synthetic audio,
+// Renders the Altvane EQ editor headlessly with the real processor running on synthetic audio,
 // and writes PNG snapshots for visual review.
 //
-// usage: ContourSnapshot <output-dir> [scale]
+// usage: AltvaneEQSnapshot <output-dir> [scale]
 
 #include "PluginProcessor.hpp"
 #if JUCE_MAC
@@ -174,7 +174,7 @@ int main(const int argc, char* argv[]) {
     std::unique_ptr<juce::AudioProcessorEditor> editor_base(p.createEditor());
     auto* editor = dynamic_cast<altvane::eq::Editor*>(editor_base.get());
     if (editor == nullptr) {
-        std::cerr << "editor is not a Contour editor" << std::endl;
+        std::cerr << "editor is not an Altvane EQ editor" << std::endl;
         return 1;
     }
     editor->setSize(1040, 620);

@@ -2,7 +2,7 @@
 
 ## 0.1.0
 
-First release of Contour, based on the ZL Equalizer 2.x engine (forked at 1.4.1).
+First release of Altvane EQ (developed as "Contour"), based on the ZL Equalizer 2.x engine (forked at 1.4.1).
 
 ### Interface
 

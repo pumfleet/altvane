@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
-# Regenerates Contour's icons and installer artwork in packaging/ (macOS: needs iconutil and sips).
-#   cmake --preset mac-arm64-debug -DCONTOUR_BUILD_TOOLS=ON && cmake --build --preset mac-arm64-debug --target ContourIcons
-#   tools/icons/make_icons.sh build/mac-arm64-debug/ContourIcons
+# Regenerates a product's icons and installer artwork in products/<product>/packaging/
+# (macOS: needs iconutil and sips).
+#   cmake --preset mac-arm64-debug -DALTVANE_BUILD_TOOLS=ON && cmake --build --preset mac-arm64-debug --target AltvaneIcons
+#   tools/icons/make_icons.sh build/mac-arm64-debug/tools/icons/AltvaneIcons_artefacts/Debug/AltvaneIcons eq EQ
 set -euo pipefail
 
-tool="${1:?path to the ContourIcons executable}"
+tool="${1:?path to the AltvaneIcons executable}"
+product="${2:?product directory name under products/, e.g. eq}"
+label="${3:?label shown under the brand name, e.g. EQ}"
 root="$(cd "$(dirname "$0")/../.." && pwd)"
+out="$root/products/$product/packaging"
+[ -d "$out" ] || { echo "no such directory: $out" >&2; exit 1; }
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
-"$tool" "$work/png"
+"$tool" "$work/png" "$label"
 
 # plug-in / standalone icon
-cp "$work/png/icon_1024.png" "$root/packaging/icon.png"
+cp "$work/png/icon_1024.png" "$out/icon.png"
 
 # macOS installer icon
 iconset="$work/installer.iconset"
@@ -21,10 +26,10 @@ for size in 16 32 128 256 512; do
     cp "$work/png/icon_${size}.png" "$iconset/icon_${size}x${size}.png"
     cp "$work/png/icon_$((size * 2)).png" "$iconset/icon_${size}x${size}@2x.png"
 done
-iconutil -c icns "$iconset" -o "$root/packaging/installer.icns"
+iconutil -c icns "$iconset" -o "$out/installer.icns"
 
 # Windows icons: PNG-compressed .ico entries
-python3 - "$work/png" "$root/packaging/icon.ico" "$root/packaging/installer.ico" <<'PY'
+python3 - "$work/png" "$out/icon.ico" "$out/installer.ico" <<'PY'
 import struct, sys, pathlib, shutil
 src = pathlib.Path(sys.argv[1])
 sizes = [16, 24, 32, 48, 64, 128, 256]
@@ -42,7 +47,7 @@ shutil.copy(out, sys.argv[3])
 PY
 
 # WiX installer artwork
-sips -s format bmp "$work/png/banner.png" --out "$root/packaging/banner.bmp" > /dev/null
-sips -s format bmp "$work/png/dialog.png" --out "$root/packaging/dialog.bmp" > /dev/null
+sips -s format bmp "$work/png/banner.png" --out "$out/banner.bmp" > /dev/null
+sips -s format bmp "$work/png/dialog.png" --out "$out/dialog.bmp" > /dev/null
 
-echo "icons written to packaging/"
+echo "icons written to products/$product/packaging/"

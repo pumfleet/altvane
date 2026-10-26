@@ -1,13 +1,14 @@
-// Copyright (C) 2026 - Contour contributors, based on ZLEqualizer by zsliu98
-// This file is part of Contour
+// Copyright (C) 2026 - Altvane, based on ZLEqualizer by zsliu98
+// This file is part of Altvane EQ
 //
-// Contour is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
+// Altvane EQ is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
 //
-// Contour is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+// Altvane EQ is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 //
-// You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
+// You should have received a copy of the GNU Affero General Public License along with Altvane EQ. If not, see <https://www.gnu.org/licenses/>.
 #include "chrome.hpp"
 
+#include "altvane_ui/theme/brand.hpp"
 #include "altvane_ui/theme/fonts.hpp"
 #include "altvane_ui/theme/look_and_feel.hpp"
 #include "altvane_ui/util/value_format.hpp"
@@ -123,24 +124,7 @@ namespace altvane::eq {
         g.fillRect(b);
         hairline(g, b.getBottom() - 1.f, b.getWidth());
 
-        // mark: three nested contours
-        auto mark = juce::Rectangle<float>(18.f, 18.f).withCentre({size::kS4 + 9.f, b.getCentreY()});
-        for (int i = 0; i < 3; ++i) {
-            juce::Path p;
-            const auto inset = static_cast<float>(i) * 3.f;
-            const auto r = mark.reduced(0.f, inset);
-            p.startNewSubPath(r.getX(), r.getBottom());
-            p.cubicTo(r.getX() + r.getWidth() * .35f, r.getBottom(), r.getX() + r.getWidth() * .35f, r.getY(),
-                      r.getCentreX(), r.getY());
-            p.cubicTo(r.getX() + r.getWidth() * .65f, r.getY(), r.getX() + r.getWidth() * .65f, r.getBottom(),
-                      r.getRight(), r.getBottom());
-            g.setColour(colour::kAccent.withAlpha(1.f - static_cast<float>(i) * .3f));
-            g.strokePath(p, juce::PathStrokeType(1.4f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-        }
-        g.setColour(colour::kTextPrimary);
-        g.setFont(Fonts::get().font(type::kTitle - 1.f, Fonts::kSemiBold).withExtraKerningFactor(.02f));
-        g.drawText("Contour", juce::Rectangle<float>(mark.getRight() + 9.f, 0.f, 120.f, b.getHeight()),
-                   juce::Justification::centredLeft);
+        brand::drawLockup(g, b.withTrimmedLeft(size::kS4), "EQ");
 
         // preset pill
         g.setColour(preset_hovered_ ? colour::kControlHover : colour::kControl);
