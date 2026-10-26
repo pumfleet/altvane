@@ -1,0 +1,51 @@
+// Copyright (C) 2026 - Contour contributors, based on ZLEqualizer by zsliu98
+// This file is part of Contour
+//
+// Contour is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
+//
+// Contour is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
+#pragma once
+
+#include "sheet.hpp"
+#include "../model/ui_settings.hpp"
+
+namespace contour::ui {
+    /**
+     * interface, input and analyzer preferences
+     */
+    class SettingsSheet final : public Sheet {
+    public:
+        std::function<void(const UISettings&)> on_change;
+        std::function<void()> on_classic_editor;
+
+        SettingsSheet();
+
+        void setSettings(const UISettings& settings);
+
+    private:
+        UISettings settings_;
+        std::array<Chip, UISettings::kScales.size()> scales_;
+        std::array<IconButton, 5> accents_{
+            IconButton{icons::Icon::kPlus}, IconButton{icons::Icon::kPlus}, IconButton{icons::Icon::kPlus},
+            IconButton{icons::Icon::kPlus}, IconButton{icons::Icon::kPlus}
+        };
+        Switch reduce_motion_, grab_;
+        ValueField drag_, wheel_;
+        PillButton classic_{"Open Classic Editor"};
+        std::vector<std::pair<juce::String, juce::Rectangle<int>>> labels_;
+        std::vector<std::pair<juce::String, int>> sections_;
+        juce::Rectangle<int> about_;
+
+        juce::Point<int> getCardSize() const override { return {560, 470}; }
+
+        void layoutContent(juce::Rectangle<int> area) override;
+
+        void paint(juce::Graphics& g) override;
+
+        void sync();
+
+        void changed();
+    };
+}

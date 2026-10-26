@@ -9,6 +9,7 @@
 
 #include "PluginProcessor.hpp"
 #include "PluginEditor.hpp"
+#include "ui/editor.hpp"
 
 namespace {
     juce::ValueTree copyWithType(const juce::ValueTree& source, const juce::Identifier& type) {
@@ -354,7 +355,7 @@ bool PluginProcessor::hasEditor() const {
 }
 
 juce::AudioProcessorEditor* PluginProcessor::createEditor() {
-    return new PluginEditor(*this);
+    return new contour::ui::Editor(*this);
     // return new juce::GenericAudioProcessorEditor(*this);
 }
 
