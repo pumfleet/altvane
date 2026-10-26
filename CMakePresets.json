@@ -1,0 +1,35 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 24, "patch": 1 },
+  "configurePresets": [
+    {
+      "name": "mac-arm64-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin" },
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "ZL_HWY_STATIC_TARGET": "NEON",
+        "ZL_JUCE_FORMATS": "VST3;AU;Standalone",
+        "ZL_JUCE_COPY_PLUGIN": "TRUE",
+        "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "mac-arm64-debug",
+      "inherits": "mac-arm64-base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    },
+    {
+      "name": "mac-arm64-release",
+      "inherits": "mac-arm64-base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "mac-arm64-debug", "configurePreset": "mac-arm64-debug" },
+    { "name": "mac-arm64-release", "configurePreset": "mac-arm64-release" }
+  ]
+}

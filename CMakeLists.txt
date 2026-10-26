@@ -15,8 +15,8 @@ include(PamplejuceMacOS)
 # This is the internal name of the project and the name of JUCE's shared code "target"
 # Note: This cannot have spaces (it may be 2023, but you can't have it all!)
 # Worry not, JUCE's PRODUCT_NAME can have spaces (and is DAWs display)
-set(PROJECT_NAME "ZLEqualizer")
-set(PLUGIN_CODE "Equ2")
+set(PROJECT_NAME "Contour")
+set(PLUGIN_CODE "Ctq1")
 
 # Worry not, JUCE's PRODUCT_NAME can have spaces (and is what DAWs will display)
 # You can also just have it be the same thing as PROJECT_NAME
@@ -24,16 +24,16 @@ set(PLUGIN_CODE "Equ2")
 # #  set(PROJECT_NAME "MyPlugin_v${MAJOR_VERSION}")
 # Doing so enables major versions to show up in IDEs and DAWs as separate plugins
 # allowing you to change parameters and behavior without breaking existing user projects
-set(PRODUCT_NAME "ZL Equalizer 2")
+set(PRODUCT_NAME "Contour")
 
 # Change me! Used for the MacOS bundle name and Installers
-set(COMPANY_NAME "ZL")
-set(PLUGIN_MANUFACTURER_CODE "Zliu")
+set(COMPANY_NAME "Contour")
+set(PLUGIN_MANUFACTURER_CODE "Cntr")
 
 # Change me! Used for the MacOS bundle identifier (and signing)
-set(BUNDLE_ID "com.zlaudio.plugins")
+set(BUNDLE_ID "com.contour.plugins")
 
-set(LV2URI "https://github.com/ZL-Audio/ZLEqualizer2")
+set(LV2URI "https://github.com/contour-audio/contour")
 
 # For simplicity, the name of the CMake project is also the name of the target
 project(${PROJECT_NAME} VERSION ${CURRENT_VERSION})
@@ -266,3 +266,18 @@ target_link_libraries("${PROJECT_NAME}" PRIVATE SharedCode)
 
 # Pass some config to GA (like our PRODUCT_NAME)
 include(GitHubENV)
+
+# Contour developer tools (headless snapshot renderer)
+option(CONTOUR_BUILD_TOOLS "Build Contour developer tools" OFF)
+if (CONTOUR_BUILD_TOOLS)
+    add_executable(ContourSnapshot tools/snapshot/main.cpp)
+    target_compile_features(ContourSnapshot PRIVATE cxx_std_20)
+    target_include_directories(ContourSnapshot PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/source)
+    target_compile_definitions(ContourSnapshot PRIVATE $<TARGET_PROPERTY:${PROJECT_NAME},COMPILE_DEFINITIONS>)
+    target_link_libraries(ContourSnapshot PRIVATE SharedCode)
+endif ()
+
+option(CONTOUR_BUILD_TESTS "Build Contour unit tests" OFF)
+if (CONTOUR_BUILD_TESTS)
+    include(Tests)
+endif ()
