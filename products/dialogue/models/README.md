@@ -39,5 +39,5 @@ and copy the generated `required_operators.config` here.
 ## Replacing a model
 
 Our own three-stem model (dry voice, voice reverb, ambience) is planned to replace DPDFNet behind the same
-`dsp::SeparatorModel` interface. Training data must be licence-clean: see the plan in the repository history before
-adding a dataset.
+`dsp::SeparatorModel` interface. Training data must be licence-clean: `training/README.md` lists the allowed
+datasets and how to set up the training machine.
