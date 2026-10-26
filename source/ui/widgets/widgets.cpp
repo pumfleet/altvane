@@ -9,6 +9,7 @@
 #include "widgets.hpp"
 
 #include "../theme/fonts.hpp"
+#include "../theme/look_and_feel.hpp"
 #include "../theme/tokens.hpp"
 
 namespace contour::ui {
@@ -561,8 +562,7 @@ namespace contour::ui {
         }
         open_ = true;
         repaint();
-        auto menu = build_menu();
-        menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(this).withMinimumWidth(getWidth())
+        showPopupMenu(build_menu(), *this, juce::PopupMenu::Options().withTargetComponent(this).withMinimumWidth(getWidth())
                                                      .withStandardItemHeight(24),
                            [safe = juce::Component::SafePointer(this)](const int result) {
                                if (safe == nullptr) {

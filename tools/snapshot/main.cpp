@@ -17,6 +17,8 @@
 #include <CoreFoundation/CoreFoundation.h>
 #endif
 #include "ui/editor.hpp"
+#include "ui/theme/look_and_feel.hpp"
+#include "ui/theme/tokens.hpp"
 
 namespace {
     class Signal {
@@ -71,6 +73,67 @@ namespace {
         set(p, zlp::PTargetGain::kID + s, gain);
         set(p, zlp::PQ::kID + s, q);
         set(p, zlp::PFilterStatus::kID + s, static_cast<float>(zlp::kOn));
+    }
+
+    /**
+     * pop-up menus open in their own windows, which cannot be captured headlessly;
+     * draw a menu with the editor's look-and-feel instead
+     */
+    void writeMenuPreview(const juce::File& file, const float scale) {
+        contour::ui::LookAndFeel laf;
+        juce::PopupMenu menu;
+        menu.addSectionHeader("Processing");
+        const char* items[] = {"Minimum\tZero latency", "SVF\tZero latency, smooth automation",
+                               "Parallel\tZero latency, natural dynamics", "", "Matched\tAnalog phase, latency",
+                               "Mixed\tClean high end, latency", "Linear\tNo phase shift, latency"};
+        int id = 1;
+        for (const auto* text : items) {
+            if (juce::String(text).isEmpty()) {
+                menu.addSeparator();
+            } else {
+                menu.addItem(id, text, true, id == 1);
+                ++id;
+            }
+        }
+        const juce::PopupMenu::Options options;
+        int width = 0, height = 10;
+        std::vector<std::pair<const juce::PopupMenu::Item*, int>> rows;
+        for (juce::PopupMenu::MenuItemIterator it(menu); it.next();) {
+            auto& item = it.getItem();
+            int w = 0, h = 0;
+            if (item.isSectionHeader) {
+                w = 120;
+                h = 26;
+            } else {
+                laf.getIdealPopupMenuItemSizeWithOptions(item.text, item.isSeparator, 24, w, h, options);
+            }
+            width = std::max(width, w);
+            rows.emplace_back(&item, h);
+            height += h;
+        }
+        juce::Image image(juce::Image::ARGB, juce::roundToInt(static_cast<float>(width + 40) * scale),
+                          juce::roundToInt(static_cast<float>(height + 40) * scale), true);
+        juce::Graphics g(image);
+        g.addTransform(juce::AffineTransform::scale(scale));
+        g.fillAll(contour::ui::tokens::colour::kGraph);
+        g.setOrigin(20, 20);
+        laf.drawPopupMenuBackgroundWithOptions(g, width, height, options);
+        int y = 5;
+        bool highlight = true;
+        for (const auto& [item, h] : rows) {
+            const auto area = juce::Rectangle<int>(0, y, width, h);
+            if (item->isSectionHeader) {
+                laf.drawPopupMenuSectionHeaderWithOptions(g, area, item->text, options);
+            } else {
+                // show the hover state on the second entry
+                laf.drawPopupMenuItemWithOptions(g, area, highlight && item->itemID == 2, *item, options);
+            }
+            y += h;
+        }
+        file.deleteFile();
+        juce::FileOutputStream out(file);
+        juce::PNGImageFormat().writeImageToStream(image, out);
+        std::cout << "wrote " << file.getFullPathName() << std::endl;
     }
 
     void writePNG(juce::Component& c, const juce::File& file, const float scale) {
@@ -145,6 +208,7 @@ int main(const int argc, char* argv[]) {
         }
     };
 
+    writeMenuPreview(out_dir.getChildFile("00_menu.png"), scale_factor);
     run(3.0);
     writePNG(*editor, out_dir.getChildFile("01_overview.png"), scale_factor);
 

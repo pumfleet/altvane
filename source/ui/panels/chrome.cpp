@@ -11,6 +11,7 @@
 #include "../model/band_ops.hpp"
 #include "../model/session_ops.hpp"
 #include "../theme/fonts.hpp"
+#include "../theme/look_and_feel.hpp"
 #include "../theme/tokens.hpp"
 #include "../util/value_format.hpp"
 
@@ -20,9 +21,8 @@ namespace contour::ui {
     namespace {
         const std::array<const char*, 6> kPhaseNames{"Minimum", "SVF", "Parallel", "Matched", "Mixed", "Linear"};
         const std::array<const char*, 6> kPhaseDescriptions{
-            "Minimum phase, zero latency", "State-variable filters, zero latency",
-            "Parallel filters, zero latency", "Matched analog phase, adds latency",
-            "Mixed phase, adds latency", "Linear phase, adds latency"
+            "Zero latency", "Zero latency, smooth automation", "Zero latency, natural dynamics",
+            "Analog phase, latency", "Clean high end, latency", "No phase shift, latency"
         };
 
         void hairline(juce::Graphics& g, const float y, const float w) {
@@ -65,7 +65,7 @@ namespace contour::ui {
             if (!build_settings_menu) {
                 return;
             }
-            build_settings_menu().showMenuAsync(
+            showPopupMenu(build_settings_menu(), *this,
                 juce::PopupMenu::Options().withTargetComponent(&settings_),
                 [safe = juce::Component::SafePointer(this)](const int r) {
                     if (safe != nullptr && r != 0 && safe->on_settings_result) {
@@ -188,7 +188,7 @@ namespace contour::ui {
         menu.addItem(3, "Save As...");
         menu.addSeparator();
         menu.addItem(4, "Initialise");
-        menu.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea(localAreaToGlobal(preset_area_.toNearestInt()))
+        showPopupMenu(menu, *this, juce::PopupMenu::Options().withTargetScreenArea(localAreaToGlobal(preset_area_.toNearestInt()))
                                                      .withMinimumWidth(juce::roundToInt(preset_area_.getWidth())),
                            [safe = juce::Component::SafePointer(this)](const int r) {
                                if (safe == nullptr) {
@@ -237,7 +237,7 @@ namespace contour::ui {
                 if (i == 3) {
                     menu.addSeparator();
                 }
-                menu.addItem(i + 1, juce::String(kPhaseNames[static_cast<size_t>(i)]) + "   "
+                menu.addItem(i + 1, juce::String(kPhaseNames[static_cast<size_t>(i)]) + "\t"
                              + kPhaseDescriptions[static_cast<size_t>(i)], true,
                              static_cast<int>(bridge_.global().structure) == i);
             }
@@ -349,7 +349,7 @@ namespace contour::ui {
         if (loudness_learning_) {
             menu.addItem(4, "Cancel Loudness Match");
         }
-        menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&output_menu_),
+        showPopupMenu(menu, *this, juce::PopupMenu::Options().withTargetComponent(&output_menu_),
                            [safe = juce::Component::SafePointer(this)](const int r) {
                                if (safe == nullptr || r == 0) {
                                    return;
@@ -439,7 +439,7 @@ namespace contour::ui {
         menu.addSubMenu("Collision Sensitivity", strengths, collision_on);
         menu.addItem(602, "Piano Roll", true, na.getRawParameterValue(zlstate::PPianoRollON::kID)->load() > .5f);
         menu.addItem(600, "Freeze on Hover", true, bridge_.global().fft_frozen);
-        menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&analyzer_menu_),
+        showPopupMenu(menu, *this, juce::PopupMenu::Options().withTargetComponent(&analyzer_menu_),
                            [safe = juce::Component::SafePointer(this)](const int r) {
                                if (safe == nullptr || r == 0) {
                                    return;
@@ -603,7 +603,7 @@ namespace contour::ui {
                              + juce::String(static_cast<int>(zlstate::PEQMaxDB::kDBs[static_cast<size_t>(i)])) + " dB",
                              true, static_cast<size_t>(i) == bridge_.global().eq_max_db_idx);
             }
-            menu.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea(localAreaToGlobal(range_area_.toNearestInt())),
+            showPopupMenu(menu, *this, juce::PopupMenu::Options().withTargetScreenArea(localAreaToGlobal(range_area_.toNearestInt())),
                                [safe = juce::Component::SafePointer(this)](const int r) {
                                    if (safe != nullptr && r > 0) {
                                        safe->bridge_.setNA(zlstate::PEQMaxDB::kID, static_cast<float>(r - 1));

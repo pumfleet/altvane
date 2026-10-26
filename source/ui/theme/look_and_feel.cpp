@@ -14,6 +14,12 @@
 namespace contour::ui {
     using namespace tokens;
 
+    void showPopupMenu(juce::PopupMenu menu, const juce::Component& owner, const juce::PopupMenu::Options& options,
+                       std::function<void(int)> callback) {
+        menu.setLookAndFeel(&owner.getLookAndFeel());
+        menu.showMenuAsync(options, std::move(callback));
+    }
+
     LookAndFeel::LookAndFeel() {
         setColour(juce::PopupMenu::backgroundColourId, colour::kOverlay);
         setColour(juce::PopupMenu::textColourId, colour::kTextPrimary);
@@ -64,7 +70,14 @@ namespace contour::ui {
             return;
         }
         ideal_height = 24;
-        ideal_width = juce::roundToInt(juce::GlyphArrangement::getStringWidth(getPopupMenuFont(), text)) + 56;
+        // "Name\tDetail" items show the detail in a quieter second column
+        const auto name = text.upToFirstOccurrenceOf("\t", false, false);
+        const auto detail = text.fromFirstOccurrenceOf("\t", false, false);
+        auto w = juce::GlyphArrangement::getStringWidth(getPopupMenuFont(), name) + 56.f;
+        if (detail.isNotEmpty()) {
+            w += juce::GlyphArrangement::getStringWidth(Fonts::get().font(type::kSmall), detail) + 28.f;
+        }
+        ideal_width = juce::roundToInt(w);
     }
 
     void LookAndFeel::drawPopupMenuSectionHeaderWithOptions(juce::Graphics& g, const juce::Rectangle<int>& area,
@@ -114,9 +127,16 @@ namespace contour::ui {
             g.drawText(item.shortcutKeyDescription, r.removeFromRight(70.f).withTrimmedRight(6.f),
                        juce::Justification::centredRight);
         }
+        const auto name = item.text.upToFirstOccurrenceOf("\t", false, false);
+        const auto detail = item.text.fromFirstOccurrenceOf("\t", false, false);
+        if (detail.isNotEmpty()) {
+            g.setColour(item.isEnabled ? colour::kTextTertiary : colour::kTextDisabled);
+            g.setFont(Fonts::get().font(type::kSmall));
+            g.drawText(detail, r.withTrimmedRight(8.f), juce::Justification::centredRight, true);
+        }
         g.setColour(text_colour);
         g.setFont(getPopupMenuFont());
-        g.drawText(item.text, r, juce::Justification::centredLeft, true);
+        g.drawText(name, r, juce::Justification::centredLeft, true);
     }
 
     juce::Rectangle<int> LookAndFeel::getTooltipBounds(const juce::String& tip_text, const juce::Point<int> screen_pos,

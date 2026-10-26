@@ -12,6 +12,14 @@
 
 namespace contour::ui {
     /**
+     * show a pop-up menu styled like its owner
+     * JUCE gives a top-level menu only its own look-and-feel (submenus inherit from it),
+     * so the editor's look-and-feel has to be attached explicitly
+     */
+    void showPopupMenu(juce::PopupMenu menu, const juce::Component& owner, const juce::PopupMenu::Options& options,
+                       std::function<void(int)> callback);
+
+    /**
      * restyles the few stock JUCE surfaces the UI still uses: popup menus, tooltips and text editors
      */
     class LookAndFeel final : public juce::LookAndFeel_V4 {

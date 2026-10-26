@@ -13,6 +13,7 @@
 #include "../model/band_ops.hpp"
 #include "../model/session_ops.hpp"
 #include "../theme/fonts.hpp"
+#include "../theme/look_and_feel.hpp"
 #include "../theme/tokens.hpp"
 #include "../util/path_minimizer.hpp"
 #include "../util/value_format.hpp"
@@ -1352,7 +1353,7 @@ namespace contour::ui {
         const auto count = selection_.isSelected(band) ? getSelectedBands().size() : 1;
         menu.addItem(402, count > 1 ? "Delete " + juce::String(count) + " Bands" : "Delete Band");
 
-        menu.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea(
+        showPopupMenu(menu, *this, juce::PopupMenu::Options().withTargetScreenArea(
                                localAreaToGlobal(juce::Rectangle<int>(1, 1).withPosition(mouse_pos_.toInt()))),
                            [safe = juce::Component::SafePointer(this), band, count](const int r) {
                                if (safe == nullptr || r == 0) {
@@ -1396,7 +1397,7 @@ namespace contour::ui {
         }
         menu.addSeparator();
         menu.addItem(600, "Paste", session_ops::canPaste() && bridge_.findOffBand() < kBandNum);
-        menu.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea(
+        showPopupMenu(menu, *this, juce::PopupMenu::Options().withTargetScreenArea(
                                localAreaToGlobal(juce::Rectangle<int>(1, 1).withPosition(p.toInt()))),
                            [safe = juce::Component::SafePointer(this), p](const int r) {
                                if (safe == nullptr) {
