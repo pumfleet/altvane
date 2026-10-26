@@ -67,7 +67,7 @@ Name: "custom"; Description: "Custom installation"; Flags: iscustom
         r'{commoncf64}\VST3',
         r'{commoncf64}\LV2',
         r'{commoncf64}\Avid\Audio\Plug-Ins',
-        r'{commonpf64}\ZLAudio']
+        '{commonpf64}\\' + os.getenv('COMPANY_NAME', 'Contour')]
 
     plugin_formats, extensions, install_paths = [], [], []
     for plugin_format, extension, install_path in zip(

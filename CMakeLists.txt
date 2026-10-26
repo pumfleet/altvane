@@ -275,6 +275,11 @@ if (CONTOUR_BUILD_TOOLS)
     target_include_directories(ContourSnapshot PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/source)
     target_compile_definitions(ContourSnapshot PRIVATE $<TARGET_PROPERTY:${PROJECT_NAME},COMPILE_DEFINITIONS>)
     target_link_libraries(ContourSnapshot PRIVATE SharedCode)
+
+    add_executable(ContourIcons tools/icons/main.cpp)
+    target_compile_features(ContourIcons PRIVATE cxx_std_20)
+    target_link_libraries(ContourIcons PRIVATE Assets juce_gui_basics juce::juce_recommended_config_flags)
+    target_compile_definitions(ContourIcons PRIVATE JUCE_STANDALONE_APPLICATION=1 JUCE_USE_CURL=0 JUCE_WEB_BROWSER=0)
 endif ()
 
 option(CONTOUR_BUILD_TESTS "Build Contour unit tests" OFF)

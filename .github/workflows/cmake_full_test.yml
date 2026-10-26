@@ -2,9 +2,9 @@ name: macOS/Windows/Linux Test
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, contour]
   pull_request:
-    branches: [main]
+    branches: [main, contour]
   workflow_dispatch:
 
 # When pushing new commits, cancel any running builds on that branch
@@ -25,6 +25,23 @@ env:
   SCCACHE_CACHE_MULTIARCH: 1
 
 jobs:
+  engine_untouched:
+    # Contour keeps the upstream DSP unmodified so upstream fixes merge cleanly
+    name: Engine is unmodified
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Compare engine with upstream
+        run: |
+          git remote add upstream https://github.com/ZL-Audio/ZLEqualizer.git
+          git fetch --no-tags upstream main
+          base=$(git merge-base HEAD upstream/main)
+          git diff --stat --exit-code "$base" -- source/dsp source/zlp source/chore
+
   build_and_test:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
@@ -71,7 +88,7 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} ${{ matrix.cmake_extra_flags }} .
+          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} -DCONTOUR_BUILD_TESTS=ON ${{ matrix.cmake_extra_flags }} .
           cmake --build ${{ env.BUILD_DIR }} --config ${{ env.BUILD_TYPE }}
 
       - name: Configure and Build (Windows)
@@ -80,8 +97,12 @@ jobs:
         run: |
           for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath`) do set VS_PATH=%%i
           call "%VS_PATH%\VC\Auxiliary\Build\${{ matrix.vcvars_script }}"
-          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} ${{ matrix.cmake_extra_flags }} .
+          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} -DCONTOUR_BUILD_TESTS=ON ${{ matrix.cmake_extra_flags }} .
           cmake --build ${{ env.BUILD_DIR }} --config ${{ env.BUILD_TYPE }}
+
+      - name: Unit tests
+        shell: bash
+        run: ./${{ env.BUILD_DIR }}/Tests --reporter console --durations yes
 
       - name: Read in .env from CMake # see GitHubENV.cmake
         shell: bash

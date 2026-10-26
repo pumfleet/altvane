@@ -1,77 +1,107 @@
-<p align="center">
-  <img src="docs/zlaudio.svg" width="7.5%" hspace="6.068%"/>
-  <img src="docs/logo.svg" width="7.5%" hspace="6.068%"/>
-</p>
+# Contour
 
-# ZL Equalizer
-![pluginval](<https://github.com/ZL-Audio/ZLEqualizer/actions/workflows/cmake_full_test.yml/badge.svg?branch=main>)
-[![License](https://img.shields.io/badge/License-AGPLv3-blue.svg)](https://opensource.org/license/agpl-v3)
-[![Downloads](https://img.shields.io/github/downloads/ZL-Audio/ZLEqualizer/total)](https://somsubhra.github.io/github-release-stats/?username=ZL-Audio&repository=ZLEqualizer&page=1&per_page=30)
+A parametric and dynamic equalizer with a fast, precise, minimal interface, built on the audio engine of
+[ZL Equalizer 2](https://github.com/ZL-Audio/ZLEqualizer).
 
-ZL Equalizer is an equalizer plugin.
+![Contour](docs/screenshot.png)
 
-<img src="https://drive.google.com/uc?export=view&id=1xnUGRs3NvWL-2MZ2i8rg0g0bUnG6MSO2" style="width:750px; max-width: 100%; height: auto" />
+- **A curve you can trust.** Response curves are computed from the engine's actual filter coefficients in every
+  processing mode, and tested against the processed audio (within 0.01 dB in the zero-latency modes).
+- **Direct manipulation.** Drag nodes for frequency and gain, side handles for Q, scroll for Q, drag the dynamic
+  range directly, lasso and move groups, grab a resonance straight off the analyzer.
+- **Controls when you need them.** A contextual band panel follows the selected band; dynamics and side-chain
+  detector settings appear only for dynamic bands.
+- **Up to 24 bands**, 11 shapes, 6–96 dB/oct, stereo / left / right / mid / side placement, dynamic EQ with an
+  editable detector filter, external side-chain, six processing structures from zero-latency minimum phase to
+  linear phase.
+- **EQ Match** to the side-chain, a reference curve or a file, with a drawable correction and progressive fitting.
+- Presets (compatible with ZL Equalizer 2), A/B compare, undo/redo, loudness match, piano roll, collision display,
+  adjustable interface size and accent colour, keyboard control and screen-reader support.
 
-## Build from Source
+## Using Contour
 
-### Install Dependencies
+| Action | Gesture |
+|---|---|
+| Add a band | Double-click the graph (Option for a shelf), or right-click for a shape |
+| Move a band | Drag its node; Shift for fine, Cmd to lock an axis |
+| Q / width | Drag the side handles, or scroll over the node |
+| Gain while scrolling | Option + scroll |
+| Bypass / delete | Double-click the node / Option-click or Delete |
+| Listen to a band | Hold S over it, or the headphones button |
+| Select several | Drag a lasso, Shift-click; Cmd+A for all |
+| Copy, paste, duplicate | Cmd+C, Cmd+V, Cmd+D |
+| Nudge | Arrow keys (Shift for fine) |
+| Cycle bands | Tab / Shift+Tab |
+| Undo / redo | Cmd+Z / Shift+Cmd+Z |
 
-Please make sure `Clang` (`AppleClang 16+` or `LLVM/Clang 17+`), `cmake 3.25+`, `ninja` are installed and configured on your OS.
+Values can be typed: double-click a knob's value and enter `1.2k`, `440`, `A4` or `-3.5`.
 
-On Linux, you can install the remaining dependencies with the following command:
+## Build from source
+
+Requirements: Clang (AppleClang 16+ or LLVM/Clang 17+), CMake 3.25+ and Ninja. On Linux also install:
 
 ```console
-sudo apt-get update && sudo apt install libasound2-dev libx11-dev libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev libxrandr-dev libxrender-dev libfreetype-dev libfontconfig1-dev libxi-dev
+sudo apt install libasound2-dev libx11-dev libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev \
+  libxrandr-dev libxrender-dev libfreetype-dev libfontconfig1-dev libxi-dev
 ```
-
-### Clone and Build
-
-Once you have set up the environment, you can clone the ZL Equalizer code, populate all submodules, then configure & build the code. Please set:
-
-- the variable `ZL_JUCE_FORMATS` as a list of plugin formats that you want, e.g., `"VST3;LV2"`
-  - AAX plug-ins need to be digitally signed using PACE Anti-Piracy's signing tools before they will run in commercially available versions of Pro Tools.
-- the variable `ZL_EQ_BAND_NUM` as the number of bands, default 24 bands
-  - The plugins built with different `ZL_EQ_BAND_NUM` may NOT be compatible with each other.
-- the variable `ZL_HWY_STATIC_TARGET` as the SIMD target
-  - If you are on x86-64 and your CPU supports SSE2, set `ZL_HWY_STATIC_TARGET=SSE2`.
-  - If you are on x86-64 and your CPU supports SSE2/SSE4, set `ZL_HWY_STATIC_TARGET=SSE4`.
-  - If you are on x86-64 and your CPU supports SSE2/SSE4/AVX2, set `ZL_HWY_STATIC_TARGET=AVX2`.
-  - If you are on arm64, set `ZL_HWY_STATIC_TARGET=NEON`.
-- If there are multiple compilers on your OS, you may need to pass extra flags to maker sure that cmake uses `LLVM/Clang`.
-  - On Linux, you may pass `-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++`.
-  - On Windows, you may pass `-DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl`.
 
 ```console
-git clone https://github.com/ZL-Audio/ZLEqualizer
-cd ZLEqualizer
-git submodule update --init --recursive
-cmake -B Builds -G Ninja -DCMAKE_BUILD_TYPE=Release -DZL_JUCE_FORMATS="VST3;LV2" -DZL_HWY_STATIC_TARGET="NEON" .
-cmake --build Builds --config Release
+git clone --recursive <this repository> contour
+cd contour
+
+# macOS (Apple silicon)
+cmake --preset mac-arm64-release
+cmake --build --preset mac-arm64-release
+
+# any platform
+cmake -B Builds -G Ninja -DCMAKE_BUILD_TYPE=Release -DZL_JUCE_FORMATS="VST3;LV2" -DZL_HWY_STATIC_TARGET=AVX2 .
+cmake --build Builds
 ```
 
-After building, the plugins should have been copied to the corresponding folders. If you want to disable the copy process, you can pass `-DZL_JUCE_COPY_PLUGIN=FALSE`, find the binary folders under `Builds/ZLEqualizer_artefacts/Release` and copy them manually.
+Options:
 
-## AI Transparency
+- `ZL_JUCE_FORMATS`: plug-in formats, e.g. `"VST3;AU;Standalone"`.
+- `ZL_HWY_STATIC_TARGET`: SIMD target, one of `SSE2`, `SSE4`, `AVX2` (x86-64) or `NEON` (arm64). Required.
+- `ZL_EQ_BAND_NUM`: number of bands, 24 by default. Builds with different band counts are not session-compatible.
+- `ZL_JUCE_COPY_PLUGIN`: copy plug-ins to the system folders after building (on by default).
+- `CONTOUR_BUILD_TESTS`: build the `Tests` executable.
+- `CONTOUR_BUILD_TOOLS`: build `ContourSnapshot` (headless screenshots for visual review) and `ContourIcons`.
 
-Since October 2026, LLMs have assisted across various stages of this project's development. All code, documentation, and design choices are either authored or reviewed by the maintainer, who takes full responsibility for the quality, safety, and licensing of the final output.
+```console
+cmake --preset mac-arm64-debug -DCONTOUR_BUILD_TESTS=ON -DCONTOUR_BUILD_TOOLS=ON
+cmake --build --preset mac-arm64-debug
+build/mac-arm64-debug/Tests
+build/mac-arm64-debug/ContourSnapshot snapshots/
+```
+
+Releases are built by the `Release` workflow; macOS packages are signed and notarized when the signing secrets are
+configured. Versions come from `contour-vX.Y.Z` tags.
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the editor is put together.
+
+## Relationship to ZL Equalizer
+
+Contour is a fork. The audio engine (`source/dsp`, `source/zlp`, `source/chore`) is ZL Equalizer's and is kept
+unmodified, which CI checks, so upstream improvements can be merged as they are. The interface in `source/ui` is new.
+Contour reads and writes ZL Equalizer 2 presets and sessions, and installs alongside it.
+
+## AI transparency
+
+Contour's interface was developed with the help of an AI coding assistant (Claude). Its output is reviewed by the
+maintainer, who takes responsibility for the quality, safety and licensing of the result. The upstream engine carries
+its own note: since October 2026, LLMs have assisted across stages of ZL Equalizer's development.
 
 ## License
 
-ZL Equalizer is licensed under AGPLv3, as found in the [LICENSE.md](LICENSE.md) file. However, the [logo of ZL Audio](assets/zlaudio.svg) and the [logo of ZL Equalizer](assets/logo.svg) are not covered by this license.
+Contour is licensed under the GNU Affero General Public License v3; see [LICENSE.md](LICENSE.md) and
+[NOTICE.md](NOTICE.md).
 
-Copyright (c) 2023-2026 [zsliu98](https://github.com/zsliu98)
-
-JUCE framework from [JUCE](https://github.com/juce-framework/JUCE)
-
-JUCE template from [pamplejuce](https://github.com/sudara/pamplejuce)
-
-[nlopt](https://github.com/stevengj/nlopt) by [Steven G. Johnson](https://github.com/stevengj)
-
-[Highway](https://github.com/google/highway) by [Google](https://github.com/google)
-
-[Material Symbols](https://github.com/google/material-design-icons) by [Google](https://github.com/google)
-
-[inter](https://github.com/rsms/inter) by [The Inter Project Authors](https://github.com/rsms/inter)
+- Audio engine from [ZL Equalizer](https://github.com/ZL-Audio/ZLEqualizer), copyright (c) 2023-2026
+  [zsliu98](https://github.com/zsliu98)
+- [JUCE](https://github.com/juce-framework/JUCE), template from [pamplejuce](https://github.com/sudara/pamplejuce)
+- [nlopt](https://github.com/stevengj/nlopt) by Steven G. Johnson
+- [Highway](https://github.com/google/highway) by Google
+- [Inter](https://github.com/rsms/inter) by The Inter Project Authors (SIL Open Font License)
 
 ## References
 
@@ -82,8 +112,6 @@ Yuriy Ivantsov. *On the State Space of a Linear Digital Filter*. (2025).
 Cleve Moler. [*Makima Piecewise Cubic Interpolation*](https://blogs.mathworks.com/cleve/2019/04/29/makima-piecewise-cubic-interpolation/). MathWorks Blogs. (2019).
 
 Nigel Redmon. *Cascading filters*. (2016).
-
-___
 
 Martin Vicanek. *Matched One-Pole Digital Shelving Filters*. (2019).
 

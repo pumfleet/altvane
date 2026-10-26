@@ -4,7 +4,8 @@ find_package(Git)
 if (GIT_EXECUTABLE)
     # Generate a git-describe version string from Git repository tags
     execute_process(
-            COMMAND ${GIT_EXECUTABLE} describe --tags --abbrev=0
+            # Contour releases are tagged contour-vX.Y.Z; upstream ZL Equalizer tags are ignored
+            COMMAND ${GIT_EXECUTABLE} describe --tags --abbrev=0 --match "contour-v*"
             OUTPUT_VARIABLE GIT_DESCRIBE_VERSION
             RESULT_VARIABLE GIT_DESCRIBE_ERROR_CODE
             OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -25,7 +26,7 @@ if (GIT_EXECUTABLE)
 endif ()
 
 if (NOT DEFINED FOOBAR_VERSION)
-    set(FOOBAR_VERSION 0.0.0)
+    set(FOOBAR_VERSION 0.1.0)
     message(STATUS "Failed to determine VERSION from Git tags. Using default version \"${FOOBAR_VERSION}\".")
 endif ()
 if (NOT DEFINED FOOBAR_HASH)
@@ -33,6 +34,7 @@ if (NOT DEFINED FOOBAR_HASH)
   message(STATUS "Failed to determine HASH from Git logs. Using default hash \"${FOOBAR_HASH}\".")
 endif ()
 
+string(REPLACE "contour-" "" FOOBAR_VERSION "${FOOBAR_VERSION}")
 string(REPLACE "v" "" FOOBAR_VERSION_WITHOUT_V "${FOOBAR_VERSION}")
 
 file(WRITE VERSION "${FOOBAR_VERSION_WITHOUT_V}")

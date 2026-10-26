@@ -44,11 +44,13 @@ jobs:
           - name: macOS-x86-64
             os: macos-26
             app_suffix: ".app"
+            macos_arch: x86_64
             cmake_extra_flags: -DCMAKE_OSX_ARCHITECTURES="x86_64" -DZL_JUCE_FORMATS="VST3;AU;Standalone" -DZL_HWY_STATIC_TARGET="SSE4"
             have_aax: false
           - name: macOS-arm64
             os: macos-26
             app_suffix: ".app"
+            macos_arch: arm64
             cmake_extra_flags: -DCMAKE_OSX_ARCHITECTURES="arm64" -DZL_JUCE_FORMATS="VST3;AU;Standalone" -DZL_HWY_STATIC_TARGET="NEON"
             have_aax: false
           - name: Windows-x86-64
@@ -139,6 +141,8 @@ jobs:
           python3 -u packaging/packager_macOS.py
         env:
           DEVELOPER_ID_APPLICATION: ${{ secrets.DEVELOPER_ID_APPLICATION }}
+          # the installer only offers the architecture that was built
+          MACOS_ARCH: ${{ matrix.macos_arch }}
 
       - name: Sign Final Package (macOS)
         if: ${{ (runner.os == 'macOS') && (env.APPLE_INSTALLER_DEV != '') }}

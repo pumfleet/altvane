@@ -196,7 +196,7 @@ def main():
         output.write("        </StandardDirectory>\n")
         output.write('        <StandardDirectory Id="ProgramFiles64Folder">\n')
         output.write(
-            f'            <Directory Id="{company_dir_id}" Name="ZLAudio" />\n'
+            f'            <Directory Id="{company_dir_id}" Name="{escape_xml(publisher)}" />\n'
         )
         output.write("        </StandardDirectory>\n")
 
