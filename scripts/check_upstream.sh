@@ -5,6 +5,10 @@
 set -euo pipefail
 source "$(dirname "$0")/upstream_common.sh"
 
+if [ -z "$COMMIT" ]; then
+    echo "$product's engine has not been imported yet: run scripts/sync_upstream.sh $product <ref>" >&2
+    exit 1
+fi
 commit="$(fetch_upstream "$COMMIT")"
 status=0
 

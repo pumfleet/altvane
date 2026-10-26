@@ -105,6 +105,11 @@ scripts/sync_upstream.sh eq <ref>     # replace the vendored engine with upstrea
 `sync_upstream.sh` also lists what changed upstream outside the vendored directories (processor, state, CMake) so
 those changes can be ported by hand.
 
+To start a new product from an upstream engine, write `products/<code>/UPSTREAM` (copy `products/eq/UPSTREAM`, set
+`REPO`, leave `COMMIT=""`) and run `scripts/sync_upstream.sh <code> <ref>`. It vendors the engine, registers its
+submodules, lists the upstream files to adapt (processor, state, CMake), and warns if upstream pins a shared
+`third_party/` dependency at a different commit.
+
 ## License
 
 Altvane EQ is licensed under the GNU Affero General Public License v3, as is ZL Equalizer, which it is based on; see

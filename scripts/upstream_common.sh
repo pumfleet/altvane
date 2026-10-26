@@ -14,10 +14,11 @@ source "$pin_file"
 product_dir="products/$product"
 
 # fetch an upstream ref (branch, tag or commit) and print its commit id
+# names like "main" always come from upstream, never from this repository's branches of the same name
 fetch_upstream() {
     local ref="$1"
-    if git cat-file -e "$ref^{commit}" 2>/dev/null; then
-        git rev-parse "$ref^{commit}"
+    if [[ "$ref" =~ ^[0-9a-f]{40}$ ]] && git cat-file -e "$ref^{commit}" 2>/dev/null; then
+        echo "$ref"
         return
     fi
     git fetch --quiet --no-tags "$REPO" "$ref" >&2
