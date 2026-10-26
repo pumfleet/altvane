@@ -145,6 +145,35 @@ TEST_CASE("the reported latency is the delay of an impulse", "[engine]") {
     CHECK(peak == 1000 + r.latency);
 }
 
+TEST_CASE("the 48 kHz round trip lines up with the delayed input", "[engine]") {
+    // with no residual, the output is up(down(x)): in band it must match the delayed input sample for sample,
+    // or the residual would comb-filter whenever the ambience level is not unity
+    const auto rate = GENERATE(44100.0, 88200.0, 96000.0);
+    CAPTURE(rate);
+    dsp::RateBridge bridge;
+    constexpr int kBlock = 300;
+    bridge.prepare(rate, 1, kBlock);
+    juce::AudioBuffer<float> io(1, kBlock);
+    std::vector<float> in, out;
+    for (int b = 0; b < static_cast<int>(rate) / kBlock; ++b) {
+        for (int i = 0; i < kBlock; ++i) {
+            const auto t = static_cast<double>(b * kBlock + i) / rate;
+            const auto x = static_cast<float>(.5 * std::sin(2.0 * juce::MathConstants<double>::pi * 1000.0 * t)
+                                              + .3 * std::sin(2.0 * juce::MathConstants<double>::pi * 7300.0 * t));
+            io.setSample(0, i, x);
+            in.push_back(x);
+        }
+        bridge.process(io, false, 0.f);
+        out.insert(out.end(), io.getReadPointer(0), io.getReadPointer(0) + kBlock);
+    }
+    bridge.release();
+    float worst = 0.f;
+    for (size_t i = static_cast<size_t>(bridge.getLatency()) + 4800; i < out.size(); ++i) {
+        worst = std::max(worst, std::abs(out[i] - in[i - static_cast<size_t>(bridge.getLatency())]));
+    }
+    CHECK(juce::Decibels::gainToDecibels(worst) < -60.f);
+}
+
 TEST_CASE("the solo stems add up to the input", "[engine]") {
     PluginProcessor p;
     setLevels(p, -6.f, -20.f, -10.f);

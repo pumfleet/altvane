@@ -8,33 +8,25 @@
 // You should have received a copy of the GNU Affero General Public License along with Altvane Dialogue. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
-#include <memory>
 #include <vector>
 
 #include "engine.hpp"
-
-namespace r8b {
-    class CDSPResampler24;
-}
+#include "resampler.hpp"
 
 namespace altvane::dialogue::dsp {
     /**
      * runs the 48 kHz engine at any host sample rate
      *
      * the input is resampled to 48 kHz, processed and resampled back. what the round trip loses (everything above
-     * 24 kHz, and the resamplers' own error) is added back from the delayed input, scaled like the ambience:
+     * ~21 kHz, and the resamplers' own error) is added back from the delayed input, scaled like the ambience:
      *   out = up(engine(down(x))) + g * (x_delayed - up(down(x)_delayed))
      * so with every level at unity the output is the delayed input, exactly, at any rate
      */
     class RateBridge {
     public:
-        RateBridge();
-
-        ~RateBridge();
-
         /**
          * allocates; the engine's worker is restarted
-         * @return false if no model could be loaded (the output is then the delayed input)
+         * @return false if no model could be loaded, or the rate is unsupported (the output is then the input)
          */
         bool prepare(double sample_rate, int num_channels, int max_block);
 
@@ -62,28 +54,22 @@ namespace altvane::dialogue::dsp {
             std::vector<float> data;
             int read{0}, size{0};
 
-            void push(const double* samples, int count);
             void push(const float* samples, int count);
             void pop(float* dest, int count);
             void prefill(int count);
         };
 
         Engine engine_;
-        double sample_rate_{48000.0};
         int num_channels_{0}, max_block_{0}, latency_{0}, max_block_48_{0};
-        bool resampling_{false};
+        bool resampling_{false}, supported_{true};
 
-        std::array<std::unique_ptr<r8b::CDSPResampler24>, 2> down_, up_, up_dry_;
-        std::array<std::vector<double>, 2> in_double_;
-        std::array<std::vector<float>, 2> stage_, stage_dry_;
-        std::array<std::vector<double>, 2> stage_double_, stage_dry_double_;
+        std::array<Resampler, 2> down_, up_, up_dry_;
+        std::array<std::vector<float>, 2> stage_, stage_dry_, up_out_;
         std::array<Fifo, 2> out_fifo_, round_trip_fifo_;
         // delay lines: the host-rate input (for the residual and bypass) and the 48 kHz dry signal (for the round trip)
         std::array<std::vector<float>, 2> host_delay_, dry48_delay_;
         int host_delay_pos_{0}, dry48_delay_pos_{0};
         std::array<std::vector<float>, 2> dry_out_, round_trip_;
         std::vector<float*> engine_ptrs_;
-
-        int simulatePrefill(int block) const;
     };
 }

@@ -45,7 +45,7 @@ altvane_add_plugin(AltvaneDialogue
         VST3_CATEGORIES Fx Restoration
         AAX_CATEGORY AAX_ePlugInCategory_NoiseReduction
         LV2_TAGS util
-        LINK_LIBRARIES altvane_onnxruntime altvane_dialogue_models r8brain
+        LINK_LIBRARIES altvane_onnxruntime altvane_dialogue_models pffft
 )
 
 if (ALTVANE_BUILD_TESTS)
