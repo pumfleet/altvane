@@ -9,9 +9,9 @@
 
 #include "preset_json.hpp"
 
-#include "../../state/state_schema.hpp"
+#include "state_schema.hpp"
 
-namespace zlpanel {
+namespace zlstate {
     namespace {
         constexpr auto kPresetFormat = "ZLEqualizerPreset";
 

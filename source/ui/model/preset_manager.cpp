@@ -8,7 +8,9 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #include "preset_manager.hpp"
 
-#include "../../panel/preset_browser/preset_json.hpp"
+#include <algorithm>
+
+#include "../../state/preset_json.hpp"
 
 namespace contour::ui {
     PresetManager::PresetManager(EngineBridge& bridge) : bridge_(bridge) {
@@ -48,7 +50,7 @@ namespace contour::ui {
 
     bool PresetManager::load(const juce::File& file) {
         juce::MemoryBlock state;
-        if (!zlpanel::PresetJson::read(file, state).wasOk()) {
+        if (!zlstate::PresetJson::read(file, state).wasOk()) {
             return false;
         }
         if (bridge_.isEditing()) {
@@ -66,7 +68,7 @@ namespace contour::ui {
         file.getParentDirectory().createDirectory();
         juce::MemoryBlock state;
         bridge_.getProcessor().getStateInformation(state);
-        if (!zlpanel::PresetJson::write(file, state).wasOk()) {
+        if (!zlstate::PresetJson::write(file, state).wasOk()) {
             return false;
         }
         bridge_.getProcessor().current_preset_ = file;

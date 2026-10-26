@@ -9,7 +9,6 @@
 #pragma once
 
 #include "../PluginProcessor.hpp"
-#include "../PluginEditor.hpp"
 #include "model/engine_bridge.hpp"
 #include "model/selection.hpp"
 #include "analysis/response_model.hpp"
@@ -45,6 +44,8 @@ namespace contour::ui {
         void parentHierarchyChanged() override;
 
         bool keyPressed(const juce::KeyPress& key) override;
+
+        int getControlParameterIndex(juce::Component& component) override;
 
         /**
          * drive the editor without a window (snapshot tool, tests)
@@ -101,8 +102,6 @@ namespace contour::ui {
         std::unique_ptr<juce::PropertiesFile> settings_;
         bool applying_size_{false};
 
-        std::unique_ptr<PluginEditor> classic_;
-        Chip back_to_contour_{"Back to Contour"};
 
         void frame(double timestamp);
         void layoutPanel(double dt);
@@ -112,6 +111,6 @@ namespace contour::ui {
         void setInterfaceScale(float scale);
         void applySettings(const UISettings& settings);
         float getScale() const { return ui_settings_.scale; }
-        void setClassic(bool on);
+        void resetWindowSize();
     };
 }

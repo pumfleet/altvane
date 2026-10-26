@@ -8,6 +8,8 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #include <catch2/catch_test_macros.hpp>
 
+#include <numbers>
+
 #include "PluginProcessor.hpp"
 #include "ui/model/engine_bridge.hpp"
 #include "ui/model/band_ops.hpp"

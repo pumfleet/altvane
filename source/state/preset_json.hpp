@@ -9,20 +9,18 @@
 
 #pragma once
 
-#include <juce_gui_basics/juce_gui_basics.h>
+#include <juce_audio_processors/juce_audio_processors.h>
 
-#include "../../gui/scrolling/virtualized_list.hpp"
+namespace zlstate {
+    class PresetJson final {
+    public:
+        static juce::Result write(const juce::File& file, const juce::MemoryBlock& processor_state);
 
-namespace zlpanel::preset_list_layout {
-    inline int contentInset(const float font_size) {
-        return juce::roundToInt(font_size * zlgui::scrolling::VirtualizedList::kDefaultContentInsetScale);
-    }
+        static juce::Result read(const juce::File& file, juce::MemoryBlock& processor_state);
 
-    inline int rowTextInset(const float font_size) {
-        return juce::roundToInt(font_size * .96f);
-    }
+    private:
+        static juce::var valueTreeToJson(const juce::ValueTree& tree);
 
-    inline int columnTextInset(const float font_size) {
-        return contentInset(font_size) + rowTextInset(font_size);
-    }
+        static juce::Result jsonToValueTree(const juce::var& value, juce::ValueTree& tree);
+    };
 }

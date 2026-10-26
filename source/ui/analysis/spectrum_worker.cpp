@@ -7,6 +7,8 @@
 //
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #include "spectrum_worker.hpp"
+
+#include <algorithm>
 #include "../util/path_minimizer.hpp"
 #include "../util/gradient_minimizer.hpp"
 #include "../../zlp/sample_rate_helper.hpp"

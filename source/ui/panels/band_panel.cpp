@@ -8,6 +8,8 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #include "band_panel.hpp"
 
+#include <algorithm>
+
 #include "../model/band_ops.hpp"
 #include "../theme/fonts.hpp"
 #include "../theme/tokens.hpp"
@@ -42,6 +44,9 @@ namespace contour::ui {
                  &side_type_, &side_slope_, &side_freq_, &side_q_, &link_, &swap_, &side_solo_
              }) {
             addAndMakeVisible(c);
+        }
+        for (auto* b : {&dynamic_, &solo_, &bypass_, &side_solo_}) {
+            b->setToggleable(true);
         }
         prev_.setTooltip("Previous band (Shift+Tab)");
         next_.setTooltip("Next band (Tab)");
@@ -499,6 +504,20 @@ namespace contour::ui {
             side_solo_.setOnColour(c);
         }
         setTitle("Band " + juce::String(band_ + 1));
+        // lets the host map these controls to the band's parameters (automation, MIDI learn)
+        const auto& bp = bridge_.params(band_);
+        const std::array<std::pair<juce::Component*, BandParams::Field>, 13> ids{
+            {
+                {&freq_, BandParams::kFreq}, {&gain_, BandParams::kGain}, {&q_, BandParams::kQ},
+                {&range_, BandParams::kTargetGain}, {&threshold_, BandParams::kThreshold}, {&knee_, BandParams::kKnee},
+                {&attack_, BandParams::kAttack}, {&release_, BandParams::kRelease}, {&side_freq_, BandParams::kSideFreq},
+                {&side_q_, BandParams::kSideQ}, {&shape_, BandParams::kType}, {&slope_, BandParams::kOrder},
+                {&stereo_, BandParams::kLR}
+            }
+        };
+        for (const auto& [component, field] : ids) {
+            component->setComponentID(bp[field]->getParameterID());
+        }
     }
 
     int BandPanel::getIdealHeight() const {

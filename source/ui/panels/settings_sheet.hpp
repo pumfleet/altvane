@@ -18,7 +18,7 @@ namespace contour::ui {
     class SettingsSheet final : public Sheet {
     public:
         std::function<void(const UISettings&)> on_change;
-        std::function<void()> on_classic_editor;
+        std::function<void()> on_reset_window_size;
 
         SettingsSheet();
 
@@ -33,12 +33,12 @@ namespace contour::ui {
         };
         Switch reduce_motion_, grab_;
         ValueField drag_, wheel_;
-        PillButton classic_{"Open Classic Editor"};
+        PillButton reset_size_{"Reset Window Size"};
         std::vector<std::pair<juce::String, juce::Rectangle<int>>> labels_;
         std::vector<std::pair<juce::String, int>> sections_;
         juce::Rectangle<int> about_;
 
-        juce::Point<int> getCardSize() const override { return {560, 470}; }
+        juce::Point<int> getCardSize() const override { return {560, 500}; }
 
         void layoutContent(juce::Rectangle<int> area) override;
 

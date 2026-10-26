@@ -8,6 +8,8 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #include "preset_browser.hpp"
 
+#include <algorithm>
+
 #include "../theme/fonts.hpp"
 #include "../theme/tokens.hpp"
 

@@ -27,11 +27,164 @@ namespace contour::ui {
         juce::Colour resolve(const juce::Colour c) {
             return c.isTransparent() ? colour::kAccent : c;
         }
+
+        void drawFocusRing(juce::Graphics& g, const juce::Rectangle<float> area, const float radius) {
+            g.setColour(colour::kAccent.withAlpha(.85f));
+            g.drawRoundedRectangle(area.reduced(.75f), radius, 1.5f);
+        }
+
+        /**
+         * keyboard focus only through Tab, so clicking a control never steals shortcuts from the graph
+         */
+        void makeKeyboardFocusable(juce::Component& c) {
+            c.setWantsKeyboardFocus(true);
+            c.setMouseClickGrabsKeyboardFocus(false);
+        }
+
+        bool isActivationKey(const juce::KeyPress& key) {
+            return key == juce::KeyPress::spaceKey || key == juce::KeyPress::returnKey;
+        }
+
+        class ButtonAccessibility final : public juce::AccessibilityHandler {
+        public:
+            ButtonAccessibility(juce::Component& c, const juce::AccessibilityRole role, std::function<void()> press,
+                                std::function<std::optional<bool>()> state) :
+                AccessibilityHandler(c, role, juce::AccessibilityActions().addAction(
+                                         juce::AccessibilityActionType::press, std::move(press))),
+                state_(std::move(state)) {
+            }
+
+            juce::AccessibleState getCurrentState() const override {
+                auto s = AccessibilityHandler::getCurrentState();
+                if (const auto on = state_ ? state_() : std::nullopt; on.has_value()) {
+                    s = s.withCheckable();
+                    if (*on) {
+                        s = s.withChecked();
+                    }
+                }
+                return s;
+            }
+
+        private:
+            std::function<std::optional<bool>()> state_;
+        };
+
+        class ValueAccessibility final : public juce::AccessibilityValueInterface {
+        public:
+            explicit ValueAccessibility(ValueControl& control) : control_(control) {
+            }
+
+            bool isReadOnly() const override { return !control_.isEnabled(); }
+
+            double getCurrentValue() const override { return control_.getValue(); }
+
+            juce::String getCurrentValueAsString() const override { return control_.format(control_.getValue()); }
+
+            void setValue(const double v) override { control_.setFromUserGesture(static_cast<float>(v)); }
+
+            void setValueAsString(const juce::String& text) override {
+                if (control_.parse) {
+                    if (const auto v = control_.parse(text)) {
+                        control_.setFromUserGesture(*v);
+                    }
+                }
+            }
+
+            AccessibleValueRange getRange() const override {
+                const auto& r = control_.getRange();
+                return {{r.start, r.end}, r.interval > 0.f ? r.interval : (r.end - r.start) / 100.f};
+            }
+
+        private:
+            ValueControl& control_;
+        };
     }
 
     ValueControl::ValueControl() {
         setRepaintsOnMouseActivity(false);
-        setWantsKeyboardFocus(false);
+        makeKeyboardFocusable(*this);
+    }
+
+    std::unique_ptr<juce::AccessibilityHandler> ValueControl::createAccessibilityHandler() {
+        return std::make_unique<juce::AccessibilityHandler>(
+            *this, juce::AccessibilityRole::slider, juce::AccessibilityActions{},
+            juce::AccessibilityHandler::Interfaces{std::make_unique<ValueAccessibility>(*this)});
+    }
+
+    void ValueControl::setFromUserGesture(const float plain) {
+        if (on_begin) {
+            on_begin();
+        }
+        setFromUser(plain);
+        if (on_end) {
+            on_end();
+        }
+    }
+
+    void ValueControl::nudge(const float normalised_delta) {
+        if (!wheel_active_) {
+            wheel_active_ = true;
+            if (on_begin) {
+                on_begin();
+            }
+        }
+        setFromUser(range_.convertFrom0to1(std::clamp(range_.convertTo0to1(value_) + normalised_delta, 0.f, 1.f)));
+        startTimer(450);
+    }
+
+    bool ValueControl::keyPressed(const juce::KeyPress& key) {
+        const auto step = key.getModifiers().isShiftDown() ? .002f : .01f;
+        if (key == juce::KeyPress::upKey || key == juce::KeyPress::rightKey) {
+            nudge(step);
+            return true;
+        }
+        if (key == juce::KeyPress::downKey || key == juce::KeyPress::leftKey) {
+            nudge(-step);
+            return true;
+        }
+        if (key == juce::KeyPress::returnKey && parse) {
+            beginTextEdit();
+            return true;
+        }
+        if (key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey) {
+            resetToDefault();
+            return true;
+        }
+        return false;
+    }
+
+    void ValueControl::focusGainedWithDirection(const FocusChangeType cause, FocusChangeDirection) {
+        focus_ring_ = cause == focusChangedByTabKey;
+        repaint();
+    }
+
+    void ValueControl::focusLost(FocusChangeType) {
+        focus_ring_ = false;
+        repaint();
+    }
+
+    void ValueControl::paintFocusRing(juce::Graphics& g, const juce::Rectangle<float> area, const float radius) const {
+        if (focus_ring_) {
+            drawFocusRing(g, area, radius);
+        }
+    }
+
+    bool ValueControl::showHostMenu(const juce::MouseEvent& e) {
+        // the host's own parameter menu: automation, MIDI learn, etc.
+        auto* editor = findParentComponentOfClass<juce::AudioProcessorEditor>();
+        if (editor == nullptr || editor->getHostContext() == nullptr) {
+            return false;
+        }
+        const auto idx = editor->getControlParameterIndex(*this);
+        const auto& params = editor->getAudioProcessor()->getParameters();
+        if (idx < 0 || idx >= params.size()) {
+            return false;
+        }
+        if (auto menu = editor->getHostContext()->getContextMenuForParameter(params[idx])) {
+            menu->showNativeMenu(editor->getLocalPoint(this, e.getPosition()));
+            return true;
+        }
+        return false;
     }
 
     ValueControl::~ValueControl() {
@@ -103,6 +256,7 @@ namespace contour::ui {
 
     void ValueControl::mouseDown(const juce::MouseEvent& e) {
         if (e.mods.isPopupMenu()) {
+            showHostMenu(e);
             return;
         }
         if (e.mods.isCommandDown()) {
@@ -302,6 +456,8 @@ namespace contour::ui {
         g.setColour(colour::kTextPrimary.withMultipliedAlpha(alpha));
         g.drawLine({p1, p2}, 1.8f);
 
+        paintFocusRing(g, area.expanded(3.f), area.getWidth() * .5f + 3.f);
+
         // value
         const auto value_colour = dragging_ ? colour::kTextPrimary : colour::kTextPrimary.withMultipliedAlpha(.85f);
         g.setColour(value_colour.withMultipliedAlpha(alpha));
@@ -324,6 +480,7 @@ namespace contour::ui {
             g.fillRoundedRectangle(b, size::kRadiusSmall);
         }
         b.reduce(8.f, 0.f);
+        paintFocusRing(g, getLocalBounds().toFloat(), size::kRadiusSmall);
         if (label_.isEmpty()) {
             g.setColour(dragging_ ? colour::kTextPrimary : colour::kTextSecondary);
             Fonts::get().drawTabular(g, format(value_), b, juce::Justification::centredLeft, type::kBody);
@@ -340,6 +497,30 @@ namespace contour::ui {
     // ---------------------------------------------------------------- Selector
 
     Selector::Selector() : accent_(colour::kTextSecondary) {
+        makeKeyboardFocusable(*this);
+    }
+
+    std::unique_ptr<juce::AccessibilityHandler> Selector::createAccessibilityHandler() {
+        return std::make_unique<ButtonAccessibility>(*this, juce::AccessibilityRole::comboBox,
+                                                     [this] { showMenu(); }, nullptr);
+    }
+
+    bool Selector::keyPressed(const juce::KeyPress& key) {
+        if (isActivationKey(key) || key == juce::KeyPress::downKey) {
+            showMenu();
+            return true;
+        }
+        return false;
+    }
+
+    void Selector::focusGainedWithDirection(const FocusChangeType cause, FocusChangeDirection) {
+        focus_ring_ = cause == focusChangedByTabKey;
+        repaint();
+    }
+
+    void Selector::focusLost(FocusChangeType) {
+        focus_ring_ = false;
+        repaint();
     }
 
     void Selector::setText(const juce::String& text) {
@@ -365,9 +546,16 @@ namespace contour::ui {
         g.setColour(colour::kTextPrimary);
         g.setFont(Fonts::get().font(type::kBody));
         g.drawText(text_, b, juce::Justification::centredLeft, true);
+        if (focus_ring_) {
+            drawFocusRing(g, getLocalBounds().toFloat(), size::kRadiusSmall);
+        }
     }
 
     void Selector::mouseDown(const juce::MouseEvent&) {
+        showMenu();
+    }
+
+    void Selector::showMenu() {
         if (!build_menu) {
             return;
         }
@@ -391,6 +579,56 @@ namespace contour::ui {
     // ---------------------------------------------------------------- IconButton
 
     IconButton::IconButton(const icons::Icon icon) : icon_(icon) {
+        makeKeyboardFocusable(*this);
+    }
+
+    std::unique_ptr<juce::AccessibilityHandler> IconButton::createAccessibilityHandler() {
+        if (getTitle().isEmpty()) {
+            // icon-only: the tooltip is the best accessible name
+            setTitle(getTooltip());
+        }
+        return std::make_unique<ButtonAccessibility>(
+            *this, toggleable_ ? juce::AccessibilityRole::toggleButton : juce::AccessibilityRole::button,
+            [this] {
+                if (on_press) {
+                    on_press();
+                }
+                if (on_release) {
+                    on_release();
+                }
+                if (on_click) {
+                    on_click();
+                }
+            },
+            [this]() -> std::optional<bool> {
+                return toggleable_ ? std::optional<bool>{on_} : std::nullopt;
+            });
+    }
+
+    bool IconButton::keyPressed(const juce::KeyPress& key) {
+        if (isActivationKey(key)) {
+            if (on_press) {
+                on_press();
+            }
+            if (on_release) {
+                on_release();
+            }
+            if (on_click) {
+                on_click();
+            }
+            return true;
+        }
+        return false;
+    }
+
+    void IconButton::focusGainedWithDirection(const FocusChangeType cause, FocusChangeDirection) {
+        focus_ring_ = cause == focusChangedByTabKey;
+        repaint();
+    }
+
+    void IconButton::focusLost(FocusChangeType) {
+        focus_ring_ = false;
+        repaint();
     }
 
     void IconButton::setOn(const bool on) {
@@ -413,6 +651,9 @@ namespace contour::ui {
         const auto c = on_ ? resolve(on_colour_) : (hovered_ ? colour::kTextPrimary : colour::kTextSecondary);
         const auto side = std::min(b.getWidth(), b.getHeight()) * .62f;
         icons::draw(g, icon_, juce::Rectangle<float>(side, side).withCentre(b.getCentre()), c, 1.4f);
+        if (focus_ring_) {
+            drawFocusRing(g, b, size::kRadiusSmall);
+        }
     }
 
     void IconButton::mouseDown(const juce::MouseEvent&) {
@@ -438,7 +679,33 @@ namespace contour::ui {
 
     PillButton::PillButton(const juce::String& text, const bool primary) : text_(text), primary_(primary) {
         setTitle(text);
-        setWantsKeyboardFocus(false);
+        makeKeyboardFocusable(*this);
+    }
+
+    std::unique_ptr<juce::AccessibilityHandler> PillButton::createAccessibilityHandler() {
+        return std::make_unique<ButtonAccessibility>(*this, juce::AccessibilityRole::button, [this] {
+            if (on_click && isEnabled()) {
+                on_click();
+            }
+        }, nullptr);
+    }
+
+    bool PillButton::keyPressed(const juce::KeyPress& key) {
+        if (isActivationKey(key) && on_click && isEnabled()) {
+            on_click();
+            return true;
+        }
+        return false;
+    }
+
+    void PillButton::focusGainedWithDirection(const FocusChangeType cause, FocusChangeDirection) {
+        focus_ring_ = cause == focusChangedByTabKey;
+        repaint();
+    }
+
+    void PillButton::focusLost(FocusChangeType) {
+        focus_ring_ = false;
+        repaint();
     }
 
     int PillButton::getIdealWidth() const {
@@ -468,6 +735,9 @@ namespace contour::ui {
         g.setColour(fg.withMultipliedAlpha(enabled ? 1.f : .5f));
         g.setFont(Fonts::get().font(type::kBody, Fonts::kSemiBold));
         g.drawText(text_, b, juce::Justification::centred);
+        if (focus_ring_) {
+            drawFocusRing(g, b, size::kRadiusSmall);
+        }
     }
 
     void PillButton::mouseUp(const juce::MouseEvent& e) {
@@ -481,7 +751,38 @@ namespace contour::ui {
     // ---------------------------------------------------------------- Switch
 
     Switch::Switch() {
-        setWantsKeyboardFocus(false);
+        makeKeyboardFocusable(*this);
+    }
+
+    std::unique_ptr<juce::AccessibilityHandler> Switch::createAccessibilityHandler() {
+        return std::make_unique<ButtonAccessibility>(*this, juce::AccessibilityRole::toggleButton,
+                                                     [this] { toggle(); },
+                                                     [this]() -> std::optional<bool> { return on_; });
+    }
+
+    void Switch::toggle() {
+        setOn(!on_);
+        if (on_change) {
+            on_change(on_);
+        }
+    }
+
+    bool Switch::keyPressed(const juce::KeyPress& key) {
+        if (isActivationKey(key)) {
+            toggle();
+            return true;
+        }
+        return false;
+    }
+
+    void Switch::focusGainedWithDirection(const FocusChangeType cause, FocusChangeDirection) {
+        focus_ring_ = cause == focusChangedByTabKey;
+        repaint();
+    }
+
+    void Switch::focusLost(FocusChangeType) {
+        focus_ring_ = false;
+        repaint();
     }
 
     void Switch::setOn(const bool on) {
@@ -501,14 +802,14 @@ namespace contour::ui {
         });
         g.setColour(on_ ? colour::kWindow : colour::kTextSecondary);
         g.fillEllipse(knob);
+        if (focus_ring_) {
+            drawFocusRing(g, track.expanded(3.f), 12.f);
+        }
     }
 
     void Switch::mouseUp(const juce::MouseEvent& e) {
         if (getLocalBounds().contains(e.getPosition())) {
-            setOn(!on_);
-            if (on_change) {
-                on_change(on_);
-            }
+            toggle();
         }
     }
 
@@ -516,6 +817,33 @@ namespace contour::ui {
 
     Chip::Chip(const juce::String& text) : text_(text) {
         setTitle(text);
+        makeKeyboardFocusable(*this);
+    }
+
+    std::unique_ptr<juce::AccessibilityHandler> Chip::createAccessibilityHandler() {
+        return std::make_unique<ButtonAccessibility>(*this, juce::AccessibilityRole::toggleButton, [this] {
+            if (on_click) {
+                on_click();
+            }
+        }, [this]() -> std::optional<bool> { return on_; });
+    }
+
+    bool Chip::keyPressed(const juce::KeyPress& key) {
+        if (isActivationKey(key) && on_click) {
+            on_click();
+            return true;
+        }
+        return false;
+    }
+
+    void Chip::focusGainedWithDirection(const FocusChangeType cause, FocusChangeDirection) {
+        focus_ring_ = cause == focusChangedByTabKey;
+        repaint();
+    }
+
+    void Chip::focusLost(FocusChangeType) {
+        focus_ring_ = false;
+        repaint();
     }
 
     void Chip::setOn(const bool on) {
@@ -541,6 +869,9 @@ namespace contour::ui {
         g.setColour(on_ ? resolve(on_colour_) : (hovered_ ? colour::kTextPrimary : colour::kTextSecondary));
         g.setFont(Fonts::get().font(type::kSmall, on_ ? Fonts::kSemiBold : Fonts::kRegular));
         g.drawText(text_, b, juce::Justification::centred);
+        if (focus_ring_) {
+            drawFocusRing(g, b, size::kRadiusSmall);
+        }
     }
 
     void Chip::mouseUp(const juce::MouseEvent& e) {

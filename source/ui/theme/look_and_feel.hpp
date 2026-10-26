@@ -68,5 +68,8 @@ namespace contour::ui {
         int getDefaultScrollbarWidth() override { return 10; }
 
         bool areScrollbarButtonsVisible() override { return false; }
+
+        // window resize grip: three quiet diagonal strokes
+        void drawCornerResizer(juce::Graphics& g, int w, int h, bool is_mouse_over, bool is_mouse_dragging) override;
     };
 }

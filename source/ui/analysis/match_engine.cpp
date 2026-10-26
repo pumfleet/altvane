@@ -8,6 +8,9 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #include "match_engine.hpp"
 
+#include <algorithm>
+#include <numbers>
+
 #include "../../zlp/sample_rate_helper.hpp"
 #include "../../dsp/chore/decibels.hpp"
 

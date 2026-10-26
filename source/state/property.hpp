@@ -33,7 +33,7 @@ namespace zlstate {
 
         const juce::File kPath =
             juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-            .getChildFile(JucePlugin_Manufacturer)
+            .getChildFile("ZL Audio")
             .getChildFile(JucePlugin_Name);
         const juce::File kUIPath = kPath.getChildFile("ui.xml");
 

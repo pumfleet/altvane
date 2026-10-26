@@ -287,6 +287,11 @@ namespace contour::ui {
         output_menu_.setTooltip("Output options");
         output_menu_.on_click = [this] { showOutputMenu(); };
 
+        bypass_.setToggleable(true);
+        scale_.setComponentID(zlp::PGainScale::kID);
+        output_.setComponentID(zlp::POutputGain::kID);
+        phase_.setComponentID(zlp::PFilterStructure::kID);
+        bypass_.setComponentID(zlp::PBypass::kID);
         bypass_.setTooltip("Bypass the plug-in");
         bypass_.setOnColour(colour::kWarning);
         bypass_.on_click = [this] {
@@ -478,6 +483,7 @@ namespace contour::ui {
         b.removeFromLeft(size::kS4);
         match_.setBounds(b.removeFromLeft(static_cast<float>(match_.getIdealWidth())).toNearestInt());
 
+        b.removeFromRight(10.f); // window resize grip
         bypass_.setBounds(b.removeFromRight(26.f).toNearestInt());
         b.removeFromRight(size::kS2);
         output_menu_.setBounds(b.removeFromRight(20.f).toNearestInt());

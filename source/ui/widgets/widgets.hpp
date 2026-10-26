@@ -10,7 +10,7 @@
 
 #include <functional>
 #include <optional>
-#include <juce_gui_basics/juce_gui_basics.h>
+#include <juce_audio_processors/juce_audio_processors.h>
 
 #include "icons.hpp"
 #include "../util/spring.hpp"
@@ -42,6 +42,8 @@ namespace contour::ui {
 
         float getNormalised() const { return range_.convertTo0to1(value_); }
 
+        const juce::NormalisableRange<float>& getRange() const { return range_; }
+
         void setAccent(juce::Colour c);
 
         void setLabel(const juce::String& label);
@@ -50,12 +52,19 @@ namespace contour::ui {
 
         void beginTextEdit();
 
+        std::unique_ptr<juce::AccessibilityHandler> createAccessibilityHandler() override;
+
+        /**
+         * set a value as if the user did it (keyboard, accessibility clients)
+         */
+        void setFromUserGesture(float plain);
+
     protected:
         juce::NormalisableRange<float> range_{0.f, 1.f};
         float value_{0.f}, default_{0.f};
         juce::Colour accent_;
         juce::String label_;
-        bool hovered_{false}, dragging_{false}, enabled_look_{true};
+        bool hovered_{false}, dragging_{false}, enabled_look_{true}, focus_ring_{false};
         float drag_pixels_{220.f};
 
         /**
@@ -70,6 +79,11 @@ namespace contour::ui {
         void mouseUp(const juce::MouseEvent& e) override;
         void mouseDoubleClick(const juce::MouseEvent& e) override;
         void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override;
+        bool keyPressed(const juce::KeyPress& key) override;
+        void focusGainedWithDirection(FocusChangeType cause, FocusChangeDirection) override;
+        void focusLost(FocusChangeType) override;
+
+        void paintFocusRing(juce::Graphics& g, juce::Rectangle<float> area, float radius) const;
 
     private:
         float drag_start_norm_{0.f};
@@ -80,6 +94,8 @@ namespace contour::ui {
 
         void setFromUser(float plain);
         void resetToDefault();
+        void nudge(float normalised_delta);
+        bool showHostMenu(const juce::MouseEvent& e);
         void timerCallback() override;
         void textEditorReturnKeyPressed(juce::TextEditor&) override;
         void textEditorEscapeKeyPressed(juce::TextEditor&) override;
@@ -149,8 +165,15 @@ namespace contour::ui {
         void mouseEnter(const juce::MouseEvent&) override { hovered_ = true; repaint(); }
         void mouseExit(const juce::MouseEvent&) override { hovered_ = false; repaint(); }
         void mouseDown(const juce::MouseEvent&) override;
+        bool keyPressed(const juce::KeyPress& key) override;
+        void focusGainedWithDirection(FocusChangeType cause, FocusChangeDirection) override;
+        void focusLost(FocusChangeType) override;
+        std::unique_ptr<juce::AccessibilityHandler> createAccessibilityHandler() override;
+
+        void showMenu();
 
     private:
+        bool focus_ring_{false};
         juce::String text_, label_;
         juce::Colour accent_;
         bool hovered_{false}, open_{false};
@@ -183,8 +206,18 @@ namespace contour::ui {
         void mouseExit(const juce::MouseEvent&) override { hovered_ = false; repaint(); }
         void mouseDown(const juce::MouseEvent&) override;
         void mouseUp(const juce::MouseEvent& e) override;
+        bool keyPressed(const juce::KeyPress& key) override;
+        void focusGainedWithDirection(FocusChangeType cause, FocusChangeDirection) override;
+        void focusLost(FocusChangeType) override;
+        std::unique_ptr<juce::AccessibilityHandler> createAccessibilityHandler() override;
+
+        /**
+         * buttons that latch report their state to accessibility clients
+         */
+        void setToggleable(const bool toggleable) { toggleable_ = toggleable; }
 
     private:
+        bool focus_ring_{false}, toggleable_{false};
         icons::Icon icon_;
         juce::Colour on_colour_;
         bool on_{false}, hovered_{false}, pressed_{false}, framed_{false};
@@ -213,10 +246,14 @@ namespace contour::ui {
         void mouseExit(const juce::MouseEvent&) override { hovered_ = false; repaint(); }
         void mouseDown(const juce::MouseEvent&) override { pressed_ = true; repaint(); }
         void mouseUp(const juce::MouseEvent& e) override;
+        bool keyPressed(const juce::KeyPress& key) override;
+        void focusGainedWithDirection(FocusChangeType cause, FocusChangeDirection) override;
+        void focusLost(FocusChangeType) override;
+        std::unique_ptr<juce::AccessibilityHandler> createAccessibilityHandler() override;
 
     private:
         juce::String text_;
-        bool primary_, danger_{false}, hovered_{false}, pressed_{false};
+        bool primary_, danger_{false}, hovered_{false}, pressed_{false}, focus_ring_{false};
     };
 
     /**
@@ -237,9 +274,15 @@ namespace contour::ui {
         void mouseEnter(const juce::MouseEvent&) override { hovered_ = true; repaint(); }
         void mouseExit(const juce::MouseEvent&) override { hovered_ = false; repaint(); }
         void mouseUp(const juce::MouseEvent& e) override;
+        bool keyPressed(const juce::KeyPress& key) override;
+        void focusGainedWithDirection(FocusChangeType cause, FocusChangeDirection) override;
+        void focusLost(FocusChangeType) override;
+        std::unique_ptr<juce::AccessibilityHandler> createAccessibilityHandler() override;
+
+        void toggle();
 
     private:
-        bool on_{false}, hovered_{false};
+        bool on_{false}, hovered_{false}, focus_ring_{false};
     };
 
     /**
@@ -266,10 +309,14 @@ namespace contour::ui {
         void mouseEnter(const juce::MouseEvent&) override { hovered_ = true; repaint(); }
         void mouseExit(const juce::MouseEvent&) override { hovered_ = false; repaint(); }
         void mouseUp(const juce::MouseEvent& e) override;
+        bool keyPressed(const juce::KeyPress& key) override;
+        void focusGainedWithDirection(FocusChangeType cause, FocusChangeDirection) override;
+        void focusLost(FocusChangeType) override;
+        std::unique_ptr<juce::AccessibilityHandler> createAccessibilityHandler() override;
 
     private:
         juce::String text_;
         juce::Colour on_colour_;
-        bool on_{false}, hovered_{false};
+        bool on_{false}, hovered_{false}, focus_ring_{false};
     };
 }

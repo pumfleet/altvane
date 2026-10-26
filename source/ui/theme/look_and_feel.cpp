@@ -166,6 +166,16 @@ namespace contour::ui {
         g.fillRoundedRectangle(thumb.toFloat(), static_cast<float>(std::min(thumb.getWidth(), thumb.getHeight())) * .5f);
     }
 
+    void LookAndFeel::drawCornerResizer(juce::Graphics& g, const int w, const int h, const bool is_mouse_over,
+                                        const bool is_mouse_dragging) {
+        const auto size = static_cast<float>(std::min(w, h));
+        g.setColour(juce::Colours::white.withAlpha(is_mouse_dragging ? .45f : (is_mouse_over ? .3f : .14f)));
+        for (int i = 1; i <= 3; ++i) {
+            const auto o = size * static_cast<float>(i) * .27f;
+            g.drawLine(size - o, size - 2.f, size - 2.f, size - o, 1.2f);
+        }
+    }
+
     juce::CaretComponent* LookAndFeel::createCaretComponent(juce::Component* key_focus_owner) {
         auto* caret = juce::LookAndFeel_V4::createCaretComponent(key_focus_owner);
         caret->setColour(juce::CaretComponent::caretColourId, colour::kAccent);

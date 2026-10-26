@@ -81,10 +81,7 @@ namespace contour::ui {
         preset_browser_.on_closed = refocus;
         settings_sheet_.on_closed = refocus;
         settings_sheet_.on_change = [this](const UISettings& s) { applySettings(s); };
-        settings_sheet_.on_classic_editor = [this] { setClassic(true); };
-        addChildComponent(back_to_contour_);
-        back_to_contour_.setOn(true);
-        back_to_contour_.on_click = [this] { setClassic(false); };
+        settings_sheet_.on_reset_window_size = [this] { resetWindowSize(); };
 
         band_panel_.on_solo = [this](const size_t band, const bool side) { graph_.setSolo(band, side); };
         band_panel_.get_solo = [this] { return graph_.getSoloBand(); };
@@ -120,7 +117,6 @@ namespace contour::ui {
         match_.on_state_changed = nullptr;
         match_.cancel();
         vblank_.reset();
-        classic_.reset();
         spectrum_.stop();
         p_ref_.getController().setEditorON(false);
         if (settings_ != nullptr) {
@@ -135,10 +131,6 @@ namespace contour::ui {
     }
 
     void Editor::resized() {
-        if (classic_ != nullptr) {
-            classic_->setBounds(getLocalBounds());
-            back_to_contour_.setBounds(getWidth() - 140, getHeight() - 34, 128, 24);
-        }
         const auto ui_scale = getScale();
         const auto logical_w = static_cast<float>(getWidth()) / ui_scale;
         const auto logical_h = static_cast<float>(getHeight()) / ui_scale;
@@ -156,7 +148,7 @@ namespace contour::ui {
         panel_was_visible_ = false;
         layoutPanel(0.0);
 
-        if (!applying_size_ && settings_ != nullptr && classic_ == nullptr) {
+        if (!applying_size_ && settings_ != nullptr) {
             settings_->setValue("width", juce::roundToInt(logical_w));
             settings_->setValue("height", juce::roundToInt(logical_h));
         }
@@ -180,6 +172,12 @@ namespace contour::ui {
         if (showing) {
             spectrum_.start();
             last_timestamp_ = 0.0;
+            // shortcuts should work as soon as the editor opens
+            juce::MessageManager::callAsync([safe = juce::Component::SafePointer(&graph_)] {
+                if (safe != nullptr && safe->isShowing()) {
+                    safe->grabKeyboardFocus();
+                }
+            });
             vblank_ = std::make_unique<juce::VBlankAttachment>(this, [this](const double ts) { frame(ts); });
         } else {
             vblank_.reset();
@@ -193,9 +191,6 @@ namespace contour::ui {
         frame_rate_ += (1.0 / dt - frame_rate_) * .05;
         spectrum_.setRefreshRate(frame_rate_);
 
-        if (classic_ != nullptr) {
-            return;
-        }
         bridge_.refresh();
         graph_.tick(dt);
         layoutPanel(dt);
@@ -291,6 +286,25 @@ namespace contour::ui {
         graph_.setBottomInset(alpha * (h + 12.f));
     }
 
+    int Editor::getControlParameterIndex(juce::Component& component) {
+        if (&component == &graph_ || component.isParentOf(&graph_)) {
+            // over the graph, the hovered (or selected) band's frequency
+            auto band = selection_.getHovered();
+            if (band >= kBandNum) {
+                band = selection_.getPrimary();
+            }
+            return band < kBandNum ? bridge_.params(band)[BandParams::kFreq]->getParameterIndex() : -1;
+        }
+        for (auto* c = &component; c != nullptr && c != this; c = c->getParentComponent()) {
+            if (const auto id = c->getComponentID(); id.isNotEmpty()) {
+                if (auto* para = p_ref_.parameters_.getParameter(id)) {
+                    return para->getParameterIndex();
+                }
+            }
+        }
+        return -1;
+    }
+
     bool Editor::keyPressed(const juce::KeyPress& key) {
         const auto mods = key.getModifiers();
         if (mods.isCommandDown() && mods.isAltDown() && (key.getKeyCode() == 'F' || key.getKeyCode() == 'f')) {
@@ -332,28 +346,9 @@ namespace contour::ui {
         root_.repaint();
     }
 
-    void Editor::setClassic(const bool on) {
-        if (on == (classic_ != nullptr)) {
-            return;
-        }
-        if (on) {
-            graph_.setSolo(kBandNum);
-            if (bridge_.isEditing()) {
-                bridge_.endEdit();
-            }
-            classic_ = std::make_unique<PluginEditor>(p_ref_);
-            addAndMakeVisible(*classic_);
-            root_.setVisible(false);
-            back_to_contour_.setVisible(true);
-            back_to_contour_.toFront(false);
-        } else {
-            removeChildComponent(classic_.get());
-            classic_.reset();
-            // the classic editor turns the analyzer feed off when it closes
-            p_ref_.getController().setEditorON(is_showing_);
-            root_.setVisible(true);
-            back_to_contour_.setVisible(false);
-        }
-        resized();
+    void Editor::resetWindowSize() {
+        const auto scale = getScale();
+        setSize(juce::roundToInt(static_cast<float>(size::kDefaultWidth) * scale),
+                juce::roundToInt(static_cast<float>(size::kDefaultHeight) * scale));
     }
 }

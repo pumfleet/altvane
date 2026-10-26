@@ -207,6 +207,7 @@ namespace contour::ui {
         void nudge(float freq_octaves, float gain_db);
         void cycleSelection(bool forwards);
         void selectAdded(const std::vector<size_t>& bands);
+        void updateDescription();
 
         void mouseMove(const juce::MouseEvent& e) override;
         void mouseEnter(const juce::MouseEvent& e) override;

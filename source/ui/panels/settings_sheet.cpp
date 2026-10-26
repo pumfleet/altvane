@@ -78,15 +78,14 @@ namespace contour::ui {
             settings_.wheel_sensitivity = v;
             changed();
         };
-        classic_.on_click = [this] {
-            close();
-            if (on_classic_editor) {
-                on_classic_editor();
+        reset_size_.on_click = [this] {
+            if (on_reset_window_size) {
+                on_reset_window_size();
             }
         };
         addAndMakeVisible(reduce_motion_);
         addAndMakeVisible(grab_);
-        addAndMakeVisible(classic_);
+        addAndMakeVisible(reset_size_);
     }
 
     void SettingsSheet::setSettings(const UISettings& settings) {
@@ -142,6 +141,10 @@ namespace contour::ui {
             }
         }
         reduce_motion_.setBounds(row("Reduce motion").removeFromLeft(40));
+        {
+            auto r = row("Window");
+            reset_size_.setBounds(r.removeFromLeft(reset_size_.getIdealWidth()).reduced(0, 3));
+        }
         area.removeFromTop(10);
 
         section("INPUT");
@@ -154,9 +157,7 @@ namespace contour::ui {
         area.removeFromTop(10);
 
         section("ABOUT");
-        auto about = area.removeFromTop(48);
-        classic_.setBounds(about.removeFromRight(classic_.getIdealWidth()).withSizeKeepingCentre(classic_.getIdealWidth(), 30));
-        about_ = about;
+        about_ = area.removeFromTop(48);
     }
 
     void SettingsSheet::paint(juce::Graphics& g) {

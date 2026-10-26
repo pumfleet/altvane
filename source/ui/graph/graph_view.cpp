@@ -8,6 +8,8 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #include "graph_view.hpp"
 
+#include <ranges>
+
 #include "../model/band_ops.hpp"
 #include "../model/session_ops.hpp"
 #include "../theme/fonts.hpp"
@@ -337,9 +339,10 @@ namespace contour::ui {
         }
         needs_repaint = readout_fade_.update(fdt) || needs_repaint;
 
-        if (selection_.getVersion() != last_selection_version_) {
+        if (selection_.getVersion() != last_selection_version_ || bridge_.getChangedBands().any()) {
             last_selection_version_ = selection_.getVersion();
             needs_repaint = true;
+            updateDescription();
         }
         if (needs_repaint) {
             repaint();
@@ -1253,6 +1256,27 @@ namespace contour::ui {
         selection_.setBits(bits);
     }
 
+    void GraphView::updateDescription() {
+        // read by screen readers: what is on the graph and what is selected
+        size_t active = 0;
+        for (size_t b = 0; b < kBandNum; ++b) {
+            active += bridge_.band(b).isActive() ? 1 : 0;
+        }
+        juce::String text = active == 0 ? juce::String("No bands. Double-click to add a band.")
+                                        : juce::String(active) + (active == 1 ? " band." : " bands.");
+        if (const auto band = selection_.getPrimary(); band < kBandNum && bridge_.band(band).isActive()) {
+            const auto& b = bridge_.band(band);
+            text << " Band " << juce::String(band + 1) << " selected: " << band_ops::typeName(b.type) << ", "
+                << format::freq(b.freq) << (b.hasGain() ? ", " + format::gain(b.gain) : juce::String())
+                << (b.hasQ() ? ", Q " + format::q(b.q) : juce::String())
+                << (b.status == zlp::kBypass ? ", bypassed" : "") << (b.dynamic_on ? ", dynamic" : "") << ".";
+        }
+        text << " Arrow keys move the selection, Tab cycles bands, Delete removes.";
+        if (text != getDescription()) {
+            setDescription(text);
+        }
+    }
+
     void GraphView::cycleSelection(const bool forwards) {
         // order by frequency, the way bands read on screen
         std::vector<size_t> order;
@@ -1688,6 +1712,11 @@ namespace contour::ui {
             return true;
         }
         if (code == juce::KeyPress::tabKey) {
+            // with nothing to cycle through, Tab moves focus on as usual
+            if (!std::ranges::any_of(std::views::iota(size_t{0}, kBandNum),
+                                     [this](const size_t b) { return bridge_.band(b).isActive(); })) {
+                return false;
+            }
             cycleSelection(!mods.isShiftDown());
             return true;
         }
