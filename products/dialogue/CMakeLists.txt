@@ -3,15 +3,17 @@
 altvane_product_version(dialogue 0.1.0 dialogue_version)
 
 # ---- ONNX Runtime: a static, CPU-only build with just the operators our models use ----
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    message(FATAL_ERROR "Altvane Dialogue builds on macOS only for now (see scripts/build_onnxruntime.sh)")
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/PLATFORMS" dialogue_platforms REGEX "^[^#]")
+if (NOT ALTVANE_PLATFORM IN_LIST dialogue_platforms)
+    message(FATAL_ERROR "Altvane Dialogue does not build on ${ALTVANE_PLATFORM} yet (see PLATFORMS)")
 endif ()
-list(LENGTH CMAKE_OSX_ARCHITECTURES dialogue_arch_count)
-if (NOT dialogue_arch_count EQUAL 1)
-    message(FATAL_ERROR "Altvane Dialogue needs exactly one CMAKE_OSX_ARCHITECTURES entry (got '${CMAKE_OSX_ARCHITECTURES}')")
+if (CMAKE_OSX_ARCHITECTURES)
+    set(dialogue_arch ${CMAKE_OSX_ARCHITECTURES})
+else ()
+    set(dialogue_arch ${CMAKE_SYSTEM_PROCESSOR})
 endif ()
 set(dialogue_ops_config "${CMAKE_CURRENT_SOURCE_DIR}/models/required_operators.config")
-set(ALTVANE_ONNXRUNTIME_DIR "${CMAKE_SOURCE_DIR}/build/deps/onnxruntime-1.28.0-${CMAKE_OSX_ARCHITECTURES}"
+set(ALTVANE_ONNXRUNTIME_DIR "${CMAKE_SOURCE_DIR}/build/deps/onnxruntime-1.28.0-${dialogue_arch}"
         CACHE PATH "Static ONNX Runtime built by scripts/build_onnxruntime.sh")
 find_package(Python3 3.10 COMPONENTS Interpreter)
 set(dialogue_ort_env "MACOSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}")
@@ -21,7 +23,7 @@ endif ()
 # a no-op when the library is up to date
 execute_process(
         COMMAND ${CMAKE_COMMAND} -E env ${dialogue_ort_env}
-        "${CMAKE_SOURCE_DIR}/scripts/build_onnxruntime.sh" ${CMAKE_OSX_ARCHITECTURES} "${dialogue_ops_config}"
+        "${CMAKE_SOURCE_DIR}/scripts/build_onnxruntime.sh" ${dialogue_arch} "${dialogue_ops_config}"
         "${ALTVANE_ONNXRUNTIME_DIR}"
         RESULT_VARIABLE dialogue_ort_result)
 if (NOT dialogue_ort_result EQUAL 0)

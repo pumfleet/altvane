@@ -21,6 +21,13 @@ namespace altvane::dialogue {
         knob_.setStyle(ui::Knob::Style::kHero);
         ui::bindValue(knob_, editor, p.parameters_.getParameter(params::kLevelIDs[stem]), name);
         knob_.format = [](const float v) { return params::formatLevel(v); };
+        knob_.parse = [para = p.parameters_.getParameter(params::kLevelIDs[stem])](const juce::String& t) -> std::optional<float> {
+            // the parameter's own text conversion: "off", "-12", "\u221212 dB"
+            if (t.trim().isEmpty()) {
+                return std::nullopt;
+            }
+            return para->convertFrom0to1(para->getValueForText(t));
+        };
         knob_.setAccent(colour::stem(stem));
         knob_.setTitle(name + " level");
 

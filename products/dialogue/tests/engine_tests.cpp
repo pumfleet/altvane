@@ -107,7 +107,7 @@ namespace {
 }
 
 TEST_CASE("with every level at unity the output is the input, delayed by the reported latency", "[engine]") {
-    const auto rate = GENERATE(44100.0, 48000.0, 96000.0);
+    const auto rate = GENERATE(44100.0, 48000.0, 88200.0, 96000.0, 192000.0);
     const auto channels = GENERATE(1, 2);
     CAPTURE(rate, channels);
     PluginProcessor p;

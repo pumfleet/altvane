@@ -1,0 +1,74 @@
+[
+  {
+    "name": "Linux-x86-64",
+    "platform": "Linux-x86_64",
+    "os": "ubuntu-22.04",
+    "app_suffix": "",
+    "cmake_extra_flags": "-DCMAKE_C_COMPILER=clang-21 -DCMAKE_CXX_COMPILER=clang++-21 -DALTVANE_FORMATS=\"VST3;LV2;Standalone\" -DALTVANE_SIMD_TARGET=\"SSE2\"",
+    "have_aax": false
+  },
+  {
+    "name": "Linux-x86-64-AVX2",
+    "platform": "Linux-x86_64",
+    "os": "ubuntu-22.04",
+    "app_suffix": "",
+    "cmake_extra_flags": "-DCMAKE_C_COMPILER=clang-21 -DCMAKE_CXX_COMPILER=clang++-21 -DALTVANE_FORMATS=\"VST3;LV2;Standalone\" -DALTVANE_SIMD_TARGET=\"AVX2\"",
+    "have_aax": false
+  },
+  {
+    "name": "Linux-arm64",
+    "platform": "Linux-aarch64",
+    "os": "ubuntu-22.04-arm",
+    "app_suffix": "",
+    "cmake_extra_flags": "-DCMAKE_C_COMPILER=clang-21 -DCMAKE_CXX_COMPILER=clang++-21 -DALTVANE_FORMATS=\"VST3;LV2;Standalone\" -DALTVANE_SIMD_TARGET=\"NEON\"",
+    "have_aax": false
+  },
+  {
+    "name": "macOS-x86-64",
+    "platform": "Darwin-x86_64",
+    "os": "macos-26",
+    "app_suffix": ".app",
+    "macos_arch": "x86_64",
+    "cmake_extra_flags": "-DCMAKE_OSX_ARCHITECTURES=\"x86_64\" -DALTVANE_FORMATS=\"VST3;AU;Standalone\" -DALTVANE_SIMD_TARGET=\"SSE4\"",
+    "have_aax": false
+  },
+  {
+    "name": "macOS-arm64",
+    "platform": "Darwin-arm64",
+    "os": "macos-26",
+    "app_suffix": ".app",
+    "macos_arch": "arm64",
+    "cmake_extra_flags": "-DCMAKE_OSX_ARCHITECTURES=\"arm64\" -DALTVANE_FORMATS=\"VST3;AU;Standalone\" -DALTVANE_SIMD_TARGET=\"NEON\"",
+    "have_aax": false
+  },
+  {
+    "name": "Windows-x86-64",
+    "platform": "Windows-AMD64",
+    "os": "windows-2025",
+    "wix_arch": "x64",
+    "vcvars_script": "vcvars64.bat",
+    "app_suffix": ".exe",
+    "cmake_extra_flags": "-DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DALTVANE_FORMATS=\"VST3;LV2;Standalone\" -DALTVANE_SIMD_TARGET=\"SSE2\"",
+    "have_aax": false
+  },
+  {
+    "name": "Windows-x86-64-AVX2",
+    "platform": "Windows-AMD64",
+    "os": "windows-2025",
+    "wix_arch": "x64",
+    "vcvars_script": "vcvars64.bat",
+    "app_suffix": ".exe",
+    "cmake_extra_flags": "-DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DALTVANE_FORMATS=\"VST3;LV2;Standalone\" -DALTVANE_SIMD_TARGET=\"AVX2\"",
+    "have_aax": false
+  },
+  {
+    "name": "Windows-arm64",
+    "platform": "Windows-ARM64",
+    "os": "windows-11-vs2026-arm",
+    "wix_arch": "arm64",
+    "vcvars_script": "vcvarsarm64.bat",
+    "app_suffix": ".exe",
+    "cmake_extra_flags": "-DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DALTVANE_FORMATS=\"VST3;LV2;Standalone\" -DALTVANE_SIMD_TARGET=\"NEON\"",
+    "have_aax": false
+  }
+]

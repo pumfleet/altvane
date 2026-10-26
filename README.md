@@ -6,6 +6,7 @@ shared third-party dependencies and a shared design system.
 | Product | Directory | What it is |
 |---|---|---|
 | [Altvane EQ](products/eq/README.md) | `products/eq` | Parametric and dynamic equalizer, on the ZL Equalizer 2 engine |
+| [Altvane Dialogue](products/dialogue/README.md) | `products/dialogue` | Neural dialogue isolation: voice, ambience and voice reverb levels (macOS on Apple silicon for now) |
 
 ## Layout
 
@@ -45,7 +46,8 @@ cmake --build Builds
 
 Options:
 
-- `ALTVANE_PRODUCTS`: products to build, by directory name, e.g. `eq`. All of them by default.
+- `ALTVANE_PRODUCTS`: products to build, by directory name, e.g. `eq`. By default, every product that builds on this
+  platform (a product's `PLATFORMS` file, if it has one, lists them).
 - `ALTVANE_FORMATS`: plug-in formats, e.g. `"VST3;AU;Standalone"`.
 - `ALTVANE_SIMD_TARGET`: SIMD target, one of `SSE2`, `SSE4`, `AVX2` (x86-64) or `NEON` (arm64). Required.
 - `ALTVANE_COPY_PLUGIN`: copy plug-ins to the system folders after building (on by default).
@@ -62,7 +64,7 @@ ctest --test-dir build/mac-arm64-debug
 ## Releases
 
 Each product is versioned and released on its own. Tag `<code>-vX.Y.Z` (e.g. `eq-v1.0.0`) and the `Release`
-workflow builds, signs and packages that product for macOS, Windows and Linux. Without a tag a product builds as the
+workflow builds, signs and packages that product for every platform it supports (macOS, Windows and Linux unless its `PLATFORMS` file says otherwise). Without a tag a product builds as the
 default version in its `CMakeLists.txt`.
 
 ## Adding a product
@@ -83,6 +85,10 @@ default version in its `CMakeLists.txt`.
        altvane_add_tests(Altvane<Name> "${CMAKE_CURRENT_SOURCE_DIR}/tests")
    endif ()
    ```
+
+   If the product only builds on some platforms, list them in `products/<code>/PLATFORMS` (one
+   `<CMAKE_SYSTEM_NAME>-<arch>` per line, e.g. `Darwin-arm64`); the default product list and the release matrix
+   (`.github/release-matrix.json`) leave the others out.
 
    `altvane_add_plugin` fills in the company, manufacturer code (`Altv`), bundle id (`com.altvane.<code>`), LV2 URI,
    formats and code signing settings, and creates `Altvane<Name>_Core` for tests and tools to link.
