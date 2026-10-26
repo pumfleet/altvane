@@ -50,7 +50,8 @@ namespace altvane::dialogue::params {
         if (db <= kLevelOff + .05f) {
             return "Off";
         }
-        return (db > .04f ? "+" : "") + juce::String(db, 1) + " dB";
+        // the typographic minus, as everywhere else in the interface
+        return (db > .04f ? "+" : db < -.04f ? juce::String::fromUTF8("\xe2\x88\x92") : "") + juce::String(std::abs(db), 1) + " dB";
     }
 
     juce::AudioProcessorValueTreeState::ParameterLayout createLayout();

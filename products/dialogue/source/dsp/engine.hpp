@@ -9,6 +9,7 @@
 #pragma once
 
 #include <atomic>
+#include <cmath>
 #include <mutex>
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <altvane_ui/util/tri_buffer.hpp>
@@ -46,6 +47,10 @@ namespace altvane::dialogue::dsp {
         static constexpr int kBands = 64;
         static constexpr float kLowHz = 30.f;
         static constexpr float kHighHz = 20000.f;
+
+        static float bandCentre(const int band) {
+            return kLowHz * std::pow(kHighHz / kLowHz, (static_cast<float>(band) + .5f) / static_cast<float>(kBands));
+        }
 
         std::array<float, kBands> input{}, output{};
         std::array<std::array<float, kBands>, kNumStems> stems{};
@@ -143,7 +148,12 @@ namespace altvane::dialogue::dsp {
         std::array<float, kFftSize> synth_{};
         ui::TriBuffer<AnalysisFrame> analysis_;
         uint64_t analysis_index_{0};
-        std::array<int, kBins> band_of_bin_{};
+        // each bin's share of each analysis band it overlaps
+        struct BandWeight {
+            int band, bin;
+            float weight;
+        };
+        std::vector<BandWeight> band_weights_;
 
         std::unique_ptr<Worker> worker_;
         std::mutex workgroup_mutex_;

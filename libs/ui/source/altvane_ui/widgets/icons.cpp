@@ -142,6 +142,15 @@ namespace altvane::ui::icons {
             }
             p.closeSubPath();
             break;
+        case Icon::kCurve:
+            // a response curve through three nodes
+            p.startNewSubPath(1.5f, 10.5f);
+            p.cubicTo(4.f, 10.5f, 4.5f, 5.f, 8.f, 5.f);
+            p.cubicTo(11.5f, 5.f, 12.f, 9.f, 14.5f, 9.f);
+            p.addEllipse(2.f, 9.f, 3.f, 3.f);
+            p.addEllipse(6.5f, 3.5f, 3.f, 3.f);
+            p.addEllipse(11.f, 7.5f, 3.f, 3.f);
+            break;
         case Icon::kFolder:
             p.startNewSubPath(2.f, 4.f);
             p.lineTo(6.5f, 4.f);

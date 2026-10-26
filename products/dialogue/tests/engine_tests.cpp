@@ -285,4 +285,7 @@ TEST_CASE("level text round-trips, with Off at the bottom", "[params]") {
     CHECK(params::levelToGain(params::kLevelOff) == 0.f);
     CHECK(std::abs(voice->getValueForText("Off")) < 1e-6f);
     CHECK(std::abs(voice->convertFrom0to1(voice->getValueForText("-6.0 dB")) + 6.f) < .05f);
+    // what the interface shows reads back
+    const auto shown = voice->getText(voice->convertTo0to1(-6.f), 32);
+    CHECK(std::abs(voice->convertFrom0to1(voice->getValueForText(shown)) + 6.f) < .05f);
 }

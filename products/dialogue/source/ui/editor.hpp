@@ -10,11 +10,16 @@
 
 #include <altvane_ui/shell/editor_shell.hpp>
 
+#include "chrome.hpp"
+#include "control_deck.hpp"
+#include "visualiser.hpp"
+
 namespace altvane::dialogue {
     class PluginProcessor;
 
     /**
-     * the Altvane Dialogue editor
+     * the Altvane Dialogue editor: the spectrum on top, the three stems below, global settings in the footer
+     * everything is laid out in logical pixels inside root_, which is scaled by the interface size setting
      */
     class Editor final : public ui::EditorShell {
     public:
@@ -22,11 +27,24 @@ namespace altvane::dialogue {
 
         ~Editor() override;
 
+        int getControlParameterIndex(juce::Component& component) override;
+
+        bool keyPressed(const juce::KeyPress& key) override;
+
+        Visualiser& getVisualiserForTesting() { return visualiser_; }
+
+        ControlDeck& getDeckForTesting() { return deck_; }
+
     private:
         PluginProcessor& p_ref_;
-        std::array<ui::Knob, 3> levels_;
+        Visualiser visualiser_;
+        ControlDeck deck_;
+        Footer footer_;
+        OutputRail rail_;
+        uint64_t underruns_shown_{~uint64_t{0}};
 
         void layout(juce::Rectangle<int> area) override;
         void tick(double dt) override;
+        juce::Component* getDefaultFocus() override { return &visualiser_; }
     };
 }

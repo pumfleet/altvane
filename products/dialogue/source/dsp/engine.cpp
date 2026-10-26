@@ -202,12 +202,20 @@ namespace altvane::dialogue::dsp {
             pipelines_[static_cast<size_t>(active_)]->reset();
         }
 
-        // analysis bands, log-spaced
-        for (int k = 0; k < kBins; ++k) {
-            const auto f = std::max(binFrequency(k), AnalysisFrame::kLowHz);
-            const auto pos = std::log(f / AnalysisFrame::kLowHz) / std::log(AnalysisFrame::kHighHz / AnalysisFrame::kLowHz);
-            band_of_bin_[static_cast<size_t>(k)] = std::clamp(static_cast<int>(pos * AnalysisFrame::kBands), 0,
-                                                              AnalysisFrame::kBands - 1);
+        // analysis bands, log-spaced; a bin counts towards each band by how much of its width the band covers
+        band_weights_.clear();
+        constexpr auto bin_width = static_cast<float>(kSampleRate) / static_cast<float>(kFftSize);
+        for (int b = 0; b < AnalysisFrame::kBands; ++b) {
+            const auto ratio = AnalysisFrame::kHighHz / AnalysisFrame::kLowHz;
+            const auto lo = AnalysisFrame::kLowHz * std::pow(ratio, static_cast<float>(b) / AnalysisFrame::kBands);
+            const auto hi = AnalysisFrame::kLowHz * std::pow(ratio, static_cast<float>(b + 1) / AnalysisFrame::kBands);
+            for (int k = 1; k < kBins; ++k) {
+                const auto overlap = std::min(hi, (static_cast<float>(k) + .5f) * bin_width)
+                                     - std::max(lo, (static_cast<float>(k) - .5f) * bin_width);
+                if (overlap > 0.f) {
+                    band_weights_.push_back({b, k, overlap / bin_width});
+                }
+            }
         }
 
         worker_ = std::make_unique<Worker>(*this);
@@ -415,9 +423,10 @@ namespace altvane::dialogue::dsp {
             s.fill(0.f);
         }
         constexpr float kNorm = 4.f / (static_cast<float>(kFftSize) * static_cast<float>(kFftSize));
-        for (size_t k = 1; k < kBins; ++k) {
-            const auto band = static_cast<size_t>(band_of_bin_[k]);
-            const auto energy = std::norm(input[k]) * kNorm;
+        for (const auto& w : band_weights_) {
+            const auto band = static_cast<size_t>(w.band);
+            const auto k = static_cast<size_t>(w.bin);
+            const auto energy = std::norm(input[k]) * kNorm * w.weight;
             frame.input[band] += energy;
             frame.output[band] += energy * std::norm(transfer[k]);
             for (size_t s = 0; s < kNumStems; ++s) {

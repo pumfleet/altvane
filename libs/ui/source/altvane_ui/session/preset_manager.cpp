@@ -67,11 +67,15 @@ namespace altvane::ui {
             if (xml == nullptr) {
                 return juce::Result::fail("Invalid state");
             }
-            return file.replaceWithText(juce::JSON::toString(xmlToJson(*xml)))
+            return file.replaceWithText(toJsonText(*xml))
                        ? juce::Result::ok()
                        : juce::Result::fail("Could not write " + file.getFullPathName());
         };
         return codec;
+    }
+
+    juce::String PresetCodec::toJsonText(const juce::XmlElement& state) {
+        return juce::JSON::toString(xmlToJson(state));
     }
 
     PresetManager::PresetManager(juce::AudioProcessor& processor, ParamEditor& editor, Session& session,

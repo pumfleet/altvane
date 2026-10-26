@@ -26,6 +26,11 @@ namespace altvane::ui {
          * the processor state as an XML document, written as JSON
          */
         static PresetCodec xmlAsJson();
+
+        /**
+         * the text xmlAsJson() writes for a processor state, e.g. to generate factory presets
+         */
+        static juce::String toJsonText(const juce::XmlElement& state);
     };
 
     /**
