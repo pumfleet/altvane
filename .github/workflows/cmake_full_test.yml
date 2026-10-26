@@ -2,9 +2,9 @@ name: macOS/Windows/Linux Test
 
 on:
   push:
-    branches: [main, develop, contour]
+    branches: [main]
   pull_request:
-    branches: [main, contour]
+    branches: [main]
   workflow_dispatch:
 
 # When pushing new commits, cancel any running builds on that branch
@@ -26,8 +26,8 @@ env:
 
 jobs:
   engine_untouched:
-    # Contour keeps the upstream DSP unmodified so upstream fixes merge cleanly
-    name: Engine is unmodified
+    # products built on an upstream engine vendor it unmodified (see products/*/UPSTREAM)
+    name: Vendored engines are unmodified
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -35,12 +35,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Compare engine with upstream
+      - name: Compare vendored engines with their upstream pins
         run: |
-          git remote add upstream https://github.com/ZL-Audio/ZLEqualizer.git
-          git fetch --no-tags upstream main
-          base=$(git merge-base HEAD upstream/main)
-          git diff --stat --exit-code "$base" -- source/dsp source/zlp source/chore
+          status=0
+          for pin in products/*/UPSTREAM; do
+            product=$(basename "$(dirname "$pin")")
+            echo "== $product"
+            scripts/check_upstream.sh "$product" || status=1
+          done
+          exit $status
 
   build_and_test:
     name: ${{ matrix.name }}
@@ -52,17 +55,17 @@ jobs:
           - name: Linux
             os: ubuntu-latest
             pluginval-binary: ./pluginval
-            cmake_extra_flags: -DCMAKE_C_COMPILER=clang-21 -DCMAKE_CXX_COMPILER=clang++-21 -DZL_JUCE_FORMATS="VST3" -DZL_HWY_STATIC_TARGET="AVX2" -DZL_EQ_BAND_NUM=8
+            cmake_extra_flags: -DCMAKE_C_COMPILER=clang-21 -DCMAKE_CXX_COMPILER=clang++-21 -DALTVANE_FORMATS="VST3" -DALTVANE_SIMD_TARGET="AVX2" -DALTVANE_EQ_BAND_NUM=8
           - name: macOS
             os: macos-latest
             pluginval-binary: pluginval.app/Contents/MacOS/pluginval
-            cmake_extra_flags: -DZL_JUCE_FORMATS="AU" -DZL_HWY_STATIC_TARGET="NEON" -DZL_EQ_BAND_NUM=8
+            cmake_extra_flags: -DALTVANE_FORMATS="AU" -DALTVANE_SIMD_TARGET="NEON" -DALTVANE_EQ_BAND_NUM=8
           - name: Windows
             os: windows-latest
             wix_arch: x64
             vcvars_script: vcvars64.bat
             pluginval-binary: ./pluginval.exe
-            cmake_extra_flags: -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DZL_JUCE_FORMATS="VST3" -DZL_HWY_STATIC_TARGET="AVX2" -DZL_EQ_BAND_NUM=8
+            cmake_extra_flags: -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DALTVANE_FORMATS="VST3" -DALTVANE_SIMD_TARGET="AVX2" -DALTVANE_EQ_BAND_NUM=8
 
     steps:
       - name: Set up Clang (Linux)
@@ -88,7 +91,7 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} -DCONTOUR_BUILD_TESTS=ON ${{ matrix.cmake_extra_flags }} .
+          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} -DALTVANE_BUILD_TESTS=ON ${{ matrix.cmake_extra_flags }} .
           cmake --build ${{ env.BUILD_DIR }} --config ${{ env.BUILD_TYPE }}
 
       - name: Configure and Build (Windows)
@@ -97,18 +100,17 @@ jobs:
         run: |
           for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath`) do set VS_PATH=%%i
           call "%VS_PATH%\VC\Auxiliary\Build\${{ matrix.vcvars_script }}"
-          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} -DCONTOUR_BUILD_TESTS=ON ${{ matrix.cmake_extra_flags }} .
+          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} -DALTVANE_BUILD_TESTS=ON ${{ matrix.cmake_extra_flags }} .
           cmake --build ${{ env.BUILD_DIR }} --config ${{ env.BUILD_TYPE }}
 
       - name: Unit tests
         shell: bash
-        run: ./${{ env.BUILD_DIR }}/Tests --reporter console --durations yes
+        run: ctest --test-dir ${{ env.BUILD_DIR }} --output-on-failure
 
-      - name: Read in .env from CMake # see GitHubENV.cmake
+      - name: List products # one <code>.env per product, written by altvane_add_plugin
         shell: bash
         run: |
-          cat .env # show us the config
-          cat .env >> $GITHUB_ENV # pull in our PRODUCT_NAME, etc
+          for env in ${{ env.BUILD_DIR }}/*.env; do echo "== $env"; cat "$env"; done
 
       - name: Pluginval setup
         shell: bash
@@ -129,7 +131,10 @@ jobs:
         if: ${{ runner.os != 'macOS' }}
         shell: bash
         run: |
-          ${{ matrix.pluginval-binary }} --verbose --validate "${{ env.VST3_PATH }}" --disabled-tests "${{ env.PLUGINVAL_DISABLED }}"
+          for env in ${{ env.BUILD_DIR }}/*.env; do
+            VST3_PATH=$(sed -n 's/^VST3_PATH=//p' "$env")
+            ${{ matrix.pluginval-binary }} --verbose --validate "$VST3_PATH" --disabled-tests "${{ env.PLUGINVAL_DISABLED }}"
+          done
         env:
           STRICTNESS_LEVEL: 10
           TIMEOUT_MS: 1440000
@@ -140,9 +145,13 @@ jobs:
         if: ${{ runner.os == 'macOS' }}
         shell: bash
         run: |
-          sudo cp -r "${{ env.AU_PATH }}" "/Library/Audio/Plug-ins/components"
-          sudo killall -9 AudioComponentRegistrar
-          ${{ matrix.pluginval-binary }} --verbose --validate "/Library/Audio/Plug-ins/components/${{ env.PRODUCT_NAME }}.component" --disabled-tests "${{ env.PLUGINVAL_DISABLED }}"
+          for env in ${{ env.BUILD_DIR }}/*.env; do
+            AU_PATH=$(sed -n 's/^AU_PATH=//p' "$env")
+            PRODUCT_NAME=$(sed -n 's/^PRODUCT_NAME=//p' "$env")
+            sudo cp -r "$AU_PATH" "/Library/Audio/Plug-ins/components"
+            sudo killall -9 AudioComponentRegistrar || true
+            ${{ matrix.pluginval-binary }} --verbose --validate "/Library/Audio/Plug-ins/components/$PRODUCT_NAME.component" --disabled-tests "${{ env.PLUGINVAL_DISABLED }}"
+          done
         env:
           STRICTNESS_LEVEL: 10
           TIMEOUT_MS: 1440000

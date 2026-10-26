@@ -2,6 +2,11 @@ name: Sanitizer
 
 on:
   workflow_dispatch:
+    inputs:
+      product:
+        description: Product to test (directory name under products/)
+        required: true
+        default: eq
 
 # When pushing new commits, cancel any running builds on that branch
 concurrency:
@@ -29,22 +34,22 @@ jobs:
           - name: macOS Address Sanitizer
             os: macos-latest
             pluginval-binary: ./pluginval/Builds/pluginval_artefacts/RelWithDebugInfo/pluginval.app/Contents/MacOS/pluginval
-            cmake_extra_flags: -DWITH_ADDRESS_SANITIZER=ON -DWITH_THREAD_SANITIZER=OFF -DZL_JUCE_FORMATS="VST3;AU" -DZL_HWY_STATIC_TARGET="NEON"
+            cmake_extra_flags: -DWITH_ADDRESS_SANITIZER=ON -DWITH_THREAD_SANITIZER=OFF -DALTVANE_FORMATS="VST3;AU" -DALTVANE_SIMD_TARGET="NEON"
             pluginval_disabled: Plugin state restoration
           - name: macOS Thread Sanitizer
             os: macos-latest
             pluginval-binary: ./pluginval/Builds/pluginval_artefacts/RelWithDebugInfo/pluginval.app/Contents/MacOS/pluginval
-            cmake_extra_flags: -DWITH_ADDRESS_SANITIZER=OFF -DWITH_THREAD_SANITIZER=ON -DZL_JUCE_FORMATS="VST3;AU" -DZL_HWY_STATIC_TARGET="NEON"
+            cmake_extra_flags: -DWITH_ADDRESS_SANITIZER=OFF -DWITH_THREAD_SANITIZER=ON -DALTVANE_FORMATS="VST3;AU" -DALTVANE_SIMD_TARGET="NEON"
             pluginval_disabled: Plugin state restoration
           - name: Linux Address Sanitizer
             os: ubuntu-latest
             pluginval-binary: ./pluginval/Builds/pluginval_artefacts/RelWithDebugInfo/pluginval
-            cmake_extra_flags: -DCMAKE_C_COMPILER=clang-21 -DCMAKE_CXX_COMPILER=clang++-21 -DWITH_ADDRESS_SANITIZER=ON -DWITH_THREAD_SANITIZER=OFF -DZL_JUCE_FORMATS="VST3" -DZL_HWY_STATIC_TARGET="AVX2"
+            cmake_extra_flags: -DCMAKE_C_COMPILER=clang-21 -DCMAKE_CXX_COMPILER=clang++-21 -DWITH_ADDRESS_SANITIZER=ON -DWITH_THREAD_SANITIZER=OFF -DALTVANE_FORMATS="VST3" -DALTVANE_SIMD_TARGET="AVX2"
             pluginval_disabled: Plugin state restoration
           - name: Linux Thread Sanitizer
             os: ubuntu-latest
             pluginval-binary: ./pluginval/Builds/pluginval_artefacts/RelWithDebugInfo/pluginval
-            cmake_extra_flags: -DCMAKE_C_COMPILER=clang-21 -DCMAKE_CXX_COMPILER=clang++-21 -DWITH_ADDRESS_SANITIZER=OFF -DWITH_THREAD_SANITIZER=ON -DZL_JUCE_FORMATS="VST3" -DZL_HWY_STATIC_TARGET="AVX2"
+            cmake_extra_flags: -DCMAKE_C_COMPILER=clang-21 -DCMAKE_CXX_COMPILER=clang++-21 -DWITH_ADDRESS_SANITIZER=OFF -DWITH_THREAD_SANITIZER=ON -DALTVANE_FORMATS="VST3" -DALTVANE_SIMD_TARGET="AVX2"
             pluginval_disabled: Plugin state restoration,Background thread state
 
     steps:
@@ -71,7 +76,7 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} ${{ matrix.cmake_extra_flags }} .
+          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} -DALTVANE_PRODUCTS=${{ inputs.product }} ${{ matrix.cmake_extra_flags }} .
           cmake --build ${{ env.BUILD_DIR }} --config ${{ env.BUILD_TYPE }}
 
       - name: Configure and Build (Windows)
@@ -79,14 +84,14 @@ jobs:
         shell: cmd
         run: |
           call ${{ matrix.vcvars64_path }}
-          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} ${{ matrix.cmake_extra_flags }} .
+          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} -DALTVANE_PRODUCTS=${{ inputs.product }} ${{ matrix.cmake_extra_flags }} .
           cmake --build ${{ env.BUILD_DIR }} --config ${{ env.BUILD_TYPE }}
 
-      - name: Read in .env from CMake # see GitHubENV.cmake
+      - name: Read in the product's .env from CMake # written by altvane_add_plugin
         shell: bash
         run: |
-          cat .env # show us the config
-          cat .env >> $GITHUB_ENV # pull in our PRODUCT_NAME, etc
+          cat "${{ env.BUILD_DIR }}/${{ inputs.product }}.env" # show us the config
+          cat "${{ env.BUILD_DIR }}/${{ inputs.product }}.env" >> $GITHUB_ENV # pull in our PRODUCT_NAME, etc
 
       - name: Checkout pluginval code
         uses: actions/checkout@v7

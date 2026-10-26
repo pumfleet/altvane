@@ -146,6 +146,8 @@ def main():
     version = os.getenv("VERSION", "0.0.0")
     publisher = os.getenv("COMPANY_NAME", "MyCompany")
     wix_arch = os.getenv("WIX_ARCH", "x64").strip().lower()
+    # the product's icons, installer art and readme (PRODUCT_DIR comes from the product's .env, see AltvanePlugin.cmake)
+    art_dir = os.path.relpath(os.path.join(os.getenv("PRODUCT_DIR", "."), "packaging"))
     if wix_arch not in SUPPORTED_WIX_ARCHES:
         raise ValueError(
             f"WIX_ARCH must be one of {sorted(SUPPORTED_WIX_ARCHES)}, got {wix_arch!r}"
@@ -175,7 +177,7 @@ def main():
 
         output.write('        <MediaTemplate EmbedCab="yes" />\n')
 
-        icon_path = "packaging/icon.ico"
+        icon_path = os.path.join(art_dir, "icon.ico")
         if os.path.isfile(icon_path):
             output.write(
                 f'        <Icon Id="AppIcon.ico" SourceFile="{escape_xml(icon_path)}" />\n'
@@ -314,8 +316,8 @@ def main():
             output.write("            </Feature>\n")
         output.write("        </Feature>\n")
 
-        eula_path = "packaging/EULA.rtf"
-        readme_path = "packaging/Readme.rtf"
+        eula_path = os.path.join(art_dir, "EULA.rtf")
+        readme_path = os.path.join(art_dir, "Readme.rtf")
         if os.path.exists(eula_path):
             license_file = eula_path
         elif os.path.exists(readme_path):
@@ -329,13 +331,13 @@ def main():
             f'Value="{escape_xml(license_file)}" />\n'
         )
 
-        banner_bmp = "packaging/banner.bmp"
+        banner_bmp = os.path.join(art_dir, "banner.bmp")
         if os.path.exists(banner_bmp):
             output.write(
                 f'        <WixVariable Id="WixUIBannerBmp" '
                 f'Value="{escape_xml(banner_bmp)}" />\n'
             )
-        dialog_bmp = "packaging/dialog.bmp"
+        dialog_bmp = os.path.join(art_dir, "dialog.bmp")
         if os.path.exists(dialog_bmp):
             output.write(
                 f'        <WixVariable Id="WixUIDialogBmp" '

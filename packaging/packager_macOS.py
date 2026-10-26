@@ -17,6 +17,8 @@ def main():
     artifact_name = os.getenv("ARTIFACT_NAME", "")
     developer_id_app = os.getenv("DEVELOPER_ID_APPLICATION", "")
     macos_arch = os.getenv("MACOS_ARCH", "x86_64,arm64")
+    # the product's icons, installer art and readme (PRODUCT_DIR comes from the product's .env, see AltvanePlugin.cmake)
+    art_dir = os.path.join(os.getenv("PRODUCT_DIR", "."), "packaging")
 
     # root
     root = ET.Element("installer-gui-script", minSpecVersion="1")
@@ -24,11 +26,11 @@ def main():
     title = ET.SubElement(root, "title")
     title.text = "{} {}".format(product_name, version)
     # EULA
-    if os.path.isfile("packaging/EULA"):
+    if os.path.isfile(os.path.join(art_dir, "EULA")):
         eula = ET.SubElement(root, "license", file="EULA")
         eula.set("mime-type", "text/plain")
     # readme
-    if os.path.isfile("packaging/Readme.rtf"):
+    if os.path.isfile(os.path.join(art_dir, "Readme.rtf")):
         readme = ET.SubElement(root, "readme", file="Readme.rtf")
     # options
     options = ET.SubElement(root, "options",
@@ -93,15 +95,15 @@ def main():
     print("Create final package")
     command_list = ["--distribution", "packaging/distribution.xml",
                     "--package-path", build_dir,
-                    "--resources", "packaging",
+                    "--resources", art_dir,
                     artifact_name + "_unsigned.pkg"]
 
     subprocess.run(["productbuild"] + command_list)
 
-    if os.path.exists("packaging/installer.icns"):
+    if os.path.exists(os.path.join(art_dir, "installer.icns")):
         print("")
         print("Attach icns")
-        subprocess.run(["mv", "packaging/installer.icns", "."])
+        subprocess.run(["cp", os.path.join(art_dir, "installer.icns"), "."])
         with open("tmpIcon.rsrc", "w") as outfile:
             subprocess.run(["echo", "read 'icns' (-16455) \"installer.icns\";"], stdout=outfile)
         print(subprocess.run(["Rez -append tmpIcon.rsrc -o \"{}_unsigned.pkg\"".format(artifact_name)], shell=True))
