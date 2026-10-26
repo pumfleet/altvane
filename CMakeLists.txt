@@ -98,6 +98,11 @@ add_compile_definitions(HWY_COMPILE_ONLY_STATIC)
 add_compile_options(${ALTVANE_SIMD_FLAGS})
 add_subdirectory(third_party/highway EXCLUDE_FROM_ALL)
 
+# r8brain: sample rate conversion, and the PFFFT it bundles for FFT sizes that are not powers of two
+add_library(r8brain STATIC EXCLUDE_FROM_ALL third_party/r8brain/r8bbase.cpp third_party/r8brain/pffft.cpp)
+target_include_directories(r8brain SYSTEM PUBLIC third_party/r8brain)
+set_target_properties(r8brain PROPERTIES POSITION_INDEPENDENT_CODE TRUE FOLDER "Targets")
+
 # ---- Altvane ----
 
 include(AltvaneVersion)
