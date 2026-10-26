@@ -10,9 +10,9 @@
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin" },
       "cacheVariables": {
         "CMAKE_OSX_ARCHITECTURES": "arm64",
-        "ZL_HWY_STATIC_TARGET": "NEON",
-        "ZL_JUCE_FORMATS": "VST3;AU;Standalone",
-        "ZL_JUCE_COPY_PLUGIN": "TRUE",
+        "ALTVANE_SIMD_TARGET": "NEON",
+        "ALTVANE_FORMATS": "VST3;AU;Standalone",
+        "ALTVANE_COPY_PLUGIN": "ON",
         "CMAKE_POLICY_VERSION_MINIMUM": "3.5",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }

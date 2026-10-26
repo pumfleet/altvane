@@ -1,68 +1,45 @@
+# Altvane: one build for every Altvane plugin.
+# Shared dependencies (JUCE, highway, nlopt) and libs/ live here; each product under products/ is added with
+# add_subdirectory and declares its plugin with altvane_add_plugin (cmake/AltvanePlugin.cmake).
+
 # 3.24.1 is bundled in Visual Studio 2022 v17.4
 # 3.24.1 is also bundled in CLion as of 2023
 cmake_minimum_required(VERSION 3.24.1)
 set(CMAKE_CXX_STANDARD 20)
 
-# This tells cmake we have goodies in the /cmake folder
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake-includes")
-include(GitVersion)
-include(PamplejuceVersion)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # Configures universal binaries and decides which version of macOS to support
 include(PamplejuceMacOS)
 
-# Change me!
-# This is the internal name of the project and the name of JUCE's shared code "target"
-# Note: This cannot have spaces (it may be 2023, but you can't have it all!)
-# Worry not, JUCE's PRODUCT_NAME can have spaces (and is DAWs display)
-set(PROJECT_NAME "Contour")
-set(PLUGIN_CODE "Ctq1")
+project(Altvane LANGUAGES C CXX)
 
-# Worry not, JUCE's PRODUCT_NAME can have spaces (and is what DAWs will display)
-# You can also just have it be the same thing as PROJECT_NAME
-# You may want to append the major version on the end of this (and PROJECT_NAME) ala:
-# #  set(PROJECT_NAME "MyPlugin_v${MAJOR_VERSION}")
-# Doing so enables major versions to show up in IDEs and DAWs as separate plugins
-# allowing you to change parameters and behavior without breaking existing user projects
-set(PRODUCT_NAME "Contour")
+# ---- build options ----
 
-# Change me! Used for the MacOS bundle name and Installers
-set(COMPANY_NAME "Contour")
-set(PLUGIN_MANUFACTURER_CODE "Cntr")
-
-# Change me! Used for the MacOS bundle identifier (and signing)
-set(BUNDLE_ID "com.contour.plugins")
-
-set(LV2URI "https://github.com/contour-audio/contour")
-
-# For simplicity, the name of the CMake project is also the name of the target
-project(${PROJECT_NAME} VERSION ${CURRENT_VERSION})
-
-if (NOT DEFINED ZL_JUCE_COPY_PLUGIN)
-    set(ZL_JUCE_COPY_PLUGIN TRUE)
-endif ()
-
-if (NOT DEFINED ZL_EQ_BAND_NUM)
-    message(STATUS "Compiling with default band number: 24")
-    add_definitions(-DZL_EQ_BAND_NUM=24)
-else ()
-    message(STATUS "Compiling with custom band number: ${ZL_EQ_BAND_NUM}")
-    add_definitions(-DZL_EQ_BAND_NUM=${ZL_EQ_BAND_NUM})
-endif ()
-
-if (DEFINED ZL_JUCE_FORMATS)
-    set(FORMATS "${ZL_JUCE_FORMATS}")
-else ()
-    if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-        set(FORMATS VST3 AU Standalone)
-    else ()
-        set(FORMATS VST3 LV2 Standalone)
+# products to build, by directory name under products/ (default: all of them)
+file(GLOB _altvane_product_dirs RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/products" "${CMAKE_CURRENT_SOURCE_DIR}/products/*")
+set(_altvane_all_products "")
+foreach (dir ${_altvane_product_dirs})
+    if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/products/${dir}/CMakeLists.txt")
+        list(APPEND _altvane_all_products "${dir}")
     endif ()
+endforeach ()
+set(ALTVANE_PRODUCTS "${_altvane_all_products}" CACHE STRING "Products to build (directory names under products/)")
+message(STATUS "Altvane products: ${ALTVANE_PRODUCTS}")
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(_altvane_default_formats VST3 AU Standalone)
+else ()
+    set(_altvane_default_formats VST3 LV2 Standalone)
 endif ()
+set(ALTVANE_FORMATS "${_altvane_default_formats}" CACHE STRING "Plugin formats to build")
+message(STATUS "Formats are ${ALTVANE_FORMATS}")
 
-message(STATUS "Formats are ${FORMATS}")
+option(ALTVANE_COPY_PLUGIN "Copy plugins to the system plugin folders after building" ON)
+option(ALTVANE_BUILD_TESTS "Build the unit tests of every product" OFF)
+option(ALTVANE_BUILD_TOOLS "Build developer tools (snapshot renderers, icon generator)" OFF)
 
-if ("AAX" IN_LIST FORMATS)
+if ("AAX" IN_LIST ALTVANE_FORMATS)
     if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         if (DEFINED ENV{GITHUB_TOKEN})
             set(JUCE_AAX_COPY_DIR "/Users/runner/Library/Audio/Plug-Ins/AAX")
@@ -74,215 +51,70 @@ if ("AAX" IN_LIST FORMATS)
     endif ()
 endif ()
 
-# Sanitizer support, comment out to disable
-include(Sanitizer)
+# ---- global settings ----
 
-# include boost for this project
-# find_package(Boost 1.80.0 REQUIRED)
+# Sanitizer support, off unless WITH_ADDRESS_SANITIZER / WITH_THREAD_SANITIZER are set
+include(Sanitizer)
 
 # Couple tweaks that IMO should be JUCE defaults
 include(JUCEDefaults)
 
-# JUCE is setup as a submodule in the /JUCE folder
+# ---- third-party dependencies ----
+
+# JUCE is a submodule in third_party/JUCE
 # Locally, you must run `git submodule update --init --recursive` once
-# and later `git submodule update --remote --merge` to keep it up to date
-# On Github Actions, this is done as a part of actions/checkout
-add_subdirectory(JUCE)
+add_subdirectory(third_party/JUCE)
 
-# Add any other modules you want modules here, before the juce_add_plugin call
-#juce_add_module("${CMAKE_CURRENT_LIST_DIR}/modules/friz/Source/friz")
-
-# See `docs/CMake API.md` in the JUCE repo for all config options
-juce_add_plugin("${PROJECT_NAME}"
-        # Icons for the standalone app
-        ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/packaging/icon.png"
-
-        # Change me!
-        COMPANY_NAME "${COMPANY_NAME}"
-        BUNDLE_ID "${BUNDLE_ID}"
-
-        # On MacOS, plugin is copied to ~/Users/yourname/Library/Audio/Plug-Ins/
-        COPY_PLUGIN_AFTER_BUILD ${ZL_JUCE_COPY_PLUGIN}
-        AAX_COPY_DIR "${JUCE_AAX_COPY_DIR}"
-
-        # Change me!
-        # A four-character plugin id
-        # First character MUST be uppercase for AU formats
-        PLUGIN_MANUFACTURER_CODE "${PLUGIN_MANUFACTURER_CODE}"
-
-        # Change me!
-        # A unique four-character plugin id
-        # Note: this must have at least one upper-case character
-        PLUGIN_CODE "${PLUGIN_CODE}"
-        FORMATS "${FORMATS}"
-        LV2URI "${LV2URI}"
-
-        IS_SYNTH FALSE
-        NEEDS_MIDI_INPUT FALSE
-        NEEDS_MIDI_OUTPUT FALSE
-
-        AU_MAIN_TYPE kAudioUnitType_Effect
-        VST3_CATEGORIES EQ
-        AAX_CATEGORY AAX_ePlugInCategory_EQ
-
-        MICROPHONE_PERMISSION_ENABLED TRUE
-        MICROPHONE_PERMISSION_TEXT "${PRODUCT_NAME} Standalone needs access to your audio interface"
-        HARDENED_RUNTIME_ENABLED TRUE
-        HARDENED_RUNTIME_OPTIONS com.apple.security.device.audio-input
-
-        PRODUCT_NAME "${PRODUCT_NAME}"
-        ZL_EQ_BAND_NUM "${ZL_EQ_BAND_NUM}"
-)
-
-# On Linux, JUCE adds -Wl,--no-undefined by default. 
-# This prevents shared libraries (like VST3) from having unresolved sanitizer symbols.
-# We must remove it if sanitizers are enabled, because the host provides the sanitizer runtime.
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux" AND (WITH_ADDRESS_SANITIZER OR WITH_THREAD_SANITIZER))
-    foreach (target "${PROJECT_NAME}_VST3" "${PROJECT_NAME}_LV2" "${PROJECT_NAME}_Standalone" "${PROJECT_NAME}_SharedCode")
-        if (TARGET ${target})
-            get_target_property(CURRENT_OPTS ${target} LINK_OPTIONS)
-            if (CURRENT_OPTS)
-                list(REMOVE_ITEM CURRENT_OPTS "-Wl,--no-undefined")
-                set_target_properties(${target} PROPERTIES LINK_OPTIONS "${CURRENT_OPTS}")
-            endif ()
-        endif ()
-    endforeach ()
-endif ()
-
-# Add LV2 tags
-if ("LV2" IN_LIST FORMATS)
-    set(LV2_TARGET "${PROJECT_NAME}_LV2")
-    set(LV2_SHORT_TAGS eq paraeq)
-    find_package(Python3 REQUIRED COMPONENTS Interpreter)
-    set(PATCH_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/packaging/patch_lv2.py")
-    add_custom_command(TARGET ${LV2_TARGET} POST_BUILD
-            COMMAND Python3::Interpreter "${PATCH_SCRIPT}" "$<TARGET_FILE_DIR:${LV2_TARGET}>" ${LV2_SHORT_TAGS}
-            COMMENT "Running Python script to patch LV2 tags: ${LV2_SHORT_TAGS}..."
-            VERBATIM
-    )
-endif ()
-
-# This lets us use our code in both the JUCE targets and our Test target
-# Without running into ODR violations
-add_library(SharedCode INTERFACE)
-
-# C++20, please
-# Use cxx_std_23 for C++23 (as of CMake v 3.20)
-include(SharedCodeDefaults)
-
-# Manually list all .h and .cpp files for the plugin
-# If you are like me, you'll use globs for your sanity.
-# Just ensure you employ CONFIGURE_DEPENDS so the build system picks up changes
-# If you want to appease the CMake gods and avoid globs, manually add files like so:
-# set(SourceFiles Source/PluginEditor.h Source/PluginProcessor.h Source/PluginEditor.cpp Source/PluginProcessor.cpp)
-file(GLOB_RECURSE SourceFiles CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/source/*.hpp")
-target_sources(SharedCode INTERFACE ${SourceFiles})
-
-# Adds a BinaryData target for embedding assets into the binary
-include(Assets)
-
-# MacOS only: Cleans up folder and target organization on Xcode.
-include(XcodePrettify)
-
-# This is where you can set preprocessor definitions for JUCE and your plugin
-target_compile_definitions(SharedCode
-        INTERFACE
-
-        # JUCE_WEB_BROWSER and JUCE_USE_CURL off by default
-        JUCE_WEB_BROWSER=0  # If you set this to 1, add `NEEDS_WEB_BROWSER TRUE` to the `juce_add_plugin` call
-        JUCE_USE_CURL=0     # If you set this to 1, add `NEEDS_CURL TRUE` to the `juce_add_plugin` call
-        JUCE_VST3_CAN_REPLACE_VST2=0
-        JUCE_USE_FLAC=0
-        JUCE_USE_OGGVORBIS=0
-        JUCE_USE_WEBP=0
-
-        # lets the app known if we're Debug or Release
-        CMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}"
-        VERSION="${CURRENT_VERSION}"
-
-        # JucePlugin_Name is for some reason doesn't use the nicer PRODUCT_NAME
-        PRODUCT_NAME_WITHOUT_VERSION="${PRODUCT_NAME}"
-        #        JUCE_COREGRAPHICS_RENDER_WITH_MULTIPLE_PAINT_CALLS=1
-        JUCE_SILENCE_XCODE_15_LINKER_WARNING=1}
-)
-
-# Link to any other modules you added (with juce_add_module) here!
-# Usually JUCE modules must have PRIVATE visibility
-# See https://github.com/juce-framework/JUCE/blob/master/docs/CMake%20API.md#juce_add_module
-# However, with Pamplejuce, you'll link modules to SharedCode with INTERFACE visibility
-# This allows the JUCE plugin targets and the Tests target to link against it
-target_link_libraries(SharedCode
-        INTERFACE
-        Assets
-        juce_audio_utils
-        juce_audio_processors
-        juce_gui_basics
-        juce_gui_extra
-        juce::juce_recommended_config_flags
-        juce::juce_recommended_lto_flags
-        juce::juce_recommended_warning_flags
-)
-
-# add nlopt
+# nlopt
 set(BUILD_SHARED_LIBS OFF)
 set(DISABLE_FP_CONTRACT OFF)
-add_subdirectory(nlopt)
-target_link_libraries(SharedCode INTERFACE nlopt)
+add_subdirectory(third_party/nlopt)
 
-# add highway
-set(ZL_HWY_STATIC_TARGET "NONE" CACHE STRING "Target architecture for static dispatch")
-if (ZL_HWY_STATIC_TARGET STREQUAL "NONE")
-    message(FATAL_ERROR "ZL_HWY_STATIC_TARGET must be set: SSE2/SEE42/AVX2/NEON/LSX/LASX.")
+# highway, statically dispatched to one SIMD target
+set(ALTVANE_SIMD_TARGET "NONE" CACHE STRING "Target architecture for static dispatch: SSE2/SSE4/AVX2/NEON/LSX/LASX")
+if (ALTVANE_SIMD_TARGET STREQUAL "NONE")
+    message(FATAL_ERROR "ALTVANE_SIMD_TARGET must be set: SSE2/SSE4/AVX2/NEON/LSX/LASX.")
 endif ()
 set(HWY_ENABLE_EXAMPLES OFF CACHE BOOL "Disable highway examples" FORCE)
 set(HWY_ENABLE_TESTS OFF CACHE BOOL "Disable highway tests" FORCE)
 set(HWY_COMPILE_ONLY_STATIC ON CACHE BOOL "Force highway static dispatch" FORCE)
-if (ZL_HWY_STATIC_TARGET STREQUAL "NEON")
-    set(ZL_HWY_ARCH_FLAGS "-march=armv8-a+simd")
-elseif (ZL_HWY_STATIC_TARGET STREQUAL "SSE2")
-    set(ZL_HWY_ARCH_FLAGS "-march=x86-64")
-elseif (ZL_HWY_STATIC_TARGET STREQUAL "SSE4")
-    set(ZL_HWY_ARCH_FLAGS "-march=x86-64-v2" "-maes" "-mpclmul")
-elseif (ZL_HWY_STATIC_TARGET STREQUAL "AVX2")
-    set(ZL_HWY_ARCH_FLAGS "-march=x86-64-v3" "-maes" "-mpclmul")
-elseif (ZL_HWY_STATIC_TARGET STREQUAL "LSX")
-    set(ZL_HWY_ARCH_FLAGS "-mlsx")
-elseif (ZL_HWY_STATIC_TARGET STREQUAL "LASX")
-    set(ZL_HWY_ARCH_FLAGS "-mlasx")
+if (ALTVANE_SIMD_TARGET STREQUAL "NEON")
+    set(ALTVANE_SIMD_FLAGS "-march=armv8-a+simd")
+elseif (ALTVANE_SIMD_TARGET STREQUAL "SSE2")
+    set(ALTVANE_SIMD_FLAGS "-march=x86-64")
+elseif (ALTVANE_SIMD_TARGET STREQUAL "SSE4")
+    set(ALTVANE_SIMD_FLAGS "-march=x86-64-v2" "-maes" "-mpclmul")
+elseif (ALTVANE_SIMD_TARGET STREQUAL "AVX2")
+    set(ALTVANE_SIMD_FLAGS "-march=x86-64-v3" "-maes" "-mpclmul")
+elseif (ALTVANE_SIMD_TARGET STREQUAL "LSX")
+    set(ALTVANE_SIMD_FLAGS "-mlsx")
+elseif (ALTVANE_SIMD_TARGET STREQUAL "LASX")
+    set(ALTVANE_SIMD_FLAGS "-mlasx")
 else ()
-    message(FATAL_ERROR "Unsupported ZL_HWY_STATIC_TARGET chosen: ${ZL_HWY_STATIC_TARGET}")
+    message(FATAL_ERROR "Unsupported ALTVANE_SIMD_TARGET chosen: ${ALTVANE_SIMD_TARGET}")
 endif ()
-message(STATUS "SIMD target is ${ZL_HWY_STATIC_TARGET}")
-target_compile_definitions(SharedCode INTERFACE HWY_COMPILE_ONLY_STATIC)
-target_compile_options(SharedCode INTERFACE ${ZL_HWY_ARCH_FLAGS})
+message(STATUS "SIMD target is ${ALTVANE_SIMD_TARGET}")
 add_compile_definitions(HWY_COMPILE_ONLY_STATIC)
-add_compile_options(${ZL_HWY_ARCH_FLAGS})
-add_subdirectory(highway)
-target_link_libraries(SharedCode INTERFACE hwy)
-target_link_options(SharedCode INTERFACE ${ZL_HWY_ARCH_FLAGS})
+add_compile_options(${ALTVANE_SIMD_FLAGS})
+add_subdirectory(third_party/highway)
 
-# Link our SharedCode target
-target_link_libraries("${PROJECT_NAME}" PRIVATE SharedCode)
+# ---- Altvane ----
 
-# Pass some config to GA (like our PRODUCT_NAME)
-include(GitHubENV)
-
-# Contour developer tools (headless snapshot renderer)
-option(CONTOUR_BUILD_TOOLS "Build Contour developer tools" OFF)
-if (CONTOUR_BUILD_TOOLS)
-    add_executable(ContourSnapshot tools/snapshot/main.cpp)
-    target_compile_features(ContourSnapshot PRIVATE cxx_std_20)
-    target_include_directories(ContourSnapshot PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/source)
-    target_compile_definitions(ContourSnapshot PRIVATE $<TARGET_PROPERTY:${PROJECT_NAME},COMPILE_DEFINITIONS>)
-    target_link_libraries(ContourSnapshot PRIVATE SharedCode)
-
-    add_executable(ContourIcons tools/icons/main.cpp)
-    target_compile_features(ContourIcons PRIVATE cxx_std_20)
-    target_link_libraries(ContourIcons PRIVATE Assets juce_gui_basics juce::juce_recommended_config_flags)
-    target_compile_definitions(ContourIcons PRIVATE JUCE_STANDALONE_APPLICATION=1 JUCE_USE_CURL=0 JUCE_WEB_BROWSER=0)
+include(AltvaneVersion)
+include(AltvanePlugin)
+if (ALTVANE_BUILD_TESTS)
+    include(AltvaneTests)
 endif ()
 
-option(CONTOUR_BUILD_TESTS "Build Contour unit tests" OFF)
-if (CONTOUR_BUILD_TESTS)
-    include(Tests)
+add_subdirectory(libs/ui)
+
+foreach (product ${ALTVANE_PRODUCTS})
+    if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/products/${product}/CMakeLists.txt")
+        message(FATAL_ERROR "Unknown product '${product}': products/${product}/CMakeLists.txt does not exist")
+    endif ()
+    add_subdirectory("products/${product}")
+endforeach ()
+
+if (ALTVANE_BUILD_TOOLS)
+    add_subdirectory(tools/icons)
 endif ()

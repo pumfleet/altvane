@@ -1,14 +1,14 @@
 [submodule "JUCE"]
-	path = JUCE
+	path = third_party/JUCE
 	url = https://github.com/ZL-Audio/JUCE
 	branch = master
 [submodule "nlopt"]
-	path = nlopt
+	path = third_party/nlopt
 	url = https://github.com/ZL-Audio/nlopt
 	branch = master
 [submodule "highway"]
-	path = highway
+	path = third_party/highway
 	url = https://github.com/ZL-Audio/highway
 [submodule "zldsp_fft"]
-	path = zldsp_fft
+	path = products/eq/zldsp_fft
 	url = https://github.com/ZL-Audio/zldsp_fft
