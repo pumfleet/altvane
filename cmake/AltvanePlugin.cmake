@@ -11,14 +11,22 @@
 #
 # It expects the product's code in ./source, its art in ./packaging (icon.png etc.) and creates
 #   <target>              the JUCE plugin (and <target>_VST3, _AU, ... per format)
-#   <target>_Core         an INTERFACE library with the product's sources and dependencies, shared by the plugin,
-#                         its tests and its tools without ODR trouble
+#   <target>_Core         an INTERFACE library with the product's sources and dependencies; they compile once,
+#                         into <target>
 #   ${CMAKE_BINARY_DIR}/<code>.env   names and paths the packaging scripts and CI read
+#
+#   altvane_link_plugin_code(<executable> <target>)
+#
+# lets a test or tool executable use a plugin's code by linking the plugin's already-compiled shared code
+# (product sources and JUCE modules) instead of compiling it all again.
 
 set(ALTVANE_COMPANY_NAME "Altvane")
 set(ALTVANE_MANUFACTURER_CODE "Altv")
 set(ALTVANE_BUNDLE_ID_PREFIX "com.altvane")
 set(ALTVANE_LV2_URI_PREFIX "https://altvane.com/plugins")
+
+# link-time optimisation makes each plugin link take minutes; releases want it, test builds don't need it
+option(ALTVANE_LTO "Build plugins with link-time optimisation" ON)
 
 function(altvane_add_plugin target)
     set(one_value PRODUCT_NAME CODE PLUGIN_CODE VERSION AU_MAIN_TYPE AAX_CATEGORY)
@@ -146,10 +154,17 @@ function(altvane_add_plugin target)
             juce_gui_basics
             juce_gui_extra
             juce::juce_recommended_config_flags
-            juce::juce_recommended_lto_flags
             juce::juce_recommended_warning_flags
             ${ARG_LINK_LIBRARIES}
     )
+    if (ALTVANE_LTO)
+        target_link_libraries(${core} INTERFACE juce::juce_recommended_lto_flags)
+    endif ()
+    if (ALTVANE_BUILD_TESTS)
+        # tests share the plugin's compiled JUCE (altvane_link_plugin_code) and pump the message loop, which JUCE
+        # only allows with modal loops; release builds don't build tests, so they never get this
+        target_compile_definitions(${core} INTERFACE JUCE_MODAL_LOOPS_PERMITTED=1)
+    endif ()
 
     target_link_libraries(${target} PRIVATE ${core})
 
@@ -192,4 +207,16 @@ function(altvane_add_plugin target)
         endif ()
     endif ()
     file(WRITE "${env_file}" "${env}")
+endfunction()
+
+function(altvane_link_plugin_code executable target)
+    # <target> is JUCE's shared-code static library: the product's sources and the JUCE modules, compiled with the
+    # plugin's configuration. Take its headers and definitions, and link it, rather than compiling the sources again.
+    target_compile_features(${executable} PRIVATE cxx_std_20)
+    target_include_directories(${executable} PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/source"
+            $<TARGET_PROPERTY:${target},INCLUDE_DIRECTORIES>)
+    target_compile_definitions(${executable} PRIVATE $<TARGET_PROPERTY:${target},COMPILE_DEFINITIONS>)
+    target_compile_options(${executable} PRIVATE $<TARGET_PROPERTY:${target},COMPILE_OPTIONS>)
+    target_link_libraries(${executable} PRIVATE ${target})
 endfunction()

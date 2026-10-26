@@ -68,7 +68,7 @@ add_subdirectory(third_party/JUCE)
 # nlopt
 set(BUILD_SHARED_LIBS OFF)
 set(DISABLE_FP_CONTRACT OFF)
-add_subdirectory(third_party/nlopt)
+add_subdirectory(third_party/nlopt EXCLUDE_FROM_ALL)
 
 # highway, statically dispatched to one SIMD target
 set(ALTVANE_SIMD_TARGET "NONE" CACHE STRING "Target architecture for static dispatch: SSE2/SSE4/AVX2/NEON/LSX/LASX")
@@ -96,7 +96,7 @@ endif ()
 message(STATUS "SIMD target is ${ALTVANE_SIMD_TARGET}")
 add_compile_definitions(HWY_COMPILE_ONLY_STATIC)
 add_compile_options(${ALTVANE_SIMD_FLAGS})
-add_subdirectory(third_party/highway)
+add_subdirectory(third_party/highway EXCLUDE_FROM_ALL)
 
 # ---- Altvane ----
 

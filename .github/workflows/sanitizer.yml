@@ -22,6 +22,11 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   DISPLAY: :0
   HOMEBREW_NO_INSTALL_CLEANUP: 1
+  SCCACHE_GHA_ENABLED: true
+  SCCACHE_CACHE_MULTIARCH: 1
+  # every cmake configure (including JUCE's juceaide sub-build) compiles through sccache
+  CMAKE_C_COMPILER_LAUNCHER: sccache
+  CMAKE_CXX_COMPILER_LAUNCHER: sccache
 
 jobs:
   build_and_test:
@@ -72,11 +77,16 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Set up sccache # compiler cache in the GitHub Actions cache; CMake picks it up from the env below
+        uses: mozilla-actions/sccache-action@v0.0.11
+        with:
+          version: "v0.18.0"
+
       - name: Configure and Build (Linux & macOS)
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} -DALTVANE_PRODUCTS=${{ inputs.product }} ${{ matrix.cmake_extra_flags }} .
+          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} -DALTVANE_PRODUCTS=${{ inputs.product }} -DALTVANE_LTO=OFF ${{ matrix.cmake_extra_flags }} .
           cmake --build ${{ env.BUILD_DIR }} --config ${{ env.BUILD_TYPE }}
 
       - name: Configure and Build (Windows)
@@ -84,9 +94,13 @@ jobs:
         shell: cmd
         run: |
           call ${{ matrix.vcvars64_path }}
-          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} -DALTVANE_PRODUCTS=${{ inputs.product }} ${{ matrix.cmake_extra_flags }} .
+          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} -DALTVANE_PRODUCTS=${{ inputs.product }} -DALTVANE_LTO=OFF ${{ matrix.cmake_extra_flags }} .
           cmake --build ${{ env.BUILD_DIR }} --config ${{ env.BUILD_TYPE }}
 
+      - name: Compiler cache stats
+        if: always()
+        shell: bash
+        run: sccache --show-stats || true
       - name: Read in the product's .env from CMake # written by altvane_add_plugin
         shell: bash
         run: |
