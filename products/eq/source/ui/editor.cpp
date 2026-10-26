@@ -8,57 +8,47 @@
 // You should have received a copy of the GNU Affero General Public License along with Altvane EQ. If not, see <https://www.gnu.org/licenses/>.
 #include "editor.hpp"
 
+#include "model/preset_codec.hpp"
 #include "theme/eq_tokens.hpp"
 
 namespace altvane::eq {
     using namespace tokens;
 
     namespace {
-        std::unique_ptr<juce::PropertiesFile> openSettings() {
-            juce::PropertiesFile::Options options;
-            options.applicationName = "settings";
-            options.filenameSuffix = ".xml";
-            options.folderName = juce::String(JucePlugin_Manufacturer) + juce::File::getSeparatorString()
-                + JucePlugin_Name;
-            options.osxLibrarySubFolder = "Application Support";
-            options.storageFormat = juce::PropertiesFile::storeAsXML;
-            options.millisecondsBeforeSaving = 500;
-            return std::make_unique<juce::PropertiesFile>(options);
+        constexpr auto kSpectrumGrab = "spectrum_grab";
+
+        ShellConfig makeConfig() {
+            ShellConfig config;
+            config.product = "EQ";
+            config.window = {
+                size::kDefaultWidth, size::kDefaultHeight, size::kMinWidth, size::kMinHeight,
+                size::kMaxWidth, size::kMaxHeight
+            };
+            config.preset_codec = presetCodec();
+            config.credit = juce::String(juce::CharPointer_UTF8("Based on ZL Equalizer by ZL Audio  \xc2\xb7  AGPL-3.0"));
+            config.switches.push_back({"ANALYZER", "Spectrum Grab", kSpectrumGrab, true});
+            return config;
         }
     }
 
     Editor::Editor(PluginProcessor& p) :
-        AudioProcessorEditor(&p),
+        EditorShell(p, p.parameters_, p.session_, makeConfig()),
         p_ref_(p),
-        bridge_(p),
+        bridge_(p, param_editor_),
         match_(bridge_),
         spectrum_(p, &match_),
-        presets_(bridge_),
         graph_(bridge_, selection_, response_, spectrum_),
         band_panel_(bridge_, selection_),
-        header_(bridge_, presets_),
         footer_(bridge_),
         rail_(bridge_, spectrum_),
-        match_panel_(match_),
-        preset_browser_(presets_) {
-        settings_ = openSettings();
-        ui_settings_.load(*settings_);
-        ui_settings_.apply();
-        laf_.refreshAccent();
-        presets_.setSettings(settings_.get());
-        graph_.setSpectrumGrabEnabled(ui_settings_.spectrum_grab);
-        setLookAndFeel(&laf_);
-        tooltip_window_.setLookAndFeel(&laf_);
-        setOpaque(true);
+        match_panel_(match_) {
+        graph_.setSpectrumGrabEnabled(getUISettings().getSwitch(kSpectrumGrab));
 
-        addAndMakeVisible(root_);
         root_.addAndMakeVisible(graph_);
-        root_.addAndMakeVisible(header_);
         root_.addAndMakeVisible(footer_);
         root_.addAndMakeVisible(rail_);
         root_.addChildComponent(band_panel_);
         root_.addChildComponent(match_panel_);
-        root_.addChildComponent(preset_browser_);
         graph_.setMatchEngine(&match_);
         match_.on_state_changed = [this] {
             match_panel_.sync();
@@ -72,147 +62,57 @@ namespace altvane::eq {
         };
         footer_.on_toggle_match = [this] { toggleMatch(); };
         footer_.is_matching = [this] { return match_.getState() != MatchEngine::State::kOff; };
-        root_.addChildComponent(settings_sheet_);
-        const auto refocus = [this] {
-            if (graph_.isShowing()) {
-                graph_.grabKeyboardFocus();
-            }
-        };
-        preset_browser_.on_closed = refocus;
-        settings_sheet_.on_closed = refocus;
-        settings_sheet_.on_change = [this](const UISettings& s) { applySettings(s); };
-        settings_sheet_.on_reset_window_size = [this] { resetWindowSize(); };
 
         band_panel_.on_solo = [this](const size_t band, const bool side) { graph_.setSolo(band, side); };
         band_panel_.get_solo = [this] { return graph_.getSoloBand(); };
         band_panel_.get_solo_side = [this] { return graph_.isSoloSideChain(); };
-        header_.on_undo = [this] { graph_.undo(); };
-        header_.on_redo = [this] { graph_.redo(); };
-        header_.on_open_presets = [this] {
-            settings_sheet_.close();
-            preset_browser_.open();
-        };
-        header_.on_open_settings = [this] {
-            preset_browser_.close();
-            settings_sheet_.setSettings(ui_settings_);
-            settings_sheet_.open();
-        };
 
-        const auto ui_scale = getScale();
-        const auto w = settings_->getIntValue("width", size::kDefaultWidth);
-        const auto h = settings_->getIntValue("height", size::kDefaultHeight);
-
-        setResizable(true, p.wrapperType != PluginProcessor::wrapperType_AudioUnitv3);
-        applying_size_ = true;
-        setResizeLimits(juce::roundToInt(size::kMinWidth * ui_scale), juce::roundToInt(size::kMinHeight * ui_scale),
-                        juce::roundToInt(size::kMaxWidth * ui_scale), juce::roundToInt(size::kMaxHeight * ui_scale));
-        setSize(juce::roundToInt(static_cast<float>(std::clamp(w, size::kMinWidth, size::kMaxWidth)) * ui_scale),
-                juce::roundToInt(static_cast<float>(std::clamp(h, size::kMinHeight, size::kMaxHeight)) * ui_scale));
-        applying_size_ = false;
-        resized();
-        updateShowing();
+        finishSetup();
     }
 
     Editor::~Editor() {
+        stopFrames();
         match_.on_state_changed = nullptr;
         match_.cancel();
-        vblank_.reset();
         spectrum_.stop();
         p_ref_.getController().setEditorON(false);
-        if (settings_ != nullptr) {
-            settings_->saveIfNeeded();
-        }
-        tooltip_window_.setLookAndFeel(nullptr);
-        setLookAndFeel(nullptr);
     }
 
-    void Editor::paint(juce::Graphics& g) {
-        g.fillAll(colour::kWindow);
-    }
-
-    void Editor::resized() {
-        const auto ui_scale = getScale();
-        const auto logical_w = static_cast<float>(getWidth()) / ui_scale;
-        const auto logical_h = static_cast<float>(getHeight()) / ui_scale;
-        root_.setTransform(juce::AffineTransform::scale(ui_scale));
-        root_.setBounds(0, 0, juce::roundToInt(logical_w), juce::roundToInt(logical_h));
-
-        auto b = root_.getLocalBounds();
-        header_.setBounds(b.removeFromTop(static_cast<int>(size::kHeaderHeight)));
+    void Editor::layout(const juce::Rectangle<int> area) {
+        auto b = area;
         footer_.setBounds(b.removeFromBottom(static_cast<int>(size::kFooterHeight)));
         rail_.setBounds(b.removeFromRight(static_cast<int>(size::kRailWidth)));
         graph_.setBounds(b);
-        const auto sheet_area = root_.getLocalBounds().withTrimmedTop(static_cast<int>(size::kHeaderHeight));
-        preset_browser_.setBounds(sheet_area);
-        settings_sheet_.setBounds(sheet_area);
         panel_was_visible_ = false;
         layoutPanel(0.0);
-
-        if (!applying_size_ && settings_ != nullptr) {
-            settings_->setValue("width", juce::roundToInt(logical_w));
-            settings_->setValue("height", juce::roundToInt(logical_h));
-        }
     }
 
-    void Editor::visibilityChanged() {
-        updateShowing();
-    }
-
-    void Editor::parentHierarchyChanged() {
-        updateShowing();
-    }
-
-    void Editor::updateShowing() {
-        const auto showing = isShowing();
-        if (showing == is_showing_) {
-            return;
-        }
-        is_showing_ = showing;
+    void Editor::showingChanged(const bool showing) {
         p_ref_.getController().setEditorON(showing);
         if (showing) {
             spectrum_.start();
-            last_timestamp_ = 0.0;
-            // shortcuts should work as soon as the editor opens
-            juce::MessageManager::callAsync([safe = juce::Component::SafePointer(&graph_)] {
-                if (safe != nullptr && safe->isShowing()) {
-                    safe->grabKeyboardFocus();
-                }
-            });
-            vblank_ = std::make_unique<juce::VBlankAttachment>(this, [this](const double ts) { frame(ts); });
         } else {
-            vblank_.reset();
             spectrum_.stop();
         }
     }
 
-    void Editor::frame(const double timestamp) {
-        const auto dt = last_timestamp_ > 0.0 ? std::clamp(timestamp - last_timestamp_, 1e-4, .1) : 1.0 / 60.0;
-        last_timestamp_ = timestamp;
-        frame_rate_ += (1.0 / dt - frame_rate_) * .05;
-        spectrum_.setRefreshRate(frame_rate_);
+    void Editor::settingsApplied() {
+        graph_.setSpectrumGrabEnabled(getUISettings().getSwitch(kSpectrumGrab));
+    }
+
+    void Editor::tick(const double dt) {
+        spectrum_.setRefreshRate(getFrameRate());
 
         bridge_.refresh();
         graph_.tick(dt);
         layoutPanel(dt);
         layoutMatchPanel(dt);
-        header_.tick();
         if (bridge_.haveGlobalsChanged()) {
             footer_.tick();
         }
         rail_.tick(dt);
-        preset_browser_.tick(static_cast<float>(dt));
-        settings_sheet_.tick(static_cast<float>(dt));
         spectrum_.trigger();
         bridge_.clearChanges();
-    }
-
-    void Editor::runFrameForTesting(const double timestamp) {
-        if (!is_showing_) {
-            is_showing_ = true;
-            p_ref_.getController().setEditorON(true);
-            spectrum_.start();
-        }
-        frame(timestamp);
     }
 
     void Editor::toggleMatch() {
@@ -295,14 +195,7 @@ namespace altvane::eq {
             }
             return band < kBandNum ? bridge_.params(band)[BandParams::kFreq]->getParameterIndex() : -1;
         }
-        for (auto* c = &component; c != nullptr && c != this; c = c->getParentComponent()) {
-            if (const auto id = c->getComponentID(); id.isNotEmpty()) {
-                if (auto* para = p_ref_.parameters_.getParameter(id)) {
-                    return para->getParameterIndex();
-                }
-            }
-        }
-        return -1;
+        return EditorShell::getControlParameterIndex(component);
     }
 
     bool Editor::keyPressed(const juce::KeyPress& key) {
@@ -311,44 +204,6 @@ namespace altvane::eq {
             graph_.togglePerformanceOverlay();
             return true;
         }
-        if (mods.isCommandDown() && (key.getKeyCode() == 'Z' || key.getKeyCode() == 'z')) {
-            mods.isShiftDown() ? graph_.redo() : graph_.undo();
-            return true;
-        }
-        return false;
-    }
-
-    void Editor::setInterfaceScale(const float scale) {
-        const auto old_scale = getScale();
-        const auto logical_w = static_cast<float>(getWidth()) / old_scale;
-        const auto logical_h = static_cast<float>(getHeight()) / old_scale;
-        ui_settings_.scale = scale;
-        applying_size_ = true;
-        setResizeLimits(juce::roundToInt(size::kMinWidth * scale), juce::roundToInt(size::kMinHeight * scale),
-                        juce::roundToInt(size::kMaxWidth * scale), juce::roundToInt(size::kMaxHeight * scale));
-        setSize(juce::roundToInt(logical_w * scale), juce::roundToInt(logical_h * scale));
-        applying_size_ = false;
-        resized();
-    }
-
-    void Editor::applySettings(const UISettings& settings) {
-        const auto scale_changed = std::abs(settings.scale - ui_settings_.scale) > 1e-3f;
-        const auto new_scale = settings.scale;
-        ui_settings_ = settings;
-        if (scale_changed) {
-            ui_settings_.scale = getScale();
-            setInterfaceScale(new_scale);
-        }
-        ui_settings_.apply();
-        ui_settings_.save(*settings_);
-        laf_.refreshAccent();
-        graph_.setSpectrumGrabEnabled(ui_settings_.spectrum_grab);
-        root_.repaint();
-    }
-
-    void Editor::resetWindowSize() {
-        const auto scale = getScale();
-        setSize(juce::roundToInt(static_cast<float>(size::kDefaultWidth) * scale),
-                juce::roundToInt(static_cast<float>(size::kDefaultHeight) * scale));
+        return EditorShell::keyPressed(key);
     }
 }

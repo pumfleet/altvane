@@ -11,20 +11,22 @@ engine only through:
 - a handful of `zlp::Controller` calls (editor on/off, analyzer FIFO, live dynamic gain, solo, loudness match,
   learned threshold, match bypass).
 
-The processor gained only editor-facing members: the undo manager, A/B slots and the current preset path.
+The processor gained only one editor-facing member, `session_` (`altvane::ui::Session`: the undo manager, A/B slots
+and the current preset path).
 
 ## Layout of `source/ui`
 
 The editor (namespace `altvane::eq`) is built from the shared Altvane design system in
 [`libs/ui`](../../../libs/ui) (namespace `altvane::ui`, included as `"altvane_ui/..."`); `ui/common.hpp` brings
-it into `altvane::eq`.
+it into `altvane::eq`. `Editor` derives from `ui::EditorShell`, which owns the header, presets, settings, interface
+scale, frame loop and undo keys; the EQ adds the graph, panels, footer and rail.
 
 | Folder | Contents |
 |---|---|
-| `model/` | `EngineBridge` (typed parameter access, gestures, undo), `Selection`, band / session / preset operations, user settings |
+| `model/` | `EngineBridge` (typed parameter access; edits go through the shell's `ParamEditor`), `Selection`, band and clipboard operations, the ZL preset codec |
 | `analysis/` | `ResponseModel` (curves), `SpectrumWorker` (analyzer thread), `MatchEngine` (EQ Match) |
 | `graph/` | `GraphView`: everything drawn on and done with the graph |
-| `panels/` | band panel, header / footer / output rail, sheets (presets, settings), match panel |
+| `panels/` | band panel, footer / output rail, match panel |
 | `widgets/` | filter-shape icons (they need the engine's filter prototypes) |
 | `theme/` | `eq_tokens.hpp`: band palette, graph and panel sizes, window size, on top of the shared tokens |
 
@@ -33,7 +35,9 @@ From `libs/ui`:
 | Folder | Contents |
 |---|---|
 | `theme/` | design tokens, fonts, look-and-feel, the Altvane brand mark and header lockup |
-| `widgets/` | knob, value field, selector, buttons, chips, switch, sheet, outline icons |
+| `widgets/` | knob (compact and hero), value field, selector, buttons, chips, switch, sheet, level meter, outline icons |
+| `session/` | `Session`, `ParamEditor` (gestures and undo) and `bindValue`, `PresetManager` and `PresetCodec`, `UISettings` |
+| `shell/` | `EditorShell`, `Header`, `PresetBrowser`, `SettingsSheet` |
 | `util/` | frequency / gain scales, value formatting, springs, lock-free triple buffer, path helpers |
 
 ## Threads
@@ -65,7 +69,7 @@ frame-locked with the nodes:
 
 ## Editing and undo
 
-Every user gesture is `beginEdit → setPlain… → endEdit` on `EngineBridge`: the host sees one gesture per parameter and
+Every user gesture is `beginEdit → setPlain… → endEdit` on `EngineBridge` (which forwards to `ui::ParamEditor`): the host sees one gesture per parameter and
 the undo history gets one transaction. One-shot changes use `setNow`. `cancelEdit` restores without an undo step
 (used by EQ Match's Cancel). The undo manager lives in the processor so history survives closing the editor.
 

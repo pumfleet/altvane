@@ -35,45 +35,17 @@ namespace altvane::eq {
         size_t toIndex(const float v) {
             return static_cast<size_t>(std::max(0, juce::roundToInt(v)));
         }
-
-        // undo step: values are already applied when the action is first performed
-        class ParameterAction final : public juce::UndoableAction {
-        public:
-            struct Entry {
-                juce::RangedAudioParameter* para;
-                float from, to;
-            };
-
-            explicit ParameterAction(std::vector<Entry> entries) : entries_(std::move(entries)) {
-            }
-
-            bool perform() override {
-                apply(false);
-                return true;
-            }
-
-            bool undo() override {
-                apply(true);
-                return true;
-            }
-
-            int getSizeInUnits() override { return static_cast<int>(entries_.size()) + 1; }
-
-        private:
-            std::vector<Entry> entries_;
-
-            void apply(const bool backwards) {
-                for (const auto& e : entries_) {
-                    const auto v = backwards ? e.from : e.to;
-                    if (std::abs(e.para->getValue() - v) > 1e-7f) {
-                        zlp::updateParaNotifyHost(e.para, v);
-                    }
-                }
-            }
-        };
     }
 
-    EngineBridge::EngineBridge(PluginProcessor& p) : p_ref_(p) {
+    EngineBridge::EngineBridge(PluginProcessor& p) :
+        EngineBridge(p, *new ParamEditor(p.session_.undo_manager), true) {
+    }
+
+    EngineBridge::EngineBridge(PluginProcessor& p, ParamEditor& editor) : EngineBridge(p, editor, false) {
+    }
+
+    EngineBridge::EngineBridge(PluginProcessor& p, ParamEditor& editor, const bool owns_editor) :
+        p_ref_(p), own_editor_(owns_editor ? &editor : nullptr), editor_(editor) {
         for (size_t band = 0; band < kBandNum; ++band) {
             const auto suffix = std::to_string(band);
             for (size_t f = 0; f < BandParams::kNumFields; ++f) {
@@ -214,79 +186,6 @@ namespace altvane::eq {
 
     juce::RangedAudioParameter* EngineBridge::naParam(const juce::String& id) const {
         return p_ref_.parameters_NA_.getParameter(id);
-    }
-
-    void EngineBridge::beginEdit(const std::span<juce::RangedAudioParameter* const> paras, const juce::String& name) {
-        if (isEditing()) {
-            endEdit();
-        }
-        edit_.name = name;
-        for (auto* para : paras) {
-            if (para == nullptr) {
-                continue;
-            }
-            edit_.entries.push_back({para, para->getValue()});
-            para->beginChangeGesture();
-        }
-    }
-
-    void EngineBridge::setPlain(juce::RangedAudioParameter* para, const float plain) {
-        if (para == nullptr) {
-            return;
-        }
-        const auto v = para->convertTo0to1(para->getNormalisableRange().snapToLegalValue(
-            std::clamp(plain, para->getNormalisableRange().start, para->getNormalisableRange().end)));
-        if (std::abs(para->getValue() - v) > 1e-7f) {
-            para->setValueNotifyingHost(v);
-        }
-    }
-
-    void EngineBridge::endEdit() {
-        std::vector<ParameterAction::Entry> changes;
-        for (const auto& e : edit_.entries) {
-            e.para->endChangeGesture();
-            if (const auto to = e.para->getValue(); std::abs(to - e.from) > 1e-7f) {
-                changes.push_back({e.para, e.from, to});
-            }
-        }
-        if (!changes.empty()) {
-            auto& um = getUndoManager();
-            um.beginNewTransaction(edit_.name);
-            um.perform(new ParameterAction(std::move(changes)), edit_.name);
-        }
-        edit_ = {};
-    }
-
-    void EngineBridge::cancelEdit() {
-        for (const auto& e : edit_.entries) {
-            if (std::abs(e.para->getValue() - e.from) > 1e-7f) {
-                e.para->setValueNotifyingHost(e.from);
-            }
-            e.para->endChangeGesture();
-        }
-        edit_ = {};
-    }
-
-    void EngineBridge::setNow(const std::initializer_list<std::pair<juce::RangedAudioParameter*, float>> values,
-                              const juce::String& name) {
-        setNow(std::vector<std::pair<juce::RangedAudioParameter*, float>>(values), name);
-    }
-
-    void EngineBridge::setNow(const std::vector<std::pair<juce::RangedAudioParameter*, float>>& values,
-                              const juce::String& name) {
-        if (isEditing()) {
-            endEdit();
-        }
-        std::vector<juce::RangedAudioParameter*> paras;
-        paras.reserve(values.size());
-        for (const auto& [para, v] : values) {
-            paras.push_back(para);
-        }
-        beginEdit(paras, name);
-        for (const auto& [para, v] : values) {
-            setPlain(para, v);
-        }
-        endEdit();
     }
 
     void EngineBridge::setNA(const juce::String& id, const float plain) {

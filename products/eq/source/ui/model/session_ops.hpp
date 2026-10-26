@@ -32,11 +32,4 @@ namespace altvane::eq::session_ops {
      * duplicate bands in place, shifted up by a third of an octave
      */
     std::vector<size_t> duplicateBands(EngineBridge& bridge, const std::vector<size_t>& bands);
-
-    // A/B comparison of the parameter state; history is cleared on switching
-    int getABSlot(const EngineBridge& bridge);
-
-    void switchAB(EngineBridge& bridge);
-
-    void copyToOtherSlot(EngineBridge& bridge);
 }

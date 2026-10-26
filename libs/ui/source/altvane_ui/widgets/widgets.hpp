@@ -108,9 +108,16 @@ namespace altvane::ui {
      */
     class Knob final : public ValueControl {
     public:
+        /**
+         * compact knobs live in panels; a hero knob is one of a product's few main controls
+         */
+        enum class Style { kCompact, kHero };
+
         Knob();
 
         void setBipolar(const bool bipolar) { bipolar_ = bipolar; repaint(); }
+
+        void setStyle(Style style);
 
         void paint(juce::Graphics& g) override;
 
@@ -119,6 +126,7 @@ namespace altvane::ui {
 
     private:
         bool bipolar_{false};
+        Style style_{Style::kCompact};
         juce::Rectangle<float> getKnobArea() const;
     };
 

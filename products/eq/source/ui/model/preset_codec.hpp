@@ -8,31 +8,15 @@
 // You should have received a copy of the GNU Affero General Public License along with Altvane EQ. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
-#include <juce_data_structures/juce_data_structures.h>
-
 #include "../common.hpp"
+#include "altvane_ui/session/preset_manager.hpp"
+#include "../../state/preset_json.hpp"
 
 namespace altvane::eq {
     /**
-     * per-user editor preferences, stored in settings.xml next to the presets
+     * presets stay in the upstream ZL Equalizer JSON format, so they load in either plug-in
      */
-    struct UISettings {
-        static constexpr std::array kScales{.8f, .9f, 1.f, 1.1f, 1.25f, 1.5f};
-
-        float scale{1.f};
-        int accent{0};
-        bool reduce_motion{false};
-        bool spectrum_grab{true};
-        float drag_sensitivity{1.f};
-        float wheel_sensitivity{1.f};
-
-        void load(const juce::PropertiesFile& file);
-
-        void save(juce::PropertiesFile& file) const;
-
-        /**
-         * push the preferences into the global theme / interaction state
-         */
-        void apply() const;
-    };
+    inline PresetCodec presetCodec() {
+        return {zlstate::PresetJson::read, zlstate::PresetJson::write};
+    }
 }

@@ -108,29 +108,4 @@ namespace altvane::eq::session_ops {
         return insert(bridge, serialise(bridge, bands), std::exp2(1.0 / 3.0),
                       bands.size() > 1 ? "Duplicate Bands" : "Duplicate Band");
     }
-
-    int getABSlot(const EngineBridge& bridge) {
-        return bridge.getProcessor().ab_slot_;
-    }
-
-    void switchAB(EngineBridge& bridge) {
-        if (bridge.isEditing()) {
-            bridge.endEdit();
-        }
-        auto& p = bridge.getProcessor();
-        const auto current = std::clamp(p.ab_slot_, 0, 1);
-        const auto other = 1 - current;
-        p.ab_states_[static_cast<size_t>(current)] = p.parameters_.copyState();
-        if (!p.ab_states_[static_cast<size_t>(other)].isValid()) {
-            p.ab_states_[static_cast<size_t>(other)] = p.ab_states_[static_cast<size_t>(current)].createCopy();
-        }
-        p.parameters_.replaceState(p.ab_states_[static_cast<size_t>(other)].createCopy());
-        p.ab_slot_ = other;
-        bridge.getUndoManager().clearUndoHistory();
-    }
-
-    void copyToOtherSlot(EngineBridge& bridge) {
-        auto& p = bridge.getProcessor();
-        p.ab_states_[static_cast<size_t>(1 - std::clamp(p.ab_slot_, 0, 1))] = p.parameters_.copyState();
-    }
 }

@@ -1,25 +1,106 @@
 // Copyright (C) 2026 - Altvane, based on ZLEqualizer by zsliu98
-// This file is part of Altvane EQ
+// This file is part of Altvane
 //
-// Altvane EQ is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
+// Altvane is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
 //
-// Altvane EQ is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+// Altvane is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 //
-// You should have received a copy of the GNU Affero General Public License along with Altvane EQ. If not, see <https://www.gnu.org/licenses/>.
+// You should have received a copy of the GNU Affero General Public License along with Altvane. If not, see <https://www.gnu.org/licenses/>.
 #include "preset_manager.hpp"
 
 #include <algorithm>
 
-#include "../../state/preset_json.hpp"
+namespace altvane::ui {
+    namespace {
+        juce::var xmlToJson(const juce::XmlElement& xml) {
+            auto* obj = new juce::DynamicObject();
+            obj->setProperty("tag", xml.getTagName());
+            for (int i = 0; i < xml.getNumAttributes(); ++i) {
+                obj->setProperty(xml.getAttributeName(i), xml.getAttributeValue(i));
+            }
+            juce::Array<juce::var> children;
+            for (const auto* child : xml.getChildIterator()) {
+                children.add(xmlToJson(*child));
+            }
+            if (!children.isEmpty()) {
+                obj->setProperty("children", children);
+            }
+            return obj;
+        }
 
-namespace altvane::eq {
-    PresetManager::PresetManager(EngineBridge& bridge) : bridge_(bridge) {
+        std::unique_ptr<juce::XmlElement> jsonToXml(const juce::var& json) {
+            const auto* obj = json.getDynamicObject();
+            if (obj == nullptr || !obj->hasProperty("tag")) {
+                return nullptr;
+            }
+            auto xml = std::make_unique<juce::XmlElement>(obj->getProperty("tag").toString());
+            for (const auto& prop : obj->getProperties()) {
+                if (prop.name.toString() != "tag" && prop.name.toString() != "children") {
+                    xml->setAttribute(prop.name, prop.value.toString());
+                }
+            }
+            if (const auto* children = obj->getProperty("children").getArray()) {
+                for (const auto& c : *children) {
+                    if (auto child = jsonToXml(c)) {
+                        xml->addChildElement(child.release());
+                    }
+                }
+            }
+            return xml;
+        }
+    }
+
+    PresetCodec PresetCodec::xmlAsJson() {
+        PresetCodec codec;
+        codec.read = [](const juce::File& file, juce::MemoryBlock& state) {
+            const auto json = juce::JSON::parse(file);
+            const auto xml = jsonToXml(json);
+            if (xml == nullptr) {
+                return juce::Result::fail("Not a preset file");
+            }
+            state.reset();
+            juce::AudioProcessor::copyXmlToBinary(*xml, state);
+            return juce::Result::ok();
+        };
+        codec.write = [](const juce::File& file, const juce::MemoryBlock& state) {
+            const auto xml = juce::AudioProcessor::getXmlFromBinary(state.getData(), static_cast<int>(state.getSize()));
+            if (xml == nullptr) {
+                return juce::Result::fail("Invalid state");
+            }
+            return file.replaceWithText(juce::JSON::toString(xmlToJson(*xml)))
+                       ? juce::Result::ok()
+                       : juce::Result::fail("Could not write " + file.getFullPathName());
+        };
+        return codec;
+    }
+
+    PresetManager::PresetManager(juce::AudioProcessor& processor, ParamEditor& editor, Session& session,
+                                 PresetCodec codec) :
+        processor_(processor), editor_(editor), session_(session), codec_(std::move(codec)) {
         captureReference();
     }
 
     juce::File PresetManager::getDirectory() {
         return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
                .getChildFile(JucePlugin_Manufacturer).getChildFile(JucePlugin_Name).getChildFile("Presets");
+    }
+
+    void PresetManager::installFactoryPresets(const std::vector<std::pair<juce::String, juce::String>>& presets,
+                                              const int version) {
+        if (settings_ != nullptr && settings_->getIntValue("factory_presets", 0) >= version) {
+            return;
+        }
+        const auto dir = getDirectory();
+        for (const auto& [path, contents] : presets) {
+            const auto file = dir.getChildFile(path + kExtension);
+            if (!file.existsAsFile()) {
+                file.getParentDirectory().createDirectory();
+                file.replaceWithText(contents);
+            }
+        }
+        if (settings_ != nullptr) {
+            settings_->setValue("factory_presets", version);
+        }
     }
 
     std::vector<PresetManager::Entry> PresetManager::scan() const {
@@ -50,16 +131,16 @@ namespace altvane::eq {
 
     bool PresetManager::load(const juce::File& file) {
         juce::MemoryBlock state;
-        if (!zlstate::PresetJson::read(file, state).wasOk()) {
+        if (!codec_.read(file, state).wasOk()) {
             return false;
         }
-        if (bridge_.isEditing()) {
-            bridge_.endEdit();
+        if (editor_.isEditing()) {
+            editor_.endEdit();
         }
-        bridge_.getProcessor().setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+        processor_.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
         // undo cannot meaningfully cross a preset load
-        bridge_.getUndoManager().clearUndoHistory();
-        bridge_.getProcessor().current_preset_ = file;
+        session_.undo_manager.clearUndoHistory();
+        session_.current_preset = file;
         captureReference();
         return true;
     }
@@ -67,24 +148,24 @@ namespace altvane::eq {
     bool PresetManager::save(const juce::File& file) {
         file.getParentDirectory().createDirectory();
         juce::MemoryBlock state;
-        bridge_.getProcessor().getStateInformation(state);
-        if (!zlstate::PresetJson::write(file, state).wasOk()) {
+        processor_.getStateInformation(state);
+        if (!codec_.write(file, state).wasOk()) {
             return false;
         }
-        bridge_.getProcessor().current_preset_ = file;
+        session_.current_preset = file;
         captureReference();
         return true;
     }
 
     void PresetManager::initialise() {
         std::vector<std::pair<juce::RangedAudioParameter*, float>> values;
-        for (auto* p : bridge_.getProcessor().getParameters()) {
+        for (auto* p : processor_.getParameters()) {
             if (auto* ranged = dynamic_cast<juce::RangedAudioParameter*>(p)) {
                 values.emplace_back(ranged, ranged->convertFrom0to1(ranged->getDefaultValue()));
             }
         }
-        bridge_.setNow(values, "Initialise");
-        bridge_.getProcessor().current_preset_ = juce::File();
+        editor_.setNow(values, "Initialise");
+        session_.current_preset = juce::File();
         captureReference();
     }
 
@@ -115,7 +196,7 @@ namespace altvane::eq {
             setFavourite(target, true);
         }
         if (getCurrentFile() == file) {
-            bridge_.getProcessor().current_preset_ = target;
+            session_.current_preset = target;
         }
         return true;
     }
@@ -123,7 +204,7 @@ namespace altvane::eq {
     bool PresetManager::remove(const juce::File& file) {
         setFavourite(file, false);
         if (getCurrentFile() == file) {
-            bridge_.getProcessor().current_preset_ = juce::File();
+            session_.current_preset = juce::File();
         }
         return file.moveToTrash();
     }
@@ -165,7 +246,7 @@ namespace altvane::eq {
     }
 
     void PresetManager::captureReference() {
-        const auto& params = bridge_.getProcessor().getParameters();
+        const auto& params = processor_.getParameters();
         reference_.resize(static_cast<size_t>(params.size()));
         for (int i = 0; i < params.size(); ++i) {
             reference_[static_cast<size_t>(i)] = params[i]->getValue();
@@ -173,7 +254,7 @@ namespace altvane::eq {
     }
 
     bool PresetManager::isModified() const {
-        const auto& params = bridge_.getProcessor().getParameters();
+        const auto& params = processor_.getParameters();
         if (reference_.size() != static_cast<size_t>(params.size())) {
             return true;
         }

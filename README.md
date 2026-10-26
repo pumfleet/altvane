@@ -14,7 +14,7 @@ CMakeLists.txt        superbuild: dependencies, libs/, then every product in ALT
 CMakePresets.json     mac-arm64-debug / mac-arm64-release
 cmake/                AltvanePlugin.cmake (altvane_add_plugin), AltvaneVersion.cmake, AltvaneTests.cmake, ...
 third_party/          JUCE, highway, nlopt (git submodules)
-libs/ui/              altvane::ui: design tokens, fonts, look-and-feel, brand mark, widgets, helpers
+libs/ui/              altvane::ui: design tokens, fonts, look-and-feel, brand mark, widgets, editor shell, presets
 products/<code>/      one directory per product: CMakeLists.txt, source/, tests/, tools/, packaging/, docs/
 packaging/            installer scripts shared by every product
 tools/icons/          renders each product's app icon and installer art
@@ -67,7 +67,7 @@ default version in its `CMakeLists.txt`.
 
 ## Adding a product
 
-1. Create `products/<code>/` with `source/` (a `PluginProcessor` whose editor uses `libs/ui`), `tests/`,
+1. Create `products/<code>/` with `source/` (a `PluginProcessor` with an `altvane::ui::Session` member, whose editor derives from `altvane::ui::EditorShell`), `tests/`,
    `packaging/` and a `CMakeLists.txt`:
 
    ```cmake

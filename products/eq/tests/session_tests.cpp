@@ -12,7 +12,7 @@
 #include "ui/model/engine_bridge.hpp"
 #include "ui/model/band_ops.hpp"
 #include "ui/model/session_ops.hpp"
-#include "ui/model/preset_manager.hpp"
+#include "ui/model/preset_codec.hpp"
 #include "ui/analysis/match_engine.hpp"
 #include "ui/analysis/spectrum_worker.hpp"
 
@@ -78,19 +78,19 @@ TEST_CASE("A/B keeps two independent parameter states", "[session]") {
     Fixture f;
     auto& bridge = *f.bridge;
     const auto band = band_ops::add(bridge, 1000.0, 4.f, FT::kPeak);
-    CHECK(session_ops::getABSlot(bridge) == 0);
+    CHECK(f.p.session_.getABSlot() == 0);
 
-    session_ops::switchAB(bridge); // B starts as a copy of A
+    f.p.session_.switchAB(f.p.parameters_); // B starts as a copy of A
     bridge.refresh();
-    CHECK(session_ops::getABSlot(bridge) == 1);
+    CHECK(f.p.session_.getABSlot() == 1);
     CHECK(std::abs(bridge.band(band).gain - 4.f) < 1e-3f);
     bridge.setNow({{bridge.params(band)[BandParams::kGain], -6.f}}, "B edit");
 
-    session_ops::switchAB(bridge);
+    f.p.session_.switchAB(f.p.parameters_);
     bridge.refresh();
     CHECK(std::abs(bridge.band(band).gain - 4.f) < 1e-3f);
 
-    session_ops::switchAB(bridge);
+    f.p.session_.switchAB(f.p.parameters_);
     bridge.refresh();
     CHECK(std::abs(bridge.band(band).gain + 6.f) < 1e-3f);
 }
@@ -114,7 +114,7 @@ TEST_CASE("cancelling an edit restores values and leaves no undo step", "[sessio
 
 TEST_CASE("preset manager tracks modifications", "[session]") {
     Fixture f;
-    PresetManager presets(*f.bridge);
+    PresetManager presets(f.p, f.bridge->getParamEditor(), f.p.session_, presetCodec());
     CHECK_FALSE(presets.isModified());
     band_ops::add(*f.bridge, 300.0, 2.f, FT::kPeak);
     CHECK(presets.isModified());

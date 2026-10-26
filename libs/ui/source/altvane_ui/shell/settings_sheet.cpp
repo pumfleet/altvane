@@ -1,17 +1,17 @@
 // Copyright (C) 2026 - Altvane, based on ZLEqualizer by zsliu98
-// This file is part of Altvane EQ
+// This file is part of Altvane
 //
-// Altvane EQ is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
+// Altvane is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
 //
-// Altvane EQ is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+// Altvane is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 //
-// You should have received a copy of the GNU Affero General Public License along with Altvane EQ. If not, see <https://www.gnu.org/licenses/>.
+// You should have received a copy of the GNU Affero General Public License along with Altvane. If not, see <https://www.gnu.org/licenses/>.
 #include "settings_sheet.hpp"
 
-#include "altvane_ui/theme/fonts.hpp"
-#include "../theme/eq_tokens.hpp"
+#include "../theme/fonts.hpp"
+#include "../theme/tokens.hpp"
 
-namespace altvane::eq {
+namespace altvane::ui {
     using namespace tokens;
 
     namespace {
@@ -55,10 +55,6 @@ namespace altvane::eq {
             settings_.reduce_motion = on;
             changed();
         };
-        grab_.on_change = [this](const bool on) {
-            settings_.spectrum_grab = on;
-            changed();
-        };
         for (auto* f : {&drag_, &wheel_}) {
             f->setRange(juce::NormalisableRange<float>(.25f, 4.f, .05f, .5f), 1.f);
             f->format = [](const float v) { return juce::String(juce::roundToInt(v * 100.f)) + "%"; };
@@ -84,13 +80,29 @@ namespace altvane::eq {
             }
         };
         addAndMakeVisible(reduce_motion_);
-        addAndMakeVisible(grab_);
         addAndMakeVisible(reset_size_);
+    }
+
+    void SettingsSheet::addSwitch(const juce::String& section, const juce::String& label, const juce::String& key) {
+        auto control = std::make_unique<Switch>();
+        control->on_change = [this, key](const bool on) {
+            settings_.switches[key] = on;
+            changed();
+        };
+        addAndMakeVisible(*control);
+        switches_.push_back({section, label, key, std::move(control)});
     }
 
     void SettingsSheet::setSettings(const UISettings& settings) {
         settings_ = settings;
         sync();
+    }
+
+    void SettingsSheet::setStatus(const juce::String& status) {
+        if (status != status_) {
+            status_ = status;
+            repaint(about_);
+        }
     }
 
     void SettingsSheet::changed() {
@@ -106,7 +118,9 @@ namespace altvane::eq {
             scales_[i].setOn(std::abs(UISettings::kScales[i] - settings_.scale) < 1e-3f);
         }
         reduce_motion_.setOn(settings_.reduce_motion);
-        grab_.setOn(settings_.spectrum_grab);
+        for (auto& row : switches_) {
+            row.control->setOn(settings_.getSwitch(row.key));
+        }
         drag_.setValue(settings_.drag_sensitivity);
         wheel_.setValue(settings_.wheel_sensitivity);
         repaint();
@@ -152,12 +166,23 @@ namespace altvane::eq {
         wheel_.setBounds(row("Scroll speed").removeFromLeft(92).reduced(0, 5));
         area.removeFromTop(10);
 
-        section("ANALYZER");
-        grab_.setBounds(row("Spectrum Grab").removeFromLeft(40));
-        area.removeFromTop(10);
+        juce::String current_section;
+        for (auto& r : switches_) {
+            if (r.section != current_section) {
+                if (current_section.isNotEmpty()) {
+                    area.removeFromTop(10);
+                }
+                current_section = r.section;
+                section(r.section);
+            }
+            r.control->setBounds(row(r.label).removeFromLeft(40));
+        }
+        if (current_section.isNotEmpty()) {
+            area.removeFromTop(10);
+        }
 
         section("ABOUT");
-        about_ = area.removeFromTop(48);
+        about_ = area.removeFromTop(64);
     }
 
     void SettingsSheet::paint(juce::Graphics& g) {
@@ -183,13 +208,14 @@ namespace altvane::eq {
         }
         g.setColour(colour::kTextPrimary);
         g.setFont(fonts.font(type::kBody, Fonts::kSemiBold));
-        auto about = about_.toFloat();
+        auto about = about_.toFloat().withHeight(48.f);
         g.drawText(juce::String(PRODUCT_NAME_WITHOUT_VERSION) + " " + juce::String(VERSION), about.removeFromTop(about.getHeight() * .5f),
                    juce::Justification::bottomLeft);
         g.setColour(colour::kTextTertiary);
         g.setFont(fonts.font(type::kSmall));
-        g.drawText(juce::String(juce::CharPointer_UTF8("Based on ZL Equalizer by ZL Audio  \xc2\xb7  AGPL-3.0")),
-                   about.translated(0.f, 2.f),
-                   juce::Justification::topLeft);
+        g.drawText(credit_, about.translated(0.f, 2.f), juce::Justification::topLeft);
+        if (status_.isNotEmpty()) {
+            g.drawText(status_, about.translated(0.f, 18.f), juce::Justification::topLeft);
+        }
     }
 }

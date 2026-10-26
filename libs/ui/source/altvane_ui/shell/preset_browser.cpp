@@ -1,19 +1,21 @@
 // Copyright (C) 2026 - Altvane, based on ZLEqualizer by zsliu98
-// This file is part of Altvane EQ
+// This file is part of Altvane
 //
-// Altvane EQ is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
+// Altvane is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
 //
-// Altvane EQ is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+// Altvane is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 //
-// You should have received a copy of the GNU Affero General Public License along with Altvane EQ. If not, see <https://www.gnu.org/licenses/>.
+// You should have received a copy of the GNU Affero General Public License along with Altvane. If not, see <https://www.gnu.org/licenses/>.
 #include "preset_browser.hpp"
 
 #include <algorithm>
 
-#include "altvane_ui/theme/fonts.hpp"
-#include "../theme/eq_tokens.hpp"
+#include "../theme/fonts.hpp"
+#include "../theme/look_and_feel.hpp"
+#include "../theme/tokens.hpp"
 
-namespace altvane::eq {
+
+namespace altvane::ui {
     using namespace tokens;
 
     namespace {

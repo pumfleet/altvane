@@ -8,12 +8,10 @@
 // You should have received a copy of the GNU Affero General Public License along with Altvane EQ. If not, see <https://www.gnu.org/licenses/>.
 #include "chrome.hpp"
 
-#include "altvane_ui/theme/brand.hpp"
 #include "altvane_ui/theme/fonts.hpp"
 #include "altvane_ui/theme/look_and_feel.hpp"
 #include "altvane_ui/util/value_format.hpp"
 #include "../model/band_ops.hpp"
-#include "../model/session_ops.hpp"
 #include "../theme/eq_tokens.hpp"
 
 namespace altvane::eq {
@@ -30,178 +28,6 @@ namespace altvane::eq {
             g.setColour(colour::kHairline);
             g.fillRect(juce::Rectangle<float>(0.f, y, w, 1.f));
         }
-    }
-
-    // ---------------------------------------------------------------- Header
-
-    Header::Header(EngineBridge& bridge, PresetManager& presets) : bridge_(bridge), presets_(presets) {
-        for (auto* c : std::initializer_list<juce::Component*>{
-                 &undo_, &redo_, &settings_, &prev_, &next_, &slot_a_, &slot_b_, &copy_slot_
-             }) {
-            addAndMakeVisible(c);
-        }
-        slot_a_.setTooltip("Compare: setting A");
-        slot_b_.setTooltip("Compare: setting B");
-        slot_a_.on_click = [this] {
-            if (session_ops::getABSlot(bridge_) != 0) session_ops::switchAB(bridge_);
-        };
-        slot_b_.on_click = [this] {
-            if (session_ops::getABSlot(bridge_) != 1) session_ops::switchAB(bridge_);
-        };
-        copy_slot_.on_click = [this] { session_ops::copyToOtherSlot(bridge_); };
-        undo_.setTooltip("Undo (Cmd+Z)");
-        redo_.setTooltip("Redo (Shift+Cmd+Z)");
-        settings_.setTooltip("Settings");
-        prev_.setTooltip("Previous preset");
-        next_.setTooltip("Next preset");
-        undo_.on_click = [this] { if (on_undo) on_undo(); };
-        redo_.on_click = [this] { if (on_redo) on_redo(); };
-        prev_.on_click = [this] { presets_.step(-1); };
-        next_.on_click = [this] { presets_.step(1); };
-        settings_.on_click = [this] {
-            if (on_open_settings) {
-                on_open_settings();
-                return;
-            }
-            if (!build_settings_menu) {
-                return;
-            }
-            showPopupMenu(build_settings_menu(), *this,
-                juce::PopupMenu::Options().withTargetComponent(&settings_),
-                [safe = juce::Component::SafePointer(this)](const int r) {
-                    if (safe != nullptr && r != 0 && safe->on_settings_result) {
-                        safe->on_settings_result(r);
-                    }
-                });
-        };
-    }
-
-    void Header::tick() {
-        auto& um = bridge_.getUndoManager();
-        undo_.setAlpha(um.canUndo() ? 1.f : .35f);
-        redo_.setAlpha(um.canRedo() ? 1.f : .35f);
-        undo_.setTooltip(um.canUndo() ? "Undo " + um.getUndoDescription() : "Undo");
-        redo_.setTooltip(um.canRedo() ? "Redo " + um.getRedoDescription() : "Redo");
-        const auto slot = session_ops::getABSlot(bridge_);
-        slot_a_.setOn(slot == 0);
-        slot_b_.setOn(slot == 1);
-        copy_slot_.setTooltip(slot == 0 ? "Copy A to B" : "Copy B to A");
-        // comparing ~600 parameters is cheap, but there is no need to do it every frame
-        if (--modified_check_countdown_ <= 0) {
-            modified_check_countdown_ = 10;
-            const auto name = presets_.getCurrentName();
-            const auto modified = presets_.isModified();
-            if (name != preset_name_ || modified != preset_modified_) {
-                preset_name_ = name;
-                preset_modified_ = modified;
-                repaint();
-            }
-        }
-    }
-
-    void Header::resized() {
-        auto b = getLocalBounds().toFloat().reduced(size::kS3, 7.f);
-        settings_.setBounds(b.removeFromRight(26.f).toNearestInt());
-        b.removeFromRight(10.f);
-        redo_.setBounds(b.removeFromRight(26.f).toNearestInt());
-        b.removeFromRight(2.f);
-        undo_.setBounds(b.removeFromRight(26.f).toNearestInt());
-        b.removeFromRight(14.f);
-        copy_slot_.setBounds(b.removeFromRight(26.f).toNearestInt());
-        b.removeFromRight(2.f);
-        slot_b_.setBounds(b.removeFromRight(24.f).toNearestInt());
-        slot_a_.setBounds(b.removeFromRight(24.f).toNearestInt());
-
-        preset_area_ = juce::Rectangle<float>(260.f, 26.f).withCentre(getLocalBounds().toFloat().getCentre());
-        auto p = preset_area_;
-        prev_.setBounds(p.removeFromLeft(26.f).toNearestInt());
-        next_.setBounds(p.removeFromRight(26.f).toNearestInt());
-    }
-
-    void Header::paint(juce::Graphics& g) {
-        const auto b = getLocalBounds().toFloat();
-        g.setColour(colour::kWindow);
-        g.fillRect(b);
-        hairline(g, b.getBottom() - 1.f, b.getWidth());
-
-        brand::drawLockup(g, b.withTrimmedLeft(size::kS4), "EQ");
-
-        // preset pill
-        g.setColour(preset_hovered_ ? colour::kControlHover : colour::kControl);
-        g.fillRoundedRectangle(preset_area_, size::kRadiusSmall);
-        g.setColour(colour::kTextPrimary);
-        g.setFont(Fonts::get().font(type::kBody));
-        const auto text_area = preset_area_.reduced(30.f, 0.f);
-        g.drawText(preset_name_, text_area, juce::Justification::centred, true);
-        if (preset_modified_) {
-            const auto w = juce::GlyphArrangement::getStringWidth(Fonts::get().font(type::kBody), preset_name_);
-            g.setColour(colour::kTextTertiary);
-            g.fillEllipse(juce::Rectangle<float>(5.f, 5.f).withCentre({
-                std::min(text_area.getCentreX() + w * .5f + 8.f, text_area.getRight()), text_area.getCentreY()
-            }));
-        }
-    }
-
-    void Header::mouseMove(const juce::MouseEvent& e) {
-        const auto h = preset_area_.reduced(26.f, 0.f).contains(e.position);
-        if (h != preset_hovered_) {
-            preset_hovered_ = h;
-            repaint();
-        }
-    }
-
-    void Header::mouseExit(const juce::MouseEvent&) {
-        preset_hovered_ = false;
-        repaint();
-    }
-
-    void Header::mouseUp(const juce::MouseEvent& e) {
-        if (preset_area_.reduced(26.f, 0.f).contains(e.position)) {
-            if (e.mods.isPopupMenu()) {
-                showPresetMenu();
-            } else if (on_open_presets) {
-                on_open_presets();
-            }
-        }
-    }
-
-    void Header::showPresetMenu() {
-        juce::PopupMenu menu;
-        menu.addItem(1, "Browse Presets...");
-        menu.addItem(2, "Save", presets_.getCurrentFile() != juce::File());
-        menu.addItem(3, "Save As...");
-        menu.addSeparator();
-        menu.addItem(4, "Initialise");
-        showPopupMenu(menu, *this, juce::PopupMenu::Options().withTargetScreenArea(localAreaToGlobal(preset_area_.toNearestInt()))
-                                                     .withMinimumWidth(juce::roundToInt(preset_area_.getWidth())),
-                           [safe = juce::Component::SafePointer(this)](const int r) {
-                               if (safe == nullptr) {
-                                   return;
-                               }
-                               if (r == 1 && safe->on_open_presets) {
-                                   safe->on_open_presets();
-                               } else if (r == 2) {
-                                   safe->presets_.save(safe->presets_.getCurrentFile());
-                               } else if (r == 3) {
-                                   safe->savePresetAs();
-                               } else if (r == 4) {
-                                   safe->presets_.initialise();
-                               }
-                           });
-    }
-
-    void Header::savePresetAs() {
-        const auto dir = PresetManager::getDirectory();
-        dir.createDirectory();
-        chooser_ = std::make_unique<juce::FileChooser>("Save Preset", dir.getChildFile(presets_.getCurrentName() + ".json"),
-                                                       "*.json");
-        chooser_->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles
-                              | juce::FileBrowserComponent::warnAboutOverwriting,
-                              [safe = juce::Component::SafePointer(this)](const juce::FileChooser& fc) {
-                                  if (safe != nullptr && fc.getResult() != juce::File()) {
-                                      safe->presets_.save(fc.getResult().withFileExtension("json"));
-                                  }
-                              });
     }
 
     // ---------------------------------------------------------------- Footer
@@ -263,17 +89,15 @@ namespace altvane::eq {
                            "Auto Gain");
         };
 
-        bindField(scale_, zlp::PGainScale::kID, "Scale");
+        bindValue(scale_, bridge_.getParamEditor(), bridge_.globalParam(zlp::PGainScale::kID), "Scale");
         scale_.format = [](const float v) { return format::percent(v); };
-        bindField(output_, zlp::POutputGain::kID, "Output");
+        bindValue(output_, bridge_.getParamEditor(), bridge_.globalParam(zlp::POutputGain::kID), "Output");
         output_.format = [](const float v) { return format::gain(v); };
 
         output_menu_.setTooltip("Output options");
         output_menu_.on_click = [this] { showOutputMenu(); };
 
         bypass_.setToggleable(true);
-        scale_.setComponentID(zlp::PGainScale::kID);
-        output_.setComponentID(zlp::POutputGain::kID);
         phase_.setComponentID(zlp::PFilterStructure::kID);
         bypass_.setComponentID(zlp::PBypass::kID);
         bypass_.setTooltip("Bypass the plug-in");
@@ -361,24 +185,6 @@ namespace altvane::eq {
                                             "Output Channel");
                                }
                            });
-    }
-
-    void Footer::bindField(ValueField& field, const char* id, const juce::String& name) {
-        auto* para = bridge_.globalParam(id);
-        field.setLabel(name);
-        field.setRange(para->getNormalisableRange(), para->convertFrom0to1(para->getDefaultValue()));
-        field.parse = [](const juce::String& t) -> std::optional<float> {
-            if (const auto v = format::parseNumber(t)) {
-                return static_cast<float>(*v);
-            }
-            return std::nullopt;
-        };
-        field.on_begin = [this, para, name] {
-            juce::RangedAudioParameter* paras[] = {para};
-            bridge_.beginEdit(paras, "Change " + name);
-        };
-        field.on_change = [this, para](const float v) { bridge_.setPlain(para, v); };
-        field.on_end = [this] { bridge_.endEdit(); };
     }
 
     void Footer::tick() {
@@ -511,25 +317,9 @@ namespace altvane::eq {
     }
 
     void OutputRail::tick(const double dt) {
-        bool changed = false;
-        for (size_t c = 0; c < 2; ++c) {
-            const auto peak = spectrum_.takeOutputPeak(c);
-            const auto decayed = levels_[c] - static_cast<float>(dt) * 24.f;
-            const auto next = std::max(peak, decayed);
-            changed = changed || std::abs(next - levels_[c]) > .05f;
-            levels_[c] = std::max(next, -120.f);
-            if (peak >= peak_hold_) {
-                peak_hold_ = peak;
-                peak_age_ = 0.0;
-            }
-        }
-        peak_age_ += dt;
-        if (peak_age_ > 2.0) {
-            peak_hold_ = std::max(levels_[0], levels_[1]);
-            peak_age_ = 1.5;
-            changed = true;
-        }
-        if (changed || bridge_.haveGlobalsChanged()) {
+        const auto left = spectrum_.takeOutputPeak(0);
+        const auto right = spectrum_.takeOutputPeak(1);
+        if (meter_.tick(dt, left, right) || bridge_.haveGlobalsChanged()) {
             repaint();
         }
     }
@@ -549,33 +339,7 @@ namespace altvane::eq {
         const auto max_db = zlstate::PEQMaxDB::kDBs[bridge_.global().eq_max_db_idx];
         g.drawText(juce::String(static_cast<int>(max_db)) + " dB", range_area_, juce::Justification::centred);
 
-        // meter scale: +6 .. -60 dB
-        auto to_y = [this](const float db) {
-            const auto t = std::clamp((6.f - db) / 66.f, 0.f, 1.f);
-            return meter_area_.getY() + t * meter_area_.getHeight();
-        };
-        const auto bar_w = (meter_area_.getWidth() - 2.f) * .5f;
-        for (size_t c = 0; c < 2; ++c) {
-            auto bar = juce::Rectangle<float>(meter_area_.getX() + static_cast<float>(c) * (bar_w + 2.f),
-                                              meter_area_.getY(), bar_w, meter_area_.getHeight());
-            g.setColour(colour::kControl);
-            g.fillRoundedRectangle(bar, 1.5f);
-            const auto top = to_y(levels_[c]);
-            if (top < bar.getBottom()) {
-                auto fill = bar.withTop(top);
-                g.setGradientFill(juce::ColourGradient(colour::kDanger, 0.f, to_y(3.f),
-                                                       colour::kAccent.withAlpha(.75f), 0.f, to_y(-24.f), false));
-                g.fillRoundedRectangle(fill, 1.5f);
-            }
-        }
-        // 0 dB reference across both bars
-        g.setColour(colour::kGraph);
-        g.fillRect(juce::Rectangle<float>(meter_area_.getX(), to_y(0.f), meter_area_.getWidth(), 1.f));
-
-        g.setColour(peak_hold_ > 0.f ? colour::kDanger : colour::kTextSecondary);
-        Fonts::get().drawTabular(g, peak_hold_ < -99.f ? juce::String(juce::CharPointer_UTF8("\xe2\x80\x93"))
-                                                       : juce::String(peak_hold_, 1),
-                                 peak_area_, juce::Justification::centred, type::kCaption);
+        meter_.paint(g, meter_area_, peak_area_);
     }
 
     void OutputRail::mouseUp(const juce::MouseEvent& e) {
@@ -594,7 +358,7 @@ namespace altvane::eq {
                                    }
                                });
         } else if (meter_area_.expanded(8.f, 0.f).contains(e.position) || peak_area_.contains(e.position)) {
-            peak_hold_ = -120.f;
+            meter_.resetPeak();
             repaint();
         }
     }

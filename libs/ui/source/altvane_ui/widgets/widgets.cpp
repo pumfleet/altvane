@@ -393,30 +393,54 @@ namespace altvane::ui {
 
     // ---------------------------------------------------------------- Knob
 
+    namespace {
+        struct KnobMetrics {
+            float caption_height, top, bottom, max_diameter, arc_width, body_inset, indicator_width, value_height;
+            float value_font;
+        };
+
+        KnobMetrics getKnobMetrics(const Knob::Style style) {
+            if (style == Knob::Style::kHero) {
+                return {18.f, 22.f, 30.f, 132.f, 3.f, 11.f, 2.4f, 24.f, type::kTitle};
+            }
+            return {14.f, 16.f, 20.f, 46.f, 2.f, 6.f, 1.8f, 18.f, type::kBody};
+        }
+    }
+
     Knob::Knob() {
         drag_pixels_ = 240.f;
     }
 
+    void Knob::setStyle(const Style style) {
+        style_ = style;
+        drag_pixels_ = style == Style::kHero ? 300.f : 240.f;
+        repaint();
+    }
+
     juce::Rectangle<float> Knob::getKnobArea() const {
+        const auto m = getKnobMetrics(style_);
         auto b = getLocalBounds().toFloat();
-        b.removeFromTop(16.f);
-        b.removeFromBottom(20.f);
-        const auto d = std::min({b.getWidth(), b.getHeight(), 46.f});
+        b.removeFromTop(m.top);
+        b.removeFromBottom(m.bottom);
+        const auto d = std::min({b.getWidth(), b.getHeight(), m.max_diameter});
         return juce::Rectangle<float>(d, d).withCentre(b.getCentre());
     }
 
     juce::Rectangle<int> Knob::getTextArea() const {
-        return getLocalBounds().removeFromBottom(18).reduced(2, 0);
+        return getLocalBounds().removeFromBottom(static_cast<int>(getKnobMetrics(style_).value_height)).reduced(2, 0);
     }
 
     void Knob::paint(juce::Graphics& g) {
+        const auto m = getKnobMetrics(style_);
         const auto alpha = enabled_look_ ? 1.f : .35f;
         auto bounds = getLocalBounds().toFloat();
 
         // caption
-        g.setColour(colour::kTextTertiary.withMultipliedAlpha(alpha));
-        g.setFont(captionFont());
-        g.drawText(label_.toUpperCase(), bounds.removeFromTop(14.f), juce::Justification::centred);
+        g.setColour((style_ == Style::kHero ? colour::kTextSecondary : colour::kTextTertiary).withMultipliedAlpha(alpha));
+        g.setFont(style_ == Style::kHero
+                      ? Fonts::get().font(type::kSmall, Fonts::kSemiBold).withExtraKerningFactor(.12f)
+                      : captionFont());
+        g.drawText(label_.toUpperCase(), bounds.removeFromTop(m.caption_height), juce::Justification::centred);
 
         // rotary
         const auto area = getKnobArea();
@@ -427,22 +451,29 @@ namespace altvane::ui {
         const auto norm = getNormalised();
         const auto angle = kStart + norm * (kEnd - kStart);
 
-        const auto arc_r = radius - 1.5f;
+        const auto arc_r = radius - m.arc_width * .75f;
         juce::Path track;
         track.addCentredArc(centre.x, centre.y, arc_r, arc_r, 0.f, kStart, kEnd, true);
         g.setColour(colour::kHairlineStrong.withMultipliedAlpha(alpha));
-        g.strokePath(track, juce::PathStrokeType(2.f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        g.strokePath(track, juce::PathStrokeType(m.arc_width, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
         juce::Path value_arc;
         const auto from = bipolar_ ? 0.f : kStart;
         value_arc.addCentredArc(centre.x, centre.y, arc_r, arc_r, 0.f, std::min(from, angle), std::max(from, angle),
                                 true);
-        g.setColour(resolve(accent_).withMultipliedAlpha(alpha));
-        g.strokePath(value_arc, juce::PathStrokeType(2.f, juce::PathStrokeType::curved,
+        const auto accent = resolve(accent_).withMultipliedAlpha(alpha);
+        if (style_ == Style::kHero && norm > 0.f) {
+            // a soft glow under the value arc
+            g.setColour(accent.withMultipliedAlpha(.18f));
+            g.strokePath(value_arc, juce::PathStrokeType(m.arc_width * 3.f, juce::PathStrokeType::curved,
+                                                         juce::PathStrokeType::rounded));
+        }
+        g.setColour(accent);
+        g.strokePath(value_arc, juce::PathStrokeType(m.arc_width, juce::PathStrokeType::curved,
                                                      juce::PathStrokeType::rounded));
 
         // body
-        const auto body = area.reduced(6.f);
+        const auto body = area.reduced(m.body_inset);
         const auto body_colour = (hovered_ || dragging_) ? colour::kControlHover : colour::kControl;
         g.setGradientFill(juce::ColourGradient(body_colour.brighter(.12f), body.getCentreX(), body.getY(),
                                                body_colour.darker(.15f), body.getCentreX(), body.getBottom(), false));
@@ -455,7 +486,7 @@ namespace altvane::ui {
         const juce::Point<float> p1{centre.x + std::sin(angle) * inner * .35f, centre.y - std::cos(angle) * inner * .35f};
         const juce::Point<float> p2{centre.x + std::sin(angle) * inner * .78f, centre.y - std::cos(angle) * inner * .78f};
         g.setColour(colour::kTextPrimary.withMultipliedAlpha(alpha));
-        g.drawLine({p1, p2}, 1.8f);
+        g.drawLine({p1, p2}, m.indicator_width);
 
         paintFocusRing(g, area.expanded(3.f), area.getWidth() * .5f + 3.f);
 
@@ -463,7 +494,7 @@ namespace altvane::ui {
         const auto value_colour = dragging_ ? colour::kTextPrimary : colour::kTextPrimary.withMultipliedAlpha(.85f);
         g.setColour(value_colour.withMultipliedAlpha(alpha));
         Fonts::get().drawTabular(g, format(value_), getTextArea().toFloat(), juce::Justification::centred,
-                                 type::kBody);
+                                 m.value_font, style_ == Style::kHero ? Fonts::kSemiBold : Fonts::kRegular);
     }
 
     // ---------------------------------------------------------------- ValueField

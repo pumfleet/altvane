@@ -14,6 +14,7 @@
 #include "../common.hpp"
 #include "../../PluginProcessor.hpp"
 #include "../../chore/thread/notifier.hpp"
+#include "altvane_ui/session/param_editor.hpp"
 
 namespace altvane::eq {
     inline constexpr size_t kBandNum = zlp::kBandNum;
@@ -98,6 +99,11 @@ namespace altvane::eq {
     public:
         explicit EngineBridge(PluginProcessor& p);
 
+        /**
+         * share the editor's parameter editing, so the header's undo and the graph's drags see one edit
+         */
+        EngineBridge(PluginProcessor& p, ParamEditor& editor);
+
         ~EngineBridge() override;
 
         /**
@@ -128,34 +134,42 @@ namespace altvane::eq {
          * begin a continuous edit (drag, wheel), the host sees one gesture per parameter
          * and the undo history gets a single transaction when the edit ends
          */
-        void beginEdit(std::span<juce::RangedAudioParameter* const> paras, const juce::String& name);
+        void beginEdit(const std::span<juce::RangedAudioParameter* const> paras, const juce::String& name) {
+            editor_.beginEdit(paras, name);
+        }
 
-        void setPlain(juce::RangedAudioParameter* para, float plain);
+        void setPlain(juce::RangedAudioParameter* para, const float plain) { editor_.setPlain(para, plain); }
 
-        void endEdit();
+        void endEdit() { editor_.endEdit(); }
 
         /**
          * end the current edit and restore every parameter it touched, leaving no undo step
          */
-        void cancelEdit();
+        void cancelEdit() { editor_.cancelEdit(); }
 
-        bool isEditing() const { return !edit_.entries.empty(); }
+        bool isEditing() const { return editor_.isEditing(); }
 
         /**
          * set several parameters at once as one undoable step
          */
-        void setNow(std::initializer_list<std::pair<juce::RangedAudioParameter*, float>> values,
-                    const juce::String& name);
+        void setNow(const std::initializer_list<std::pair<juce::RangedAudioParameter*, float>> values,
+                    const juce::String& name) {
+            editor_.setNow(values, name);
+        }
 
         void setNow(const std::vector<std::pair<juce::RangedAudioParameter*, float>>& values,
-                    const juce::String& name);
+                    const juce::String& name) {
+            editor_.setNow(values, name);
+        }
 
         /**
          * non-automatable UI state is not part of the undo history
          */
         void setNA(const juce::String& id, float plain);
 
-        juce::UndoManager& getUndoManager() { return p_ref_.undo_manager_; }
+        ParamEditor& getParamEditor() { return editor_; }
+
+        juce::UndoManager& getUndoManager() { return p_ref_.session_.undo_manager; }
         zlp::Controller& getController() { return p_ref_.getController(); }
         PluginProcessor& getProcessor() { return p_ref_; }
         const PluginProcessor& getProcessor() const { return p_ref_; }
@@ -164,17 +178,11 @@ namespace altvane::eq {
         size_t findOffBand() const;
 
     private:
-        struct EditEntry {
-            juce::RangedAudioParameter* para;
-            float from;
-        };
-
-        struct Edit {
-            juce::String name;
-            std::vector<EditEntry> entries;
-        };
+        EngineBridge(PluginProcessor& p, ParamEditor& editor, bool owns_editor);
 
         PluginProcessor& p_ref_;
+        std::unique_ptr<ParamEditor> own_editor_;
+        ParamEditor& editor_;
         std::array<BandParams, kBandNum> band_params_;
         std::array<BandSnapshot, kBandNum> bands_;
         GlobalSnapshot global_;
@@ -185,8 +193,6 @@ namespace altvane::eq {
         std::bitset<kBandNum> changed_bands_;
         bool globals_changed_{false};
         bool first_refresh_{true};
-
-        Edit edit_;
 
         void parameterChanged(const juce::String& parameter_id, float new_value) override;
 
