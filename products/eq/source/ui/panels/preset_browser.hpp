@@ -8,10 +8,11 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
-#include "sheet.hpp"
+#include "../common.hpp"
+#include "altvane_ui/widgets/sheet.hpp"
 #include "../model/preset_manager.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     /**
      * browse, search, organise and load presets
      */

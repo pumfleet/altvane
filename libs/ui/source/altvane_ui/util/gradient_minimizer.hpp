@@ -14,7 +14,7 @@
 #include <cmath>
 #include <algorithm>
 
-namespace contour::ui {
+namespace altvane::ui {
     // builds a gradient with as few stops as the tolerance allows (from zlpanel::GradientMinimizer)
     template <int kIntTol = 1>
     class GradientMinimizer {

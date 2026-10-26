@@ -15,7 +15,7 @@
 #include "ui/model/band_ops.hpp"
 #include "ui/analysis/response_model.hpp"
 
-using namespace contour::ui;
+using namespace altvane::eq;
 using FT = zldsp::filter::FilterType;
 
 

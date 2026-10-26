@@ -8,13 +8,13 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #include <catch2/catch_test_macros.hpp>
 
+#include "altvane_ui/util/value_format.hpp"
+#include "altvane_ui/widgets/widgets.hpp"
 #include "PluginProcessor.hpp"
 #include "ui/editor.hpp"
 #include "ui/model/band_ops.hpp"
-#include "ui/util/value_format.hpp"
-#include "ui/widgets/widgets.hpp"
 
-using namespace contour::ui;
+using namespace altvane::eq;
 
 TEST_CASE("knobs expose formatted, settable values to assistive technology", "[accessibility]") {
     Knob knob;

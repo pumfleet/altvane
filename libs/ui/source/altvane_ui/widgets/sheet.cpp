@@ -11,7 +11,7 @@
 #include "../theme/fonts.hpp"
 #include "../theme/tokens.hpp"
 
-namespace contour::ui {
+namespace altvane::ui {
     using namespace tokens;
 
     Sheet::Sheet(const juce::String& title) : title_(title) {

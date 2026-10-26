@@ -8,10 +8,11 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
+#include "../common.hpp"
+#include "altvane_ui/widgets/widgets.hpp"
 #include "../analysis/match_engine.hpp"
-#include "../widgets/widgets.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     /**
      * guided EQ Match: choose a reference, let it listen, adjust the correction, match, pick the number of bands
      */

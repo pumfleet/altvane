@@ -8,22 +8,13 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
-#include <juce_gui_basics/juce_gui_basics.h>
-
+#include "../common.hpp"
+#include "altvane_ui/widgets/icons.hpp"
 #include "../../dsp/filter/filter_design/filter_design.hpp"
 
-namespace contour::ui::icons {
-    enum class Icon {
-        kPower, kUndo, kRedo, kSettings, kChevronLeft, kChevronRight, kChevronDown,
-        kHeadphones, kTrash, kDynamic, kPlus, kClose, kSideChain, kFreeze, kCopy, kSearch, kStar, kFolder
-    };
-
-    /**
-     * outline icons on a 16x16 grid, meant to be stroked at ~1.4 px
-     */
-    juce::Path get(Icon icon);
-
-    void draw(juce::Graphics& g, Icon icon, juce::Rectangle<float> area, juce::Colour colour, float stroke = 1.4f);
+namespace altvane::eq::icons {
+    // the shared outline icons, plus filter shapes
+    using namespace altvane::ui::icons;
 
     /**
      * a miniature frequency response of a filter shape, computed from the real filter prototype

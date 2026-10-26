@@ -8,10 +8,10 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #include "ui_settings.hpp"
 
-#include "../theme/tokens.hpp"
-#include "../util/spring.hpp"
+#include "altvane_ui/util/spring.hpp"
+#include "../theme/eq_tokens.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     void UISettings::load(const juce::PropertiesFile& file) {
         scale = std::clamp(static_cast<float>(file.getDoubleValue("interface_scale", 1.0)), kScales.front(), kScales.back());
         accent = std::clamp(file.getIntValue("accent", 0), 0, static_cast<int>(tokens::colour::kAccentChoices.size()) - 1);

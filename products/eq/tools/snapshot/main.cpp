@@ -16,9 +16,9 @@
 #if JUCE_MAC
 #include <CoreFoundation/CoreFoundation.h>
 #endif
+#include "altvane_ui/theme/look_and_feel.hpp"
 #include "ui/editor.hpp"
-#include "ui/theme/look_and_feel.hpp"
-#include "ui/theme/tokens.hpp"
+#include "ui/theme/eq_tokens.hpp"
 
 namespace {
     class Signal {
@@ -80,7 +80,7 @@ namespace {
      * draw a menu with the editor's look-and-feel instead
      */
     void writeMenuPreview(const juce::File& file, const float scale) {
-        contour::ui::LookAndFeel laf;
+        altvane::eq::LookAndFeel laf;
         juce::PopupMenu menu;
         menu.addSectionHeader("Processing");
         const char* items[] = {"Minimum\tZero latency", "SVF\tZero latency, smooth automation",
@@ -115,7 +115,7 @@ namespace {
                           juce::roundToInt(static_cast<float>(height + 40) * scale), true);
         juce::Graphics g(image);
         g.addTransform(juce::AffineTransform::scale(scale));
-        g.fillAll(contour::ui::tokens::colour::kGraph);
+        g.fillAll(altvane::eq::tokens::colour::kGraph);
         g.setOrigin(20, 20);
         laf.drawPopupMenuBackgroundWithOptions(g, width, height, options);
         int y = 5;
@@ -172,7 +172,7 @@ int main(const int argc, char* argv[]) {
     set(p, zlp::PFilterStatus::kID + juce::String(5), static_cast<float>(zlp::kBypass));
 
     std::unique_ptr<juce::AudioProcessorEditor> editor_base(p.createEditor());
-    auto* editor = dynamic_cast<contour::ui::Editor*>(editor_base.get());
+    auto* editor = dynamic_cast<altvane::eq::Editor*>(editor_base.get());
     if (editor == nullptr) {
         std::cerr << "editor is not a Contour editor" << std::endl;
         return 1;
@@ -233,7 +233,7 @@ int main(const int argc, char* argv[]) {
         editor->getSelectionForTesting().clear();
         run(1.5);
         auto& graph = editor->getGraphForTesting();
-        contour::ui::FreqScale scale;
+        altvane::eq::FreqScale scale;
         scale.setBounds(0.f, static_cast<float>(graph.getWidth()));
         graph.hoverForTesting({scale.freqToX(440.0), static_cast<float>(graph.getHeight()) * .72f});
         run(.4);
@@ -258,13 +258,13 @@ int main(const int argc, char* argv[]) {
     {
         auto& match = editor->getMatchForTesting();
         match.start();
-        match.setTarget(contour::ui::MatchEngine::Target::kNatural);
+        match.setTarget(altvane::eq::MatchEngine::Target::kNatural);
         run(3.0);
         writePNG(*editor, out_dir.getChildFile("09_match_learning.png"), scale_factor);
         match.fit();
         run(4.0);
         writePNG(*editor, out_dir.getChildFile("10a_match_fitting.png"), scale_factor);
-        for (int i = 0; i < 240 && match.getState() != contour::ui::MatchEngine::State::kResult; ++i) {
+        for (int i = 0; i < 240 && match.getState() != altvane::eq::MatchEngine::State::kResult; ++i) {
             run(.5);
         }
         run(.5);

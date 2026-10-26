@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace contour::ui {
+namespace altvane::ui {
     /**
      * user preferences that affect motion and input, applied globally
      */

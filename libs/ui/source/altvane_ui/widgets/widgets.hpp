@@ -15,7 +15,7 @@
 #include "icons.hpp"
 #include "../util/spring.hpp"
 
-namespace contour::ui {
+namespace altvane::ui {
     /**
      * shared behaviour for anything that edits one continuous value:
      * vertical drag (shift = fine), wheel, double-click / cmd-click to reset, inline text entry

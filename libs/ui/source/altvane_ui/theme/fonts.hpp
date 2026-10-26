@@ -10,7 +10,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 
-namespace contour::ui {
+namespace altvane::ui {
     /**
      * typefaces and text helpers
      * Inter Regular / SemiBold are embedded; numerals are laid out in fixed-width slots

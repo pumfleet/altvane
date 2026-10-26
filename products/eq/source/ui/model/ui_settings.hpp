@@ -10,7 +10,9 @@
 
 #include <juce_data_structures/juce_data_structures.h>
 
-namespace contour::ui {
+#include "../common.hpp"
+
+namespace altvane::eq {
     /**
      * per-user editor preferences, stored in settings.xml next to the presets
      */

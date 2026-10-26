@@ -9,10 +9,10 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
-#include "ui/util/value_format.hpp"
-#include "ui/util/freq_scale.hpp"
+#include "altvane_ui/util/value_format.hpp"
+#include "altvane_ui/util/freq_scale.hpp"
 
-using namespace contour::ui;
+using namespace altvane::ui;
 using Catch::Matchers::WithinRel;
 using Catch::Matchers::WithinAbs;
 

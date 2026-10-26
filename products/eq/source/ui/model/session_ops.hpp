@@ -8,9 +8,10 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
+#include "../common.hpp"
 #include "engine_bridge.hpp"
 
-namespace contour::ui::session_ops {
+namespace altvane::eq::session_ops {
     /**
      * copy bands to the system clipboard, so they can be pasted into another instance
      */

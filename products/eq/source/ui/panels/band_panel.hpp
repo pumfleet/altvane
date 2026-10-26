@@ -8,12 +8,13 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
+#include "../common.hpp"
+#include "altvane_ui/util/spring.hpp"
+#include "altvane_ui/widgets/widgets.hpp"
 #include "../model/engine_bridge.hpp"
 #include "../model/selection.hpp"
-#include "../util/spring.hpp"
-#include "../widgets/widgets.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     /**
      * contextual controls for the selected band(s), floating over the bottom of the graph
      */

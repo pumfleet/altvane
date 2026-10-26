@@ -14,7 +14,7 @@
 #include <limits>
 #include <span>
 
-namespace contour::ui {
+namespace altvane::ui {
     // drops collinear points while building a path (from zlpanel::PathMinimizer)
     template <int kIntTol = 10>
     class PathMinimizer {

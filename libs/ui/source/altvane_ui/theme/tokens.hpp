@@ -12,10 +12,11 @@
 #include <juce_graphics/juce_graphics.h>
 
 /**
- * the Contour design system: every colour, size and duration used by the UI lives here
+ * the Altvane design system: the colours, sizes and durations every product's UI shares
+ * products extend it with their own tokens (see e.g. products/eq/source/ui/theme/eq_tokens.hpp)
  * sizes are in logical pixels; the editor applies a global interface scale on top
  */
-namespace contour::ui::tokens {
+namespace altvane::ui::tokens {
     namespace colour {
         // surfaces, darkest to lightest
         inline const juce::Colour kWindow{0xFF0A0B0D};
@@ -58,18 +59,6 @@ namespace contour::ui::tokens {
 
         // composite response curve
         inline const juce::Colour kCurve{0xFFF4F6F8};
-
-        // band palette, OKLCH L=0.76 C=0.13, ordered so neighbouring bands contrast
-        inline const std::array<juce::Colour, 12> kBands{
-            juce::Colour{0xFF76B4FF}, juce::Colour{0xFFED9C55}, juce::Colour{0xFF6FC884},
-            juce::Colour{0xFFDF92D8}, juce::Colour{0xFFC4B345}, juce::Colour{0xFF00C9D1},
-            juce::Colour{0xFFF98E8F}, juce::Colour{0xFFA1A7FF}, juce::Colour{0xFF37CCAC},
-            juce::Colour{0xFFA7BD58}, juce::Colour{0xFF43C0F3}, juce::Colour{0xFFBE9DF7}
-        };
-
-        inline juce::Colour band(const size_t idx) {
-            return kBands[idx % kBands.size()];
-        }
     }
 
     namespace size {
@@ -91,27 +80,6 @@ namespace contour::ui::tokens {
         inline constexpr float kFooterHeight = 36.f;
         inline constexpr float kRailWidth = 44.f;
         inline constexpr float kControlHeight = 24.f;
-
-        // graph
-        inline constexpr float kNodeRadius = 7.f;
-        inline constexpr float kNodeHitRadius = 12.f;
-        inline constexpr float kQHandleRadius = 4.f;
-        inline constexpr float kCurveStroke = 1.6f;
-        inline constexpr float kBandStroke = 1.2f;
-        inline constexpr float kGraphPadding = 14.f;
-
-        // band panel
-        inline constexpr float kPanelWidth = 560.f;
-        inline constexpr float kPanelHeight = 112.f;
-        inline constexpr float kPanelDynamicExtra = 76.f;
-
-        // window, in logical pixels
-        inline constexpr int kDefaultWidth = 1040;
-        inline constexpr int kDefaultHeight = 620;
-        inline constexpr int kMinWidth = 760;
-        inline constexpr int kMinHeight = 460;
-        inline constexpr int kMaxWidth = 3200;
-        inline constexpr int kMaxHeight = 2000;
     }
 
     namespace type {

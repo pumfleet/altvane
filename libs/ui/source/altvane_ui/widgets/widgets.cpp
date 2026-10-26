@@ -12,7 +12,7 @@
 #include "../theme/look_and_feel.hpp"
 #include "../theme/tokens.hpp"
 
-namespace contour::ui {
+namespace altvane::ui {
     using namespace tokens;
 
     namespace {

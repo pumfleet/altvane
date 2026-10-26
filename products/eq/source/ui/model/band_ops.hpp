@@ -8,9 +8,10 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
+#include "../common.hpp"
 #include "engine_bridge.hpp"
 
-namespace contour::ui::band_ops {
+namespace altvane::eq::band_ops {
     /**
      * the filter type a new band gets when created at a frequency
      * near the edges of the spectrum it becomes a cut, with alt a shelf

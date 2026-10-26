@@ -10,7 +10,7 @@
 
 #include <numbers>
 
-namespace contour::ui {
+namespace altvane::eq {
     using zldsp::filter::FilterType;
 
     ResponseModel::ResponseModel() {

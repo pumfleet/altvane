@@ -354,7 +354,7 @@ bool PluginProcessor::hasEditor() const {
 }
 
 juce::AudioProcessorEditor* PluginProcessor::createEditor() {
-    return new contour::ui::Editor(*this);
+    return new altvane::eq::Editor(*this);
     // return new juce::GenericAudioProcessorEditor(*this);
 }
 

@@ -10,7 +10,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 
-namespace contour::ui {
+namespace altvane::ui {
     /**
      * show a pop-up menu styled like its owner
      * JUCE gives a top-level menu only its own look-and-feel (submenus inherit from it),

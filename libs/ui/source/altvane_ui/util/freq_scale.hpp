@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace contour::ui {
+namespace altvane::ui {
     /**
      * maps between frequency / gain and graph coordinates
      * the frequency axis is a fixed 10 Hz - 30 kHz log scale, independent of the sample rate

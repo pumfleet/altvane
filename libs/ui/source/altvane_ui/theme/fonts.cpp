@@ -8,14 +8,14 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #include "fonts.hpp"
 
-#include "BinaryData.h"
+#include "AltvaneUIBinary.h"
 
-namespace contour::ui {
+namespace altvane::ui {
     Fonts::Fonts() {
-        regular_ = juce::Typeface::createSystemTypefaceFor(BinaryData::InterRegular_ttf,
-                                                           BinaryData::InterRegular_ttfSize);
-        semi_bold_ = juce::Typeface::createSystemTypefaceFor(BinaryData::InterSemiBold_ttf,
-                                                             BinaryData::InterSemiBold_ttfSize);
+        regular_ = juce::Typeface::createSystemTypefaceFor(AltvaneUIBinary::InterRegular_ttf,
+                                                           AltvaneUIBinary::InterRegular_ttfSize);
+        semi_bold_ = juce::Typeface::createSystemTypefaceFor(AltvaneUIBinary::InterSemiBold_ttf,
+                                                             AltvaneUIBinary::InterSemiBold_ttfSize);
     }
 
     Fonts& Fonts::get() {

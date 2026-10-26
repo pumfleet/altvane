@@ -12,7 +12,7 @@
 
 #include "../../state/preset_json.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     PresetManager::PresetManager(EngineBridge& bridge) : bridge_(bridge) {
         captureReference();
     }

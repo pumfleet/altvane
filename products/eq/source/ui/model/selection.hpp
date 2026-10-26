@@ -11,9 +11,10 @@
 #include <bitset>
 #include <cstdint>
 
+#include "../common.hpp"
 #include "engine_bridge.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     /**
      * which bands are selected / hovered; message thread only
      */

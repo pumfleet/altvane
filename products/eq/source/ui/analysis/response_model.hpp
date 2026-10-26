@@ -8,12 +8,13 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
+#include "../common.hpp"
+#include "altvane_ui/util/freq_scale.hpp"
+#include "altvane_ui/util/spring.hpp"
 #include "../model/engine_bridge.hpp"
 #include "../../dsp/filter/iir_filter/coeff/ivantsov_coeff.hpp"
-#include "../util/freq_scale.hpp"
-#include "../util/spring.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     /**
      * magnitude responses of every band and their per-stereo-mode sums, in dB, exactly as the engine applies them:
      * - minimum phase / SVF run digital biquads: their coefficients from FilterDesign::updateCoeffs<IvantsovCoeff>

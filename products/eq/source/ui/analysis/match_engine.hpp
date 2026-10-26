@@ -10,8 +10,9 @@
 
 #include <mutex>
 
+#include "../common.hpp"
+#include "altvane_ui/util/tri_buffer.hpp"
 #include "../model/engine_bridge.hpp"
-#include "../util/tri_buffer.hpp"
 #include "../../dsp/analyzer/fft_analyzer/fft_analyzer_receiver.hpp"
 #include "../../dsp/analyzer/fft_analyzer/spectrum_smoother.hpp"
 #include "../../dsp/analyzer/fft_analyzer/spectrum_tilter.hpp"
@@ -20,7 +21,7 @@
 #include "../../chore/eq_match/eq_match_optimizer.hpp"
 #include "../../chore/thread/notifier.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     /**
      * EQ Match: learns the long-term spectrum of the input and of a reference, derives the correction curve,
      * and fits bands to it with the upstream optimizer

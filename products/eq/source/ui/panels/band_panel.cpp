@@ -10,12 +10,13 @@
 
 #include <algorithm>
 
+#include "altvane_ui/theme/fonts.hpp"
+#include "altvane_ui/util/value_format.hpp"
 #include "../model/band_ops.hpp"
-#include "../theme/fonts.hpp"
-#include "../theme/tokens.hpp"
-#include "../util/value_format.hpp"
+#include "../theme/eq_tokens.hpp"
+#include "../widgets/filter_icons.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     using namespace tokens;
     using zldsp::filter::FilterType;
 

@@ -8,7 +8,7 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #include "session_ops.hpp"
 
-namespace contour::ui::session_ops {
+namespace altvane::eq::session_ops {
     namespace {
         constexpr auto kClipboardTag = "ContourBands";
 

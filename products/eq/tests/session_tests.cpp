@@ -16,7 +16,7 @@
 #include "ui/analysis/match_engine.hpp"
 #include "ui/analysis/spectrum_worker.hpp"
 
-using namespace contour::ui;
+using namespace altvane::eq;
 using FT = zldsp::filter::FilterType;
 
 namespace {

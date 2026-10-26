@@ -11,7 +11,7 @@
 #include "fonts.hpp"
 #include "tokens.hpp"
 
-namespace contour::ui {
+namespace altvane::ui {
     using namespace tokens;
 
     void showPopupMenu(juce::PopupMenu menu, const juce::Component& owner, const juce::PopupMenu::Options& options,

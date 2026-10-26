@@ -8,9 +8,10 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
+#include "../common.hpp"
 #include "engine_bridge.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     /**
      * preset files on disk (upstream ZL Equalizer JSON format), groups are sub-folders
      */

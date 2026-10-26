@@ -8,6 +8,8 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
+#include "common.hpp"
+#include "altvane_ui/theme/look_and_feel.hpp"
 #include "../PluginProcessor.hpp"
 #include "model/engine_bridge.hpp"
 #include "model/selection.hpp"
@@ -22,9 +24,8 @@
 #include "analysis/match_engine.hpp"
 #include "model/preset_manager.hpp"
 #include "model/ui_settings.hpp"
-#include "theme/look_and_feel.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     /**
      * the Contour editor
      * everything is laid out in logical pixels inside root_, which is scaled by the interface size setting

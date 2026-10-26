@@ -8,9 +8,9 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #include "editor.hpp"
 
-#include "theme/tokens.hpp"
+#include "theme/eq_tokens.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     using namespace tokens;
 
     namespace {

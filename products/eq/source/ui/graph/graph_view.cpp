@@ -10,15 +10,15 @@
 
 #include <ranges>
 
+#include "altvane_ui/theme/fonts.hpp"
+#include "altvane_ui/theme/look_and_feel.hpp"
+#include "altvane_ui/util/path_minimizer.hpp"
+#include "altvane_ui/util/value_format.hpp"
 #include "../model/band_ops.hpp"
 #include "../model/session_ops.hpp"
-#include "../theme/fonts.hpp"
-#include "../theme/look_and_feel.hpp"
-#include "../theme/tokens.hpp"
-#include "../util/path_minimizer.hpp"
-#include "../util/value_format.hpp"
+#include "../theme/eq_tokens.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     using namespace tokens;
     using zldsp::filter::FilterType;
 

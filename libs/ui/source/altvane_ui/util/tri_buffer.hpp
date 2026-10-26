@@ -13,7 +13,7 @@
 #include <array>
 #include <cstdint>
 
-namespace contour::ui {
+namespace altvane::ui {
     /**
      * a single-producer, single-consumer buffer retaining the latest publication
      * (same algorithm as zlpanel::TriBuffer, kept here so the new UI does not depend on the legacy panels)

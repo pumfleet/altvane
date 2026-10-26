@@ -9,9 +9,9 @@
 #pragma once
 
 #include "../util/spring.hpp"
-#include "../widgets/widgets.hpp"
+#include "widgets.hpp"
 
-namespace contour::ui {
+namespace altvane::ui {
     /**
      * a modal card over the editor: dimmed backdrop, fade and slide in, closes on Esc or a click outside
      */

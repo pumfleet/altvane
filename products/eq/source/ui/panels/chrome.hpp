@@ -8,12 +8,13 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
+#include "../common.hpp"
+#include "altvane_ui/widgets/widgets.hpp"
 #include "../model/engine_bridge.hpp"
 #include "../analysis/spectrum_worker.hpp"
 #include "../model/preset_manager.hpp"
-#include "../widgets/widgets.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     /**
      * top bar: identity, preset, undo / redo, settings
      */

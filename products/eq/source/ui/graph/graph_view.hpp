@@ -8,16 +8,17 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
+#include "../common.hpp"
+#include "altvane_ui/util/freq_scale.hpp"
+#include "altvane_ui/util/spring.hpp"
 #include "../model/engine_bridge.hpp"
 #include "../model/selection.hpp"
 #include "../analysis/response_model.hpp"
 #include "../analysis/spectrum_worker.hpp"
-#include "../util/freq_scale.hpp"
-#include "../util/spring.hpp"
 
 #include <optional>
 
-namespace contour::ui {
+namespace altvane::eq {
     /**
      * the full-bleed frequency graph: grid, analyzer, band and composite curves, nodes and all their interactions
      */

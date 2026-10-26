@@ -8,7 +8,7 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #include "engine_bridge.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     namespace {
         constexpr std::array<const char*, BandParams::kNumFields> kBandIDs{
             zlp::PFilterStatus::kID, zlp::PFilterType::kID, zlp::POrder::kID, zlp::PLRMode::kID,

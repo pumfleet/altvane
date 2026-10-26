@@ -9,12 +9,12 @@
 #include "spectrum_worker.hpp"
 
 #include <algorithm>
-#include "../util/path_minimizer.hpp"
-#include "../util/gradient_minimizer.hpp"
+#include "altvane_ui/util/path_minimizer.hpp"
+#include "altvane_ui/util/gradient_minimizer.hpp"
 #include "../../zlp/sample_rate_helper.hpp"
 #include "../../dsp/analyzer/mag_analyzer/mag_receiver_base.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     SpectrumWorker::SpectrumWorker(PluginProcessor& p, MatchEngine* match) :
         Thread("contour_spectrum"),
         p_ref_(p),

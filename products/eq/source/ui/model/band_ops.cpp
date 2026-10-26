@@ -8,7 +8,7 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #include "band_ops.hpp"
 
-namespace contour::ui::band_ops {
+namespace altvane::eq::band_ops {
     using zldsp::filter::FilterType;
 
     namespace {

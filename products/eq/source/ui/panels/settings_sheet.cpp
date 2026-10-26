@@ -8,10 +8,10 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #include "settings_sheet.hpp"
 
-#include "../theme/fonts.hpp"
-#include "../theme/tokens.hpp"
+#include "altvane_ui/theme/fonts.hpp"
+#include "../theme/eq_tokens.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     using namespace tokens;
 
     namespace {

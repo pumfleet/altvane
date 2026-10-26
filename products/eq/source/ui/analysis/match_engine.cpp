@@ -14,7 +14,7 @@
 #include "../../zlp/sample_rate_helper.hpp"
 #include "../../dsp/chore/decibels.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     namespace {
         double fftMax(const double sample_rate) {
             return sample_rate >= 40000.0 && sample_rate < 50000.0 ? 30000.0 : .5 * sample_rate;

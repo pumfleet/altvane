@@ -11,7 +11,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 
-#include "BinaryData.h"
+#include "AltvaneUIBinary.h"
 
 namespace {
     const juce::Colour kAccent{0xFF47D2E8};
@@ -75,7 +75,7 @@ namespace {
         juce::Graphics g(image);
         g.setGradientFill(juce::ColourGradient(kBackgroundTop, 0.f, 0.f, kBackgroundBottom, 0.f, static_cast<float>(h), false));
         g.fillAll();
-        auto typeface = juce::Typeface::createSystemTypefaceFor(BinaryData::InterSemiBold_ttf, BinaryData::InterSemiBold_ttfSize);
+        auto typeface = juce::Typeface::createSystemTypefaceFor(AltvaneUIBinary::InterSemiBold_ttf, AltvaneUIBinary::InterSemiBold_ttfSize);
         if (banner) {
             // WiX draws its own text on the left; the mark sits on the right
             drawMark(g, juce::Rectangle<float>(static_cast<float>(w) - 70.f, 14.f, 48.f, 30.f), 2.2f);

@@ -11,7 +11,7 @@
 #include <array>
 #include <cmath>
 
-namespace contour::ui::format {
+namespace altvane::ui::format {
     namespace {
         constexpr std::array kNoteNames{"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
 

@@ -8,6 +8,9 @@
 // You should have received a copy of the GNU Affero General Public License along with Contour. If not, see <https://www.gnu.org/licenses/>.
 #pragma once
 
+#include "../common.hpp"
+#include "altvane_ui/util/tri_buffer.hpp"
+#include "altvane_ui/util/freq_scale.hpp"
 #include "../../PluginProcessor.hpp"
 #include "../../dsp/analyzer/fft_analyzer/fft_analyzer_receiver.hpp"
 #include "../../dsp/analyzer/fft_analyzer/spectrum_smoother.hpp"
@@ -16,11 +19,9 @@
 #include "../../dsp/analyzer/fft_analyzer/spectrum_blender.hpp"
 #include "../../dsp/analyzer/fft_analyzer/spectrum_collision.hpp"
 #include "../../chore/thread/notifier.hpp"
-#include "../util/tri_buffer.hpp"
-#include "../util/freq_scale.hpp"
 #include "match_engine.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     /**
      * drains the processor's analyzer FIFO on its own thread and turns it into spectrum paths
      * the analysis chain (multi-resolution FFT, blend, smoothing, tilt, decay) is the upstream one,

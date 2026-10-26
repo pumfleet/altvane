@@ -11,10 +11,11 @@
 #include <bitset>
 #include <span>
 
+#include "../common.hpp"
 #include "../../PluginProcessor.hpp"
 #include "../../chore/thread/notifier.hpp"
 
-namespace contour::ui {
+namespace altvane::eq {
     inline constexpr size_t kBandNum = zlp::kBandNum;
 
     /**

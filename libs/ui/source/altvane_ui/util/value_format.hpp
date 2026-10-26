@@ -11,7 +11,7 @@
 #include <optional>
 #include <juce_core/juce_core.h>
 
-namespace contour::ui::format {
+namespace altvane::ui::format {
     // typographic minus sign, reads better than a hyphen next to tabular digits
     inline const juce::String kMinus = juce::String::charToString(static_cast<juce::juce_wchar>(0x2212));
 
