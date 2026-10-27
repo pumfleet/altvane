@@ -12,6 +12,7 @@ set -euo pipefail
 
 ORT_VERSION="1.28.0"
 ORT_SHA256="9616cbdbbfcb1420b3261cd280a047d74ab0a249825e577b0e2dd310e22f6b83"
+FLATBUFFERS_VERSION="25.12.19" # Python package the operator reduction needs
 
 arch="${1:?usage: build_onnxruntime.sh <arm64|x86_64> <operators.config> [out-dir]}"
 config="$(cd "$(dirname "${2:?operators config required}")" && pwd)/$(basename "$2")"
@@ -40,8 +41,15 @@ if [[ ! -d "$src" ]]; then
     tar -xzf "$tarball" -C "$src_root"
 fi
 
+# a private environment, so the build does not depend on what the system Python has installed
+venv="$root/build/deps/onnxruntime-venv"
+if [[ ! -x "$venv/bin/python" ]]; then
+    "$python" -m venv "$venv"
+fi
+"$venv/bin/python" -m pip install --quiet --disable-pip-version-check "flatbuffers==$FLATBUFFERS_VERSION"
+
 build="$root/build/deps/onnxruntime-build-$arch"
-"$python" "$src/tools/ci_build/build.py" \
+"$venv/bin/python" "$src/tools/ci_build/build.py" \
     --build_dir "$build" \
     --config Release \
     --update --build --parallel \
