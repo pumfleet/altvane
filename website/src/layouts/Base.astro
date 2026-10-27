@@ -9,6 +9,7 @@ interface Props {
   product?: string;
 }
 const { title, description, product } = Astro.props;
+const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : undefined;
 ---
 <!doctype html>
 <html lang="en">
@@ -22,6 +23,8 @@ const { title, description, product } = Astro.props;
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
+    {canonical && <link rel="canonical" href={canonical} />}
+    {canonical && <meta property="og:url" content={canonical} />}
   </head>
   <body data-product={product}>
     <a class="skip" href="#main">Skip to content</a>
