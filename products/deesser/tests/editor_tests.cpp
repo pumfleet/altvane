@@ -395,3 +395,22 @@ TEST_CASE("a wheel that lost its edit to another control opens a fresh one", "[e
     undo.undo();
     CHECK(std::abs(f.value(params::kBandLow) - low_before) < 1.f);
 }
+
+TEST_CASE("a band field that lost its edit to another control opens a fresh one", "[editor]") {
+    Fixture f;
+    auto& undo = f.p.session_.undo_manager;
+    auto& low = f.editor->getBandViewForTesting().getLowField();
+    auto& range = f.editor->getDeckForTesting().getRange();
+    undo.clearUndoHistory();
+    // a notch on Low, a drag on the range, another notch on Low before Low's timer fires
+    low.on_begin();
+    low.on_change(5000.f);
+    range.on_begin();
+    range.on_change(12.f);
+    range.on_end();
+    low.on_change(4500.f);
+    low.on_end();
+    undo.undo();
+    CHECK(std::abs(f.value(params::kBandLow) - 5000.f) < 1.f);
+    CHECK(std::abs(f.value(params::kRange) - 12.f) < .05f);
+}

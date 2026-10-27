@@ -55,12 +55,17 @@ namespace altvane::deesser {
         // an edge set from its field pushes the other along, in the same edit, as dragging it does
         for (auto* field : {&low_field_, &high_field_}) {
             const auto is_low = field == &low_field_;
-            field->on_begin = [this, is_low] {
+            const auto begin = [this, is_low] {
                 juce::RangedAudioParameter* paras[] = {param(params::kBandLow), param(params::kBandHigh)};
                 editor_.beginEdit(paras, is_low ? "Change Band Low" : "Change Band High");
                 field_edit_ids_[is_low ? 0 : 1] = editor_.getEditId();
             };
-            field->on_change = [this, is_low](const float v) {
+            field->on_begin = begin;
+            field->on_change = [this, is_low, begin](const float v) {
+                // the next notch of a wheel after another control took over: a fresh edit, as bindValue does
+                if (!editor_.isEditing(field_edit_ids_[is_low ? 0 : 1])) {
+                    begin();
+                }
                 const auto& tree = p_ref_.parameters_;
                 if (is_low) {
                     setBand(v, tree.getRawParameterValue(params::kBandHigh)->load(), true);
