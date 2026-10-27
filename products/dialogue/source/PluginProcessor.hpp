@@ -62,7 +62,8 @@ namespace altvane::dialogue {
         void setCurrentProgram(int) override {
         }
 
-        const juce::String getProgramName(int) override { return {}; }
+        // VST3 hosts and the VST3 validator require every program to have a name
+        const juce::String getProgramName(int) override { return "Default"; }
 
         void changeProgramName(int, const juce::String&) override {
         }

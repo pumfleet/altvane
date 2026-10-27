@@ -26,7 +26,7 @@ namespace altvane::dialogue {
     // ---------------------------------------------------------------- Footer
 
     Footer::Footer(PluginProcessor& p, ui::ParamEditor& editor) : p_ref_(p), editor_(editor) {
-        for (auto* c : std::initializer_list<juce::Component*>{&eco_, &high_, &linked_, &stereo_, &removed_, &output_, &bypass_}) {
+        for (auto* c : std::initializer_list<juce::Component*>{&eco_, &high_, &linked_, &stereo_, &mid_side_, &removed_, &output_, &bypass_}) {
             addAndMakeVisible(c);
         }
         eco_.setTooltip("Eco: the lighter model, about a third of the CPU");
@@ -38,10 +38,15 @@ namespace altvane::dialogue {
 
         linked_.setTooltip("Linked: separate the mid once and apply it to both channels; keeps the stereo image");
         stereo_.setTooltip("Stereo: separate each channel on its own, at twice the CPU");
+        mid_side_.setTitle("Mid/Side");
+        mid_side_.setTooltip("Mid/Side: separate the mid and the side on their own, at twice the CPU; "
+                             "for centred dialogue with wide ambience");
         linked_.on_click = [this] { setChoice(params::kStereo, 0, "Stereo Mode"); };
         stereo_.on_click = [this] { setChoice(params::kStereo, 1, "Stereo Mode"); };
+        mid_side_.on_click = [this] { setChoice(params::kStereo, 2, "Stereo Mode"); };
         linked_.setComponentID(params::kStereo);
         stereo_.setComponentID(params::kStereo);
+        mid_side_.setComponentID(params::kStereo);
 
         removed_.setTooltip("Hear what is being removed");
         removed_.setOnColour(colour::kWarning);
@@ -74,6 +79,7 @@ namespace altvane::dialogue {
         const auto stereo = juce::roundToInt(tree.getRawParameterValue(params::kStereo)->load());
         linked_.setOn(stereo == 0);
         stereo_.setOn(stereo == 1);
+        mid_side_.setOn(stereo == 2);
         removed_.setOn(p_ref_.getListen() == dsp::Listen::kRemoved);
         output_.setValue(tree.getRawParameterValue(params::kOutput)->load());
         bypass_.setOn(tree.getRawParameterValue(params::kBypass)->load() > .5f);
@@ -83,6 +89,7 @@ namespace altvane::dialogue {
             show_stereo_ = show_stereo;
             linked_.setVisible(show_stereo);
             stereo_.setVisible(show_stereo);
+            mid_side_.setVisible(show_stereo);
             repaint();
         }
         const auto rate = p_ref_.getSampleRate();
@@ -108,6 +115,8 @@ namespace altvane::dialogue {
         linked_.setBounds(b.removeFromLeft(static_cast<float>(linked_.getIdealWidth())).toNearestInt());
         b.removeFromLeft(2.f);
         stereo_.setBounds(b.removeFromLeft(static_cast<float>(stereo_.getIdealWidth())).toNearestInt());
+        b.removeFromLeft(2.f);
+        mid_side_.setBounds(b.removeFromLeft(static_cast<float>(mid_side_.getIdealWidth())).toNearestInt());
         b.removeFromLeft(size::kS5);
         removed_.setBounds(b.removeFromLeft(static_cast<float>(removed_.getIdealWidth())).toNearestInt());
 

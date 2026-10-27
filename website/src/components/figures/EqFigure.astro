@@ -1,0 +1,258 @@
+---
+import Neutral from "./Neutral.astro";
+import { formatDb, formatFreq, LIVE_BAND, neutralBands, presets, type Preset } from "../../lib/dsp";
+import { EQ_VIEW, eqArcs, eqNode, eqStroke, eqZeroRay } from "../../lib/figures";
+
+interface Props {
+  interactive?: boolean;
+  preset?: Preset;
+  label: string;
+  class?: string;
+}
+const { interactive = false, preset = "default", label, class: className } = Astro.props;
+const bands = presets[preset]();
+const arcs = eqArcs(bands);
+const flatArcs = eqArcs(neutralBands(bands));
+const node = eqNode(bands);
+const flatNode = eqNode(neutralBands(bands));
+const live = bands[LIVE_BAND];
+const readoutId = `eq-readout-${Math.random().toString(36).slice(2, 8)}`;
+const hasCaption = Astro.slots.has("default");
+---
+<figure
+  class:list={["figure", "eq-figure", className]}
+  data-product="eq"
+  data-eq-figure
+  data-preset={preset}
+  data-interactive={interactive ? "" : undefined}
+>
+  <div class="eq-art">
+    <svg
+      viewBox={`0 0 ${EQ_VIEW.w} ${EQ_VIEW.h}`}
+      role={interactive ? "application" : "img"}
+      aria-roledescription={interactive ? "equalizer" : undefined}
+      aria-label={label}
+      aria-describedby={interactive ? readoutId : undefined}
+      tabindex={interactive ? 0 : undefined}
+    >
+      <path class="eq-zero" d={eqZeroRay()} />
+      <g class="eq-arcs" stroke-width={eqStroke()}>
+        {arcs.map((a, i) => <path d={a.d} data-ink="spot" data-n={JSON.stringify({ d: flatArcs[i].d })} />)}
+      </g>
+      {interactive && (
+        <g
+          class="eq-node"
+          transform={`translate(${node.x.toFixed(1)} ${node.y.toFixed(1)})`}
+          data-n={JSON.stringify({ transform: `translate(${flatNode.x.toFixed(1)} ${flatNode.y.toFixed(1)})` })}
+        >
+          <circle r="17" />
+          <circle r="5" />
+        </g>
+      )}
+    </svg>
+    <Neutral />
+  </div>
+  {(interactive || hasCaption) && (
+    <figcaption class="eq-caption">
+      {interactive && (
+        <span class="eq-readout num" id={readoutId} aria-live="polite">
+          <span>Band {LIVE_BAND + 1}, bell</span>
+          <span data-readout="freq">{formatFreq(live.freq)}</span>
+          <span data-readout="gain">{formatDb(live.gain)}</span>
+        </span>
+      )}
+      {hasCaption && <span class="eq-note t-small"><slot /></span>}
+    </figcaption>
+  )}
+</figure>
+
+<style>
+  .eq-figure {
+    position: relative;
+  }
+  .eq-art {
+    aspect-ratio: 1;
+  }
+  .eq-art svg {
+    width: 100%;
+    height: 100%;
+    touch-action: pan-y;
+  }
+  .eq-figure[data-interactive] svg {
+    cursor: crosshair;
+  }
+  .eq-figure svg:focus-visible {
+    outline-offset: -6px;
+  }
+  .eq-arcs path {
+    fill: none;
+    stroke-linecap: butt;
+  }
+  .eq-zero {
+    fill: none;
+    stroke: var(--rule-strong);
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+    stroke-dasharray: 2 5;
+  }
+  .eq-node circle:first-child {
+    fill: var(--paper);
+    stroke: var(--ink);
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+  }
+  .eq-node circle:last-child {
+    fill: var(--ink);
+  }
+  .eq-caption {
+    display: grid;
+    gap: var(--s3);
+    max-width: 34ch;
+  }
+  .eq-readout {
+    display: flex;
+    gap: var(--s4);
+    font-size: 0.8125rem;
+    color: var(--ink);
+  }
+  .eq-readout span:first-child {
+    color: var(--ink-3);
+  }
+  .eq-note {
+    padding-top: var(--s3);
+    border-top: 1px solid var(--rule);
+  }
+
+  /* bled: the arcs scale past their box and the sheet crops them at its edge; the caption sits in the
+     quiet corner below the curve */
+  .eq-figure--bleed {
+    height: 100%;
+    overflow: hidden;
+  }
+  .eq-figure--bleed .eq-art {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: var(--bleed, 132%);
+  }
+  .eq-figure--bleed .eq-caption {
+    position: absolute;
+    right: var(--margin);
+    bottom: var(--s7);
+    background: var(--paper);
+    padding: var(--s3) 0 0 var(--s4);
+  }
+</style>
+
+<script>
+  import { formatDb, formatFreq, LIVE_BAND, neutralBands, presets, type Preset } from "../../lib/dsp";
+  import { eqArcs, eqFromPoint, eqNode, EQ_VIEW } from "../../lib/figures";
+  import { drawIn, reducedMotion } from "../../lib/motion";
+
+  for (const figure of document.querySelectorAll<HTMLElement>("[data-eq-figure]")) {
+    const svg = figure.querySelector("svg")!;
+    const paths = [...figure.querySelectorAll<SVGPathElement>(".eq-arcs path")];
+    const node = figure.querySelector<SVGGElement>(".eq-node");
+    const freqOut = figure.querySelector("[data-readout='freq']");
+    const gainOut = figure.querySelector("[data-readout='gain']");
+    const bands = presets[figure.dataset.preset as Preset]();
+    const flat = neutralBands(bands);
+    const target = { freq: bands[LIVE_BAND].freq, gain: bands[LIVE_BAND].gain };
+    let mix = 1; // 0 = neutral, 1 = the EQ applied
+    let frame = 0;
+    let touched = false; // a hand on the figure ends the draw-in
+
+    const render = () => {
+      // gains blend from 0 dB; the high-pass slides up from below the audible range
+      const shown = bands.map((b, i) =>
+        b.shape === "highPass"
+          ? { ...b, freq: Math.exp(Math.log(flat[i].freq) + (Math.log(b.freq) - Math.log(flat[i].freq)) * mix) }
+          : { ...b, gain: b.gain * mix },
+      );
+      eqArcs(shown).forEach((a, i) => paths[i].setAttribute("d", a.d));
+      if (node) {
+        const p = eqNode(shown);
+        node.setAttribute("transform", `translate(${p.x.toFixed(1)} ${p.y.toFixed(1)})`);
+      }
+    };
+
+    const updateReadout = () => {
+      if (freqOut) freqOut.textContent = formatFreq(bands[LIVE_BAND].freq);
+      if (gainOut) gainOut.textContent = formatDb(bands[LIVE_BAND].gain);
+    };
+
+    // the live band follows the pointer with a little damping, like a node under a hand
+    const settle = () => {
+      const band = bands[LIVE_BAND];
+      const lf = Math.log(band.freq);
+      const nf = lf + (Math.log(target.freq) - lf) * 0.22;
+      const ng = band.gain + (target.gain - band.gain) * 0.22;
+      band.freq = Math.exp(nf);
+      band.gain = ng;
+      render();
+      updateReadout();
+      const done = Math.abs(Math.log(target.freq) - nf) < 0.002 && Math.abs(target.gain - ng) < 0.01;
+      frame = done ? 0 : requestAnimationFrame(settle);
+    };
+    const retarget = (freq: number, gain: number) => {
+      target.freq = Math.max(40, Math.min(16000, freq));
+      target.gain = Math.max(-12, Math.min(10, gain));
+      if (reducedMotion()) {
+        bands[LIVE_BAND].freq = target.freq;
+        bands[LIVE_BAND].gain = target.gain;
+        render();
+        updateReadout();
+      } else if (!frame) {
+        frame = requestAnimationFrame(settle);
+      }
+    };
+
+    drawIn(figure, (t) => {
+      if (touched) return;
+      mix = t;
+      render();
+    });
+
+    if (!figure.hasAttribute("data-interactive")) continue;
+
+    const toView = (e: PointerEvent) => {
+      const box = svg.getBoundingClientRect();
+      return {
+        x: ((e.clientX - box.left) / box.width) * EQ_VIEW.w,
+        y: ((e.clientY - box.top) / box.height) * EQ_VIEW.h,
+      };
+    };
+    const follow = (e: PointerEvent) => {
+      touched = true;
+      mix = 1;
+      const p = toView(e);
+      const { freq, gain } = eqFromPoint(p.x, p.y);
+      retarget(freq, gain);
+    };
+    let pressed = false;
+    svg.addEventListener("pointerdown", (e) => {
+      pressed = true;
+      follow(e);
+    });
+    window.addEventListener("pointerup", () => (pressed = false));
+    svg.addEventListener("pointermove", (e) => {
+      if (e.pointerType !== "mouse" && !pressed) return;
+      follow(e);
+    });
+    svg.addEventListener("keydown", (e) => {
+      const fine = e.shiftKey ? 0.25 : 1;
+      const keys: Record<string, () => void> = {
+        ArrowLeft: () => retarget(target.freq / Math.pow(2, fine / 6), target.gain),
+        ArrowRight: () => retarget(target.freq * Math.pow(2, fine / 6), target.gain),
+        ArrowUp: () => retarget(target.freq, target.gain + 0.5 * fine),
+        ArrowDown: () => retarget(target.freq, target.gain - 0.5 * fine),
+      };
+      if (keys[e.key]) {
+        e.preventDefault();
+        touched = true;
+        mix = 1;
+        keys[e.key]();
+      }
+    });
+  }
+</script>

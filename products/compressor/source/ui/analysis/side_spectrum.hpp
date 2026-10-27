@@ -47,7 +47,7 @@ namespace altvane::compressor {
         zldsp::analyzer::SpectrumSmoother smoother_;
         zldsp::analyzer::SpectrumTilter tilter_;
         zldsp::analyzer::SpectrumDecayer decayer_;
-        // the decayer stores to it with aligned SIMD writes, so it must be an aligned vector
+        // the engine's SIMD routines store to it with aligned stores (SpectrumDecayer::decay)
         zldsp::vector::aligned_vector<float> spectrum_;
         double sample_rate_{0.0}, bin_width_{1.0};
         float refresh_rate_{0.f};

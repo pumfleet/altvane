@@ -164,7 +164,7 @@ namespace altvane::ui {
     void PresetManager::initialise() {
         std::vector<std::pair<juce::RangedAudioParameter*, float>> values;
         for (auto* p : processor_.getParameters()) {
-            if (auto* ranged = dynamic_cast<juce::RangedAudioParameter*>(p)) {
+            if (auto* ranged = dynamic_cast<juce::RangedAudioParameter*>(p); ranged != nullptr && codec_.includes(*p)) {
                 values.emplace_back(ranged, ranged->convertFrom0to1(ranged->getDefaultValue()));
             }
         }
@@ -253,7 +253,7 @@ namespace altvane::ui {
         const auto& params = processor_.getParameters();
         reference_.resize(static_cast<size_t>(params.size()));
         for (int i = 0; i < params.size(); ++i) {
-            reference_[static_cast<size_t>(i)] = params[i]->getValue();
+            reference_[static_cast<size_t>(i)] = codec_.includes(*params[i]) ? params[i]->getValue() : 0.f;
         }
     }
 
@@ -263,7 +263,7 @@ namespace altvane::ui {
             return true;
         }
         for (int i = 0; i < params.size(); ++i) {
-            if (std::abs(params[i]->getValue() - reference_[static_cast<size_t>(i)]) > 1e-5f) {
+            if (codec_.includes(*params[i]) && std::abs(params[i]->getValue() - reference_[static_cast<size_t>(i)]) > 1e-5f) {
                 return true;
             }
         }

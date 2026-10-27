@@ -1,0 +1,98 @@
+---
+import Base from "../layouts/Base.astro";
+import ProductHero from "../components/ProductHero.astro";
+import Section from "../components/Section.astro";
+import Features from "../components/Features.astro";
+import Gestures from "../components/Gestures.astro";
+import Plate from "../components/Plate.astro";
+import Readings from "../components/Readings.astro";
+import Close from "../components/Close.astro";
+import DialogueFigure from "../components/figures/DialogueFigure.astro";
+import { product } from "../data/products";
+
+const p = product("dialogue");
+---
+<Base title="Altvane Dialogue: neural dialogue isolation" description={p.summary} product="dialogue">
+  <ProductHero product={p}>
+    <DialogueFigure controls rows={26} />
+  </ProductHero>
+
+  <Section id="features" title="What it does" note="Pull a voice out of a noisy location recording, dry out a reverberant room, or keep only the room for an M&E track.">
+    <Features
+      items={[
+        { lead: "Three levels", text: "Voice, Ambience and Reverb, each from Off to +12 dB. The stems always add up to the input, so with every level at 0 dB the plug-in is transparent, sample for sample." },
+        { lead: "See what you keep", text: "The spectrum stacks what each stem keeps at its level, under a faint outline of the input: turn the ambience down and its layer shrinks. Solo a stem, or press Removed to hear exactly what is being taken away." },
+        { lead: "Sensitivity across the spectrum", text: "Each stem has a six-point curve from 120 Hz to 11 kHz. Raise the voice's curve at the top to keep consonants, or raise the ambience's at the bottom to clear rumble and wind." },
+        { lead: "Eco or High", text: "Eco or High quality. Linked runs one analysis of the mid and applies it to both channels; Stereo analyses each channel on its own. 44.1–192 kHz, mono or stereo." },
+        { lead: "Latency your host can trust", text: "A fixed, reported latency of about 80 ms at 512-sample buffers, compensated exactly by your host. Offline bounces wait for the model; in real time, a late frame plays unprocessed instead of dropping out." },
+        { lead: "Everything else, done properly", text: "Presets with a factory set, A/B compare, undo and redo, adjustable interface size and accent colour, keyboard control, screen-reader support and host parameter menus." },
+      ]}
+    />
+  </Section>
+
+  <Section id="editor" title="The editor" note="Hero knobs in the stems' colours, the spectrum above, and quality, stereo mode, latency and output in the footer.">
+    <Plate src="/images/dialogue-editor.png" width={1800} height={1160} alt="The Altvane Dialogue editor: a dark spectrum with the voice layer in cream over blue ambience and violet reverb, and three knobs below labelled Voice at 0.0 dB, Ambience at −20.0 dB and Reverb at −10.0 dB." caption="Altvane Dialogue 0.1.0." />
+  </Section>
+
+  <Section id="how" title="How it works">
+    <div class="prose">
+      <p class="t-body">
+        The separation runs at 48 kHz on 20 ms frames with a 10 ms hop. A causal speech-enhancement network,
+        <a href="https://huggingface.co/Ceva-IP/DPDFNet">DPDFNet</a> by Ceva, estimates the speech in each frame (Eco
+        runs the 2-layer model, High the 8-layer one), and what it leaves is the ambience. The late reverb of the voice
+        is then predicted from the voice's energy 50 ms earlier and taken from both in proportion.
+      </p>
+      <p class="t-body">
+        Other sample rates are converted to 48 kHz and back, and what that round trip loses (everything above about
+        20 kHz) is added back from the input, following the ambience level. The network and its weights are compiled into
+        the plug-in, so there are no files to install at run time.
+      </p>
+    </div>
+  </Section>
+
+  <Section id="gestures" title="Under the hand" note="Sensitivity moves sound between stems; the stems still add up to the input.">
+    <Gestures
+      rows={[
+        ["Change a level", "Drag the knob (<kbd>Shift</kbd> for fine), scroll, or double-click the value and type <kbd>-12</kbd> or <kbd>off</kbd>"],
+        ["Reset a level", "<kbd>Cmd</kbd>-click or double-click the knob"],
+        ["Hear one stem", "The headphones under its knob"],
+        ["Hear what is removed", "Removed, in the footer"],
+        ["Shape a stem's sensitivity", "The curve button under its knob, then drag the nodes; double-click a node to reset it, <kbd>Esc</kbd> to close"],
+        ["Undo and redo", "<kbd>Cmd Z</kbd> and <kbd>Shift Cmd Z</kbd>"],
+      ]}
+    />
+  </Section>
+
+  <Section id="specs" title="Specifications" note="Release build on an M5 Max, at 48 kHz, as a share of one core per instance.">
+    <Readings
+      size="large"
+      items={[
+        { value: "8%", label: "Eco, Linked" },
+        { value: "22%", label: "High, Linked" },
+        { value: "80 ms", label: "latency at 512-sample buffers" },
+      ]}
+    />
+    <div class="spec-table">
+      <Readings
+        items={[
+          { value: "16%", label: "Eco, Stereo" },
+          { value: "43%", label: "High, Stereo" },
+          { value: "44.1–192", label: "kHz, mono or stereo" },
+          { value: "macOS, Windows", label: "macOS 11+, Windows x64; VST3, AU, LV2, Standalone" },
+        ]}
+      />
+    </div>
+  </Section>
+
+  <Close product={p} />
+</Base>
+
+<style>
+  .prose {
+    display: grid;
+    gap: var(--s4);
+  }
+  .spec-table {
+    margin-top: var(--s6);
+  }
+</style>

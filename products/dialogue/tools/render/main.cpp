@@ -9,7 +9,7 @@
 
 // Offline renderer: runs a WAV file through the plug-in, latency-compensated, and writes the mix and each stem.
 //
-//   AltvaneDialogueRender <in.wav> <out-dir> [--quality eco|high] [--stereo linked|stereo] [--block N]
+//   AltvaneDialogueRender <in.wav> <out-dir> [--quality eco|high] [--stereo linked|stereo|midside] [--block N]
 //                         [--voice dB] [--ambience dB] [--reverb dB] [--realtime]
 //
 // --realtime processes through the worker thread at real-time pace instead of waiting for it (a soak test of the
@@ -20,6 +20,7 @@
 #include <juce_audio_formats/juce_audio_formats.h>
 
 #include "PluginProcessor.hpp"
+#include "dsp/kernels.hpp"
 
 using altvane::dialogue::PluginProcessor;
 namespace params = altvane::dialogue::params;
@@ -92,8 +93,9 @@ int main(int argc, char* argv[]) {
         args.add(argv[i]);
     }
     if (args.size() < 2) {
-        std::cerr << "usage: AltvaneDialogueRender <in.wav> <out-dir> [--quality eco|high] [--stereo linked|stereo]"
-                     " [--block N] [--voice dB] [--ambience dB] [--reverb dB] [--realtime]\n";
+        std::cerr << "usage: AltvaneDialogueRender <in.wav> <out-dir> [--quality eco|high]"
+                     " [--stereo linked|stereo|midside] [--block N] [--voice dB] [--ambience dB] [--reverb dB]"
+                     " [--realtime] [--no-blas]\n";
         return 1;
     }
     auto option = [&](const juce::String& name, const juce::String& fallback) {
@@ -117,10 +119,13 @@ int main(int argc, char* argv[]) {
     const auto rate = reader->sampleRate;
     const auto block = option("--block", "512").getIntValue();
     const auto realtime = args.contains("--realtime");
+    // the network's matrix products without Accelerate, to time what it brings
+    dsp::kernels::setBlasEnabled(!args.contains("--no-blas"));
 
     PluginProcessor p;
     setParam(p, params::kQuality, option("--quality", "high") == "eco" ? 0.f : 1.f);
-    setParam(p, params::kStereo, option("--stereo", "linked") == "stereo" ? 1.f : 0.f);
+    const auto stereo = juce::StringArray{"linked", "stereo", "midside"}.indexOf(option("--stereo", "linked"));
+    setParam(p, params::kStereo, static_cast<float>(std::max(stereo, 0)));
     setParam(p, params::kVoice, option("--voice", "0").getFloatValue());
     setParam(p, params::kAmbience, option("--ambience", "-60").getFloatValue());
     setParam(p, params::kReverb, option("--reverb", "-60").getFloatValue());

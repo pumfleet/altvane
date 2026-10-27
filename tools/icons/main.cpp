@@ -7,7 +7,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License along with Altvane. If not, see <https://www.gnu.org/licenses/>.
 // Renders an Altvane product's application icon and installer artwork as PNGs.
-// usage: AltvaneIcons <output-dir> <product-label> [grid|knee|ceiling]   (see make_icons.sh, which assembles .icns / .ico / .bmp)
+// usage: AltvaneIcons <output-dir> <product-label> [grid|knee|ride|ceiling]   (see make_icons.sh, which assembles .icns / .ico / .bmp)
 
 #include <juce_gui_basics/juce_gui_basics.h>
 
@@ -21,9 +21,10 @@ namespace {
 
     /**
      * the quiet drawing behind the mark that tells the products apart: a frequency grid (EQ), a compressor's
-     * transfer curve over a level grid (Compressor) or a waveform held under a flat ceiling (Limiter)
+     * transfer curve over a level grid (Compressor), a level riding onto a target line (Leveler) or a waveform held
+     * under a flat ceiling (Limiter)
      */
-    enum class Motif { kGrid, kKnee, kCeiling };
+    enum class Motif { kGrid, kKnee, kRide, kCeiling };
 
     /**
      * the Altvane mark, the same as the editor header's, with a soft glow
@@ -68,6 +69,27 @@ namespace {
             g.setColour(juce::Colours::white.withAlpha(.1f));
             g.strokePath(curve, juce::PathStrokeType(std::max(1.f, s / 160.f), juce::PathStrokeType::curved,
                                                      juce::PathStrokeType::rounded));
+        }
+        if (motif == Motif::kRide) {
+            // an uneven level, and the same level ridden onto the target line below the mark
+            const auto at = [&](const float u, const float v) {
+                return juce::Point<float>(tile.getX() + tile.getWidth() * u, tile.getBottom() - tile.getHeight() * v);
+            };
+            juce::Path raw, ridden;
+            raw.startNewSubPath(at(0.f, .1f));
+            ridden.startNewSubPath(at(0.f, .14f));
+            for (int i = 1; i <= 40; ++i) {
+                const auto u = static_cast<float>(i) / 40.f;
+                const auto swing = std::sin(u * 9.f) * .045f + std::sin(u * 23.f + 1.f) * .015f;
+                raw.lineTo(at(u, .12f + swing));
+                ridden.lineTo(at(u, .14f + swing * .18f));
+            }
+            const auto stroke = juce::PathStrokeType(std::max(1.f, s / 160.f), juce::PathStrokeType::curved,
+                                                     juce::PathStrokeType::rounded);
+            g.setColour(juce::Colours::white.withAlpha(.05f));
+            g.strokePath(raw, stroke);
+            g.setColour(juce::Colours::white.withAlpha(.11f));
+            g.strokePath(ridden, stroke);
         }
         if (motif == Motif::kCeiling) {
             // a level envelope whose peaks flatten against a ceiling line
@@ -130,23 +152,69 @@ namespace {
         juce::PNGImageFormat().writeImageToStream(image, out);
         std::cout << "wrote " << file.getFileName() << std::endl;
     }
+
+    /**
+     * a 24-bit BMP for the WiX installer art, for systems without sips
+     */
+    void writeBMP(const juce::Image& image, const juce::File& file) {
+        file.deleteFile();
+        juce::FileOutputStream out(file);
+        const auto w = image.getWidth(), h = image.getHeight();
+        const auto row = (w * 3 + 3) / 4 * 4;
+        const auto data_size = static_cast<uint32_t>(row * h);
+        out.write("BM", 2);
+        out.writeInt(static_cast<int>(54 + data_size));
+        out.writeInt(0);
+        out.writeInt(54);
+        out.writeInt(40);
+        out.writeInt(w);
+        out.writeInt(h);
+        out.writeShort(1);
+        out.writeShort(24);
+        out.writeInt(0);
+        out.writeInt(static_cast<int>(data_size));
+        out.writeInt(2835);
+        out.writeInt(2835);
+        out.writeInt(0);
+        out.writeInt(0);
+        // bottom-up rows of blue, green, red
+        for (int y = h - 1; y >= 0; --y) {
+            for (int x = 0; x < w; ++x) {
+                const auto c = image.getPixelAt(x, y);
+                out.writeByte(static_cast<char>(c.getBlue()));
+                out.writeByte(static_cast<char>(c.getGreen()));
+                out.writeByte(static_cast<char>(c.getRed()));
+            }
+            for (int p = w * 3; p < row; ++p) {
+                out.writeByte(0);
+            }
+        }
+        std::cout << "wrote " << file.getFileName() << std::endl;
+    }
 }
 
 int main(const int argc, char* argv[]) {
     juce::ScopedJuceInitialiser_GUI gui;
     if (argc < 3) {
-        std::cerr << "usage: AltvaneIcons <output-dir> <product-label> [grid|knee|ceiling]" << std::endl;
+        std::cerr << "usage: AltvaneIcons <output-dir> <product-label> [grid|knee|ride|ceiling]" << std::endl;
         return 1;
     }
     const auto dir = juce::File::getCurrentWorkingDirectory().getChildFile(argv[1]);
     const auto product = juce::String(argv[2]);
-    const auto motif_name = argc > 3 ? juce::String(argv[3]) : juce::String();
-    const auto motif = motif_name == "knee" ? Motif::kKnee : motif_name == "ceiling" ? Motif::kCeiling : Motif::kGrid;
+    const auto motif_name = argc > 3 ? juce::String(argv[3]) : juce::String("grid");
+    const auto motif = motif_name == "knee"      ? Motif::kKnee
+                       : motif_name == "ride"    ? Motif::kRide
+                       : motif_name == "ceiling" ? Motif::kCeiling
+                                                 : Motif::kGrid;
     dir.createDirectory();
     for (const auto size : {16, 24, 32, 48, 64, 128, 256, 512, 1024}) {
         write(renderIcon(size, motif), dir.getChildFile("icon_" + juce::String(size) + ".png"));
     }
-    write(renderInstallerArt(493, 58, true, product), dir.getChildFile("banner.png"));
-    write(renderInstallerArt(493, 312, false, product), dir.getChildFile("dialog.png"));
+    const auto banner = renderInstallerArt(493, 58, true, product);
+    const auto dialog = renderInstallerArt(493, 312, false, product);
+    write(banner, dir.getChildFile("banner.png"));
+    write(dialog, dir.getChildFile("dialog.png"));
+    writeBMP(banner, dir.getChildFile("banner.bmp"));
+    writeBMP(dialog, dir.getChildFile("dialog.bmp"));
     return 0;
 }

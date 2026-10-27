@@ -1,0 +1,12 @@
+---
+// a drawn arrow for actions: "right" moves on the page, "out" leaves the site, "down" downloads
+interface Props {
+  dir?: "right" | "out" | "down";
+}
+const { dir = "right" } = Astro.props;
+---
+<svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square">
+  {dir === "right" && <path d="M2 9h13M10 4l5 5-5 5" />}
+  {dir === "out" && <path d="M5 13 14 4M6 4h8v8" />}
+  {dir === "down" && <path d="M9 2v12M4 9l5 5 5-5M3 16.5h12" />}
+</svg>

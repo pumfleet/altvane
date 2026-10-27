@@ -2,17 +2,19 @@
 
 ## 0.1.0
 
-First release of Altvane Dialogue.
+First release of Altvane Dialogue, for macOS 11 or newer (Apple silicon and Intel) and Windows x64.
 
 ### Separation
 
 - Voice, ambience and voice reverb, each with a level from Off to +12 dB; the stems always add up to the input
-- DPDFNet speech estimation (Eco: 2-layer, High: 8-layer), statically linked ONNX Runtime, no files at run time
+- DPDFNet speech estimation (Eco: 2-layer, High: 8-layer), run by our own implementation of the network (Accelerate
+  on macOS), with the two streams of Stereo and Mid/Side computed together; no files at run time
 - Voice reverb split from the speech estimate and the residual with a late-reverb model
 - Six-point sensitivity curve per stem
 - Voice, Ambience and Reverb outputs (off until the host enables them), each stem at its level, adding up to the
   main output
-- Linked (mid) or per-channel stereo; mono and stereo buses; 44.1–192 kHz through an exact 48 kHz round trip
+- Linked (mid), per-channel or mid/side stereo; mono and stereo buses; 44.1–192 kHz through an exact 48 kHz round
+  trip
 - Fixed reported latency; offline renders wait for the model, real-time frames that would be late play unprocessed
 - Quality and stereo-mode changes cross-fade once the new model state is warm
 

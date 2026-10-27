@@ -13,7 +13,8 @@
 namespace altvane::ui::icons {
     enum class Icon {
         kPower, kUndo, kRedo, kSettings, kChevronLeft, kChevronRight, kChevronDown,
-        kHeadphones, kTrash, kDynamic, kPlus, kClose, kSideChain, kFreeze, kCopy, kSearch, kStar, kFolder, kCurve
+        kHeadphones, kTrash, kDynamic, kPlus, kClose, kSideChain, kFreeze, kCopy, kSearch, kStar, kFolder, kCurve,
+        kFader, kTarget
     };
 
     /**

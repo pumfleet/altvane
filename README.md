@@ -6,9 +6,10 @@ shared third-party dependencies and a shared design system.
 | Product | Directory | What it is |
 |---|---|---|
 | [Altvane EQ](products/eq/README.md) | `products/eq` | Parametric and dynamic equalizer, on the ZL Equalizer 2 engine |
-| [Altvane Dialogue](products/dialogue/README.md) | `products/dialogue` | Neural dialogue isolation: voice, ambience and voice reverb levels (macOS on Apple silicon for now) |
+| [Altvane Dialogue](products/dialogue/README.md) | `products/dialogue` | Neural dialogue isolation: voice, ambience and voice reverb levels (macOS 11+ and Windows x64 for now) |
 | [Altvane Compressor](products/compressor/README.md) | `products/compressor` | Compressor, upward compressor and expander, on the ZL Compressor engine (in development) |
 | [Altvane Limiter](products/limiter/README.md) | `products/limiter` | True-peak limiter and loudness meter with delivery targets, on the ZL Limiter engine |
+| [Altvane Leveler](products/leveler/README.md) | `products/leveler` | Automatic vocal rider with lookahead, voicing detection, a music side chain and automation write |
 
 ## Layout
 
@@ -22,6 +23,7 @@ products/<code>/      one directory per product: CMakeLists.txt, source/, tests/
 packaging/            installer scripts shared by every product
 tools/icons/          renders each product's app icon and installer art
 scripts/              upstream engine sync and checks
+website/              altvane.com: the Astro site (see website/README.md)
 ```
 
 ## Build
@@ -94,7 +96,7 @@ default version in its `CMakeLists.txt`.
 
    `altvane_add_plugin` fills in the company, manufacturer code (`Altv`), bundle id (`com.altvane.<code>`), LV2 URI,
    formats and code signing settings, and creates `Altvane<Name>_Core` for tests and tools to link.
-2. Generate icons and installer art: `tools/icons/make_icons.sh <AltvaneIcons> <code> <LABEL> [grid|knee]` (the
+2. Generate icons and installer art: `tools/icons/make_icons.sh <AltvaneIcons> <code> <LABEL> [grid|knee|ride]` (the
    last argument picks the drawing behind the mark).
 3. Add the product to the table above.
 

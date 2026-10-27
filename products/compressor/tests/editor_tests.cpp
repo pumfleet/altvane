@@ -12,6 +12,7 @@
 
 #include "PluginProcessor.hpp"
 #include "ui/editor.hpp"
+#include "ui/analysis/side_spectrum.hpp"
 
 using Catch::Matchers::WithinAbs;
 
@@ -191,4 +192,23 @@ TEST_CASE("the editor runs frames with audio flowing", "[editor]") {
     }
     CHECK(editor->getHistoryForTesting().size() > 0);
     p.editorBeingDeleted(base.get());
+}
+
+TEST_CASE("the side-chain spectrum is aligned for the engine's SIMD stores", "[editor][spectrum]") {
+    // SpectrumDecayer::decay stores to the spectrum with aligned stores: a buffer from plain new is only 16-byte
+    // aligned on glibc, so the AVX2 build crashed about half the time
+    PluginProcessor p;
+    p.setRateAndBufferSizeDetails(kSampleRate, kBlock);
+    p.prepareToPlay(kSampleRate, kBlock);
+    altvane::compressor::SideSpectrum spectrum(p);
+    spectrum.setOn(true);
+    auto updated = false;
+    for (int i = 0; i < 20; ++i) {
+        runSine(p, -12.f, 1.0 / 60.0);
+        updated = spectrum.update(60.f) || updated;
+    }
+    CHECK(updated);
+    REQUIRE(!spectrum.getSpectrum().empty());
+    CHECK(reinterpret_cast<std::uintptr_t>(spectrum.getSpectrum().data()) % HWY_ALIGNMENT == 0);
+    spectrum.setOn(false);
 }
