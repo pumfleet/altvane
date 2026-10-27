@@ -22,3 +22,9 @@ target_compile_definitions(AltvaneCompressor_Core INTERFACE ZL_MAX_OVERSAMPLE_RA
 if (ALTVANE_BUILD_TESTS)
     altvane_add_tests(AltvaneCompressor "${CMAKE_CURRENT_SOURCE_DIR}/tests")
 endif ()
+
+if (ALTVANE_BUILD_TOOLS)
+    # headless snapshot renderer for visual review
+    add_executable(AltvaneCompressorSnapshot tools/snapshot/main.cpp)
+    altvane_link_plugin_code(AltvaneCompressorSnapshot AltvaneCompressor)
+endif ()
