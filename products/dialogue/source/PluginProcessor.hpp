@@ -17,6 +17,12 @@
 namespace altvane::dialogue {
     class PluginProcessor final : public juce::AudioProcessor {
     public:
+        /**
+         * output buses 1-3 carry the voice, ambience and reverb, each at its level and the output gain, so together
+         * they add up to the main output; off until the host enables them
+         */
+        static constexpr int kFirstStemBus = 1;
+
         juce::AudioProcessorValueTreeState parameters_;
         // edit history, A/B slots and current preset of the editor, kept so they survive closing the editor
         ui::Session session_;
@@ -99,7 +105,9 @@ namespace altvane::dialogue {
         std::atomic<bool> model_ready_{false};
 
         int max_block_{512};
-        juce::SmoothedValue<float> bypass_mix_, output_gain_, residual_gain_;
+        bool stem_outputs_{false};
+        juce::AudioBuffer<float> stem_scratch_;
+        juce::SmoothedValue<float> bypass_mix_, output_gain_, residual_gain_, stem_residual_gain_;
         std::array<std::atomic<float>, 2> input_peak_{}, output_peak_{};
 
         void updateControls();

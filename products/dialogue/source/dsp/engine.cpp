@@ -20,6 +20,15 @@ namespace altvane::dialogue::dsp {
                 out[k] = .5f * (a[k] + b[k]);
             }
         }
+
+        /**
+         * stem transfers for a frame that is not separated: all of it is voice, unscaled, like the mix
+         */
+        void passThroughStems(StemShares& stems) {
+            stems.share[kVoice].fill(Complex{1.f, 0.f});
+            stems.share[kAmbience].fill({});
+            stems.share[kReverb].fill({});
+        }
     }
 
     // ---------------------------------------------------------------- Pipeline
@@ -55,11 +64,13 @@ namespace altvane::dialogue::dsp {
         /**
          * @param current each channel's newest frame
          * @param delayed each channel's frame kModelLag hops earlier, which the transfer applies to
+         * @param stems if not null, receives each channel's stem transfers at their levels
          */
         void process(const std::array<const Spectrum*, 2>& current, const std::array<const Spectrum*, 2>& delayed,
                      const int num_channels, const std::array<BinWeights, kNumStems>& weights,
                      const std::array<float, kNumStems>& gains, const Listen listen,
-                     std::array<Spectrum, 2>& transfer, StemShares& meter_shares) {
+                     std::array<Spectrum, 2>& transfer, StemShares& meter_shares,
+                     std::array<StemShares, 2>* stems) {
             ++frames_;
             for (int g = 0; g < groups_; ++g) {
                 const Spectrum* in = current[static_cast<size_t>(g)];
@@ -74,13 +85,28 @@ namespace altvane::dialogue::dsp {
                 if (!streams_[static_cast<size_t>(g)].process(*in, speech_)) {
                     // the model failed: pass this frame through
                     t.fill(Complex{1.f, 0.f});
+                    if (stems != nullptr) {
+                        passThroughStems((*stems)[static_cast<size_t>(g)]);
+                    }
                     continue;
                 }
                 splitters_[static_cast<size_t>(g)].split(*in_delayed, speech_, shares_);
-                computeTransfer(shares_, weights, gains, listen, t, g == 0 ? meter_shares : weighted_);
+                auto& weighted = g == 0 ? meter_shares : weighted_;
+                computeTransfer(shares_, weights, gains, listen, t, weighted);
+                if (stems != nullptr) {
+                    auto& st = (*stems)[static_cast<size_t>(g)];
+                    for (size_t s = 0; s < kNumStems; ++s) {
+                        for (size_t k = 0; k < kBins; ++k) {
+                            st.share[s][k] = gains[s] * weighted.share[s][k];
+                        }
+                    }
+                }
             }
             if (linked_ && num_channels == 2) {
                 transfer[1] = transfer[0];
+                if (stems != nullptr) {
+                    (*stems)[1] = (*stems)[0];
+                }
             }
         }
 
@@ -147,12 +173,13 @@ namespace altvane::dialogue::dsp {
         release();
     }
 
-    bool Engine::prepare(const int num_channels, const int max_block, const int latency_multiple) {
+    bool Engine::prepare(const int num_channels, const int max_block, const int latency_multiple, const bool stems) {
         worker_.reset();
         const std::scoped_lock lock(hop_mutex_);
 
         num_channels_ = std::clamp(num_channels, 1, 2);
         max_block_ = std::max(max_block, 1);
+        stems_ = stems;
         // the algorithm's own delay, one hop for the worker to compute in, and a block for it to arrive in
         latency_ = kAlgorithmicLatency + kHop + max_block_;
         const auto multiple = std::max(latency_multiple, 1);
@@ -166,6 +193,9 @@ namespace altvane::dialogue::dsp {
         for (int c = 0; c < 2; ++c) {
             in_ring_[static_cast<size_t>(c)].assign(static_cast<size_t>(ring_size), 0.f);
             out_ring_[static_cast<size_t>(c)].assign(static_cast<size_t>(ring_size), 0.f);
+            for (auto& stem : stem_ring_) {
+                stem[static_cast<size_t>(c)].assign(stems_ ? static_cast<size_t>(ring_size) : 0, 0.f);
+            }
         }
         written_.store(0);
         produced_.store(0);
@@ -173,6 +203,11 @@ namespace altvane::dialogue::dsp {
         next_frame_ = 0;
         for (auto& o : ola_) {
             o.fill(0.f);
+        }
+        for (auto& stem : stem_ola_) {
+            for (auto& o : stem) {
+                o.fill(0.f);
+            }
         }
         for (auto& channel : history_) {
             for (auto& f : channel) {
@@ -249,7 +284,7 @@ namespace altvane::dialogue::dsp {
         return -1;
     }
 
-    void Engine::process(float* const* channels, const int num_samples, const bool realtime) {
+    void Engine::process(float* const* channels, const int num_samples, const bool realtime, const StemOutputs* stems) {
         jassert(num_samples <= max_block_);
         const auto start = written_.load(std::memory_order::relaxed);
         for (int c = 0; c < num_channels_; ++c) {
@@ -285,6 +320,26 @@ namespace altvane::dialogue::dsp {
                     // late: the delayed input, so the output never drops out
                     dest[i] = in[static_cast<size_t>(t & ring_mask_)];
                     missing += c == 0 ? 1 : 0;
+                }
+            }
+        }
+        if (stems != nullptr && stems_) {
+            for (size_t s = 0; s < kNumStems; ++s) {
+                for (int c = 0; c < num_channels_; ++c) {
+                    const auto& in = in_ring_[static_cast<size_t>(c)];
+                    const auto& out = stem_ring_[s][static_cast<size_t>(c)];
+                    auto* dest = (*stems)[s][static_cast<size_t>(c)];
+                    for (int i = 0; i < num_samples; ++i) {
+                        const auto t = first + i;
+                        if (t < 0) {
+                            dest[i] = 0.f;
+                        } else if (t < produced) {
+                            dest[i] = out[static_cast<size_t>(t & ring_mask_)];
+                        } else {
+                            // late: the mix plays the delayed input, so the voice does
+                            dest[i] = s == kVoice ? in[static_cast<size_t>(t & ring_mask_)] : 0.f;
+                        }
+                    }
                 }
             }
         }
@@ -356,22 +411,35 @@ namespace altvane::dialogue::dsp {
             &history_[0][delayed_slot], &history_[num_channels_ > 1 ? 1 : 0][delayed_slot]
         };
 
+        auto* stem_transfer = stems_ ? &stem_transfer_ : nullptr;
         if (active_ < 0) {
             for (auto& t : transfer_) {
                 t.fill(Complex{1.f, 0.f});
             }
+            for (auto& st : stem_transfer_) {
+                passThroughStems(st);
+            }
         } else {
             auto& active = *pipelines_[static_cast<size_t>(active_)];
-            active.process(current, delayed, num_channels_, weights_, gains_, listen, transfer_, meter_shares_);
+            active.process(current, delayed, num_channels_, weights_, gains_, listen, transfer_, meter_shares_,
+                           stem_transfer);
             if (fading_ >= 0) {
                 pipelines_[static_cast<size_t>(fading_)]->process(current, delayed, num_channels_, weights_, gains_,
-                                                                  listen, transfer_fading_, meter_shares_fading_);
+                                                                  listen, transfer_fading_, meter_shares_fading_,
+                                                                  stems_ ? &stem_transfer_fading_ : nullptr);
                 const auto mix = active.isWarm() ? static_cast<float>(++fade_pos_) / static_cast<float>(kFadeFrames) : 0.f;
-                for (int c = 0; c < num_channels_; ++c) {
-                    auto& t = transfer_[static_cast<size_t>(c)];
-                    const auto& old = transfer_fading_[static_cast<size_t>(c)];
+                const auto fade = [mix](Spectrum& t, const Spectrum& old) {
                     for (size_t k = 0; k < kBins; ++k) {
                         t[k] = old[k] + mix * (t[k] - old[k]);
+                    }
+                };
+                for (int c = 0; c < num_channels_; ++c) {
+                    const auto cs = static_cast<size_t>(c);
+                    fade(transfer_[cs], transfer_fading_[cs]);
+                    if (stems_) {
+                        for (size_t s = 0; s < kNumStems; ++s) {
+                            fade(stem_transfer_[cs].share[s], stem_transfer_fading_[cs].share[s]);
+                        }
                     }
                 }
                 if (mix < 1.f) {
@@ -389,30 +457,39 @@ namespace altvane::dialogue::dsp {
         // apply, synthesise and overlap-add: frame (frame - lag) completes output [(frame - lag - 1) * hop, (frame - lag) * hop)
         const auto out_begin = (delayed_frame - 1) * kHop;
         for (int c = 0; c < num_channels_; ++c) {
-            const auto& x = history_[static_cast<size_t>(c)][delayed_slot];
-            const auto& t = transfer_[static_cast<size_t>(c)];
-            auto& y = output_spec_[static_cast<size_t>(c)];
-            for (size_t k = 0; k < kBins; ++k) {
-                y[k] = x[k] * t[k];
-            }
-            fft_.inverse(y, synth_);
-            auto& ola = ola_[static_cast<size_t>(c)];
-            for (size_t n = 0; n < kFftSize; ++n) {
-                ola[n] += synth_[n] * window[n];
-            }
-            auto& out = out_ring_[static_cast<size_t>(c)];
-            for (int n = 0; n < kHop; ++n) {
-                const auto time = out_begin + n;
-                if (time >= 0) {
-                    out[static_cast<size_t>(time & ring_mask_)] = ola[static_cast<size_t>(n)];
+            const auto cs = static_cast<size_t>(c);
+            const auto& x = history_[cs][delayed_slot];
+            synthesise(x, transfer_[cs], ola_[cs], out_ring_[cs], out_begin);
+            if (stems_) {
+                for (size_t s = 0; s < kNumStems; ++s) {
+                    synthesise(x, stem_transfer_[cs].share[s], stem_ola_[s][cs], stem_ring_[s][cs], out_begin);
                 }
             }
-            std::copy(ola.begin() + kHop, ola.end(), ola.begin());
-            std::fill(ola.begin() + kFftSize - kHop, ola.end(), 0.f);
         }
         produced_.store(std::max<int64_t>(out_begin + kHop, 0), std::memory_order::release);
 
         publishAnalysis(*delayed[0], meter_shares_, transfer_[0]);
+    }
+
+    void Engine::synthesise(const Spectrum& x, const Spectrum& transfer, std::array<float, kFftSize>& ola,
+                            std::vector<float>& ring, const int64_t out_begin) {
+        const auto& window = vorbisWindow();
+        auto& y = output_spec_;
+        for (size_t k = 0; k < kBins; ++k) {
+            y[k] = x[k] * transfer[k];
+        }
+        fft_.inverse(y, synth_);
+        for (size_t n = 0; n < kFftSize; ++n) {
+            ola[n] += synth_[n] * window[n];
+        }
+        for (int n = 0; n < kHop; ++n) {
+            const auto time = out_begin + n;
+            if (time >= 0) {
+                ring[static_cast<size_t>(time & ring_mask_)] = ola[static_cast<size_t>(n)];
+            }
+        }
+        std::copy(ola.begin() + kHop, ola.end(), ola.begin());
+        std::fill(ola.begin() + kFftSize - kHop, ola.end(), 0.f);
     }
 
     void Engine::publishAnalysis(const Spectrum& input, const StemShares& shares, const Spectrum& transfer) {
