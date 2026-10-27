@@ -21,4 +21,7 @@ if (ALTVANE_BUILD_TOOLS)
     # offline renderer: levels a WAV file and writes the gain curve, for listening and benchmarks
     add_executable(AltvaneLevelerRender tools/render/main.cpp)
     altvane_link_plugin_code(AltvaneLevelerRender AltvaneLeveler)
+    # headless snapshot renderer for visual review
+    add_executable(AltvaneLevelerSnapshot tools/snapshot/main.cpp)
+    altvane_link_plugin_code(AltvaneLevelerSnapshot AltvaneLeveler)
 endif ()
