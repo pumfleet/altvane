@@ -55,6 +55,28 @@ namespace altvane::deesser {
         };
         bind(low_field_, params::kBandLow, "Low", [](const float v) { return params::formatHz(v); });
         bind(high_field_, params::kBandHigh, "High", [](const float v) { return params::formatBandHigh(v); });
+        // an edge set from its field pushes the other along, in the same edit, as dragging it does
+        for (auto* field : {&low_field_, &high_field_}) {
+            const auto is_low = field == &low_field_;
+            field->on_begin = [this, is_low] {
+                juce::RangedAudioParameter* paras[] = {param(params::kBandLow), param(params::kBandHigh)};
+                editor_.beginEdit(paras, is_low ? "Change Band Low" : "Change Band High");
+                field_edit_id_ = editor_.getEditId();
+            };
+            field->on_change = [this, is_low](const float v) {
+                const auto& tree = p_ref_.parameters_;
+                if (is_low) {
+                    setBand(v, tree.getRawParameterValue(params::kBandHigh)->load(), true);
+                } else {
+                    setBand(tree.getRawParameterValue(params::kBandLow)->load(), v, false);
+                }
+            };
+            field->on_end = [this] {
+                if (editor_.isEditing(field_edit_id_)) {
+                    editor_.endEdit();
+                }
+            };
+        }
         updateTooltip();
     }
 
@@ -156,10 +178,12 @@ namespace altvane::deesser {
         const auto bell = juce::roundToInt(tree.getRawParameterValue(params::kShape)->load()) == 1;
         low_field_.setValue(low);
         high_field_.setValue(high);
-        if (low != low_ || high != high_ || range != range_ || wide != wide_ || bell != bell_) {
-            low_ = low;
-            high_ = high;
-            open_ = params::isOpen(high);
+        // drawn as the engine hears it, whatever a host's automation sets
+        const auto [band_low, band_high] = params::constrainBand(low, high, true);
+        if (band_low != low_ || band_high != high_ || range != range_ || wide != wide_ || bell != bell_) {
+            low_ = band_low;
+            high_ = band_high;
+            open_ = params::isOpen(band_high);
             range_ = range;
             wide_ = wide;
             bell_ = bell;
@@ -179,12 +203,8 @@ namespace altvane::deesser {
         }
     }
 
-    void BandView::setBand(float low, float high) {
-        low = std::clamp(low, params::kBandLowMin, params::kBandLowMax);
-        if (!params::isOpen(high)) {
-            high = std::clamp(high, std::max(params::kBandHighMin, low * params::kMinBandRatio), params::kBandHighMax);
-            low = std::min(low, high / params::kMinBandRatio);
-        }
+    void BandView::setBand(const float wanted_low, const float wanted_high, const bool low_wins) {
+        const auto [low, high] = params::constrainBand(wanted_low, wanted_high, low_wins);
         editor_.setPlain(param(params::kBandLow), std::round(low));
         editor_.setPlain(param(params::kBandHigh), std::round(high));
         low_ = low;
@@ -212,11 +232,8 @@ namespace altvane::deesser {
                 high = std::max(high, hz * 1.35f);
             }
         }
-        low = std::clamp(low, params::kBandLowMin, params::kBandLowMax);
-        if (!params::isOpen(high)) {
-            high = std::clamp(high, std::max(params::kBandHighMin, low * params::kMinBandRatio), params::kBandHighMax);
-        }
-        editor_.setNow({{param(params::kBandLow), std::round(low)}, {param(params::kBandHigh), std::round(high)}},
+        const auto [fit_low, fit_high] = params::constrainBand(low, high, true);
+        editor_.setNow({{param(params::kBandLow), std::round(fit_low)}, {param(params::kBandHigh), std::round(fit_high)}},
                        "Fit Band to Sibilance");
         return true;
     }
@@ -548,12 +565,12 @@ namespace altvane::deesser {
         const auto fine = e.mods.isShiftDown() ? .25f : 1.f;
         const auto ratio = std::pow(xFreq(e.position.x) / drag_start_hz_, fine);
         if (dragged_ == Target::kLow) {
-            setBand(drag_low_ * ratio, high_);
+            setBand(drag_low_ * ratio, high_, true);
         } else if (dragged_ == Target::kHigh) {
             // past the last few pixels the band opens
             const auto high = e.position.x >= plot_.getRight() - 4.f ? params::kBandHighMax
                                                                      : std::min(drag_high_ * ratio, params::kBandOpen - 1.f);
-            setBand(low_, high);
+            setBand(low_, high, false);
         } else {
             const auto open = params::isOpen(drag_high_);
             auto r = ratio;
@@ -562,7 +579,7 @@ namespace altvane::deesser {
             if (!open) {
                 r = std::clamp(r, params::kBandHighMin / drag_high_, (params::kBandOpen - 1.f) / drag_high_);
             }
-            setBand(drag_low_ * r, open ? drag_high_ : drag_high_ * r);
+            setBand(drag_low_ * r, open ? drag_high_ : drag_high_ * r, true);
         }
     }
 
@@ -608,11 +625,11 @@ namespace altvane::deesser {
         const auto factor = std::pow(2.f, delta * .5f * ui::InteractionSettings::wheel_sensitivity);
         if (open_) {
             // an open band only has one edge to move
-            setBand(low_ / factor, high_);
+            setBand(low_ / factor, high_, true);
         } else {
             const auto centre = std::sqrt(low_ * high_);
             const auto half = std::max(std::sqrt(params::kMinBandRatio), std::sqrt(high_ / low_) * factor);
-            setBand(centre / half, std::min(centre * half, params::kBandOpen - 1.f));
+            setBand(centre / half, std::min(centre * half, params::kBandOpen - 1.f), true);
         }
         startTimer(450);
     }

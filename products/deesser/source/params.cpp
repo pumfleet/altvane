@@ -40,6 +40,24 @@ namespace altvane::deesser::params {
         }
     }
 
+    std::pair<float, float> constrainBand(float low, float high, const bool low_wins) {
+        low = std::clamp(low, kBandLowMin, kBandLowMax);
+        if (isOpen(high)) {
+            return {low, kBandHighMax};
+        }
+        high = std::clamp(high, kBandHighMin, kBandOpen - 1.f);
+        if (high < low * kMinBandRatio) {
+            if (low_wins) {
+                high = std::min(low * kMinBandRatio, kBandOpen - 1.f);
+                low = std::min(low, high / kMinBandRatio);
+            } else {
+                low = std::max(high / kMinBandRatio, kBandLowMin);
+                high = std::max(high, low * kMinBandRatio);
+            }
+        }
+        return {low, high};
+    }
+
     juce::String formatDb(const float db) {
         // the typographic minus, as everywhere else in the interface
         const auto sign = db < -.04f ? juce::String::fromUTF8("\xe2\x88\x92") : juce::String();

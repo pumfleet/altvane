@@ -319,3 +319,15 @@ TEST_CASE("text without a number leaves a value alone", "[editor]") {
     band.getLowField().createAccessibilityHandler()->getValueInterface()->setValueAsString("x");
     CHECK(std::abs(f.value(params::kBandLow) - params::kBandLowDefault) < 1.f);
 }
+
+TEST_CASE("typing an edge past the other moves both, as one undo step", "[editor]") {
+    Fixture f;
+    auto& band = f.editor->getBandViewForTesting();
+    f.p.session_.undo_manager.clearUndoHistory();
+    band.getHighField().createAccessibilityHandler()->getValueInterface()->setValueAsString("2 kHz");
+    CHECK(std::abs(f.value(params::kBandHigh) - 2000.f) < 1.f);
+    CHECK(f.value(params::kBandLow) * params::kMinBandRatio <= f.value(params::kBandHigh) + 1.f);
+    f.p.session_.undo_manager.undo();
+    CHECK(std::abs(f.value(params::kBandLow) - params::kBandLowDefault) < 1.f);
+    CHECK(params::isOpen(f.value(params::kBandHigh)));
+}

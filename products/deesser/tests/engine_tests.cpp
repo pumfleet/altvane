@@ -566,3 +566,27 @@ TEST_CASE("values read back from their text", "[params]") {
     CHECK(t == juce::String::fromUTF8("\xe2\x88\x92") + "24.0 dB");
     CHECK(std::abs(threshold->convertFrom0to1(threshold->getValueForText(t)) + 24.f) < .05f);
 }
+
+TEST_CASE("a band keeps its edges apart, the edge being set winning", "[params]") {
+    // the high edge set below the low one pulls the low edge down
+    auto [low, high] = params::constrainBand(5500.f, 2000.f, false);
+    CHECK(high == 2000.f);
+    CHECK(std::abs(low - 2000.f / params::kMinBandRatio) < .5f);
+    // the low edge set above the high one pushes the high edge up
+    std::tie(low, high) = params::constrainBand(9000.f, 6000.f, true);
+    CHECK(low == 9000.f);
+    CHECK(std::abs(high - 9000.f * params::kMinBandRatio) < .5f);
+    // an open band only has a low edge
+    std::tie(low, high) = params::constrainBand(15000.f, params::kBandHighMax, true);
+    CHECK(low == 15000.f);
+    CHECK(params::isOpen(high));
+    // at the ends of the ranges the other edge stops, and they stay apart
+    std::tie(low, high) = params::constrainBand(16000.f, 12000.f, true);
+    CHECK_FALSE(params::isOpen(high));
+    CHECK(high >= low * params::kMinBandRatio - .5f);
+    // the high edge stops at the bottom of its own range first
+    std::tie(low, high) = params::constrainBand(4000.f, 1000.f, false);
+    CHECK(high == params::kBandHighMin);
+    CHECK(std::abs(low - params::kBandHighMin / params::kMinBandRatio) < .5f);
+    CHECK(high >= low * params::kMinBandRatio - .5f);
+}

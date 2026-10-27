@@ -84,14 +84,14 @@ namespace altvane::deesser {
         float drag_low_{0.f}, drag_high_{0.f}, drag_start_hz_{0.f};
         bool wheel_active_{false};
         // the edit this view opened (a drag or the wheel), so it only ever ends its own
-        uint64_t edit_id_{0};
+        uint64_t edit_id_{0}, field_edit_id_{0};
 
         float spectrumY(float db, float hz) const;
         float responseY(float db) const;
         float responseDb(float hz, float reduction_db) const;
         juce::RangedAudioParameter* param(const char* id) const;
         Target hit(juce::Point<float> p) const;
-        void setBand(float low, float high);
+        void setBand(float low, float high, bool low_wins);
         void rebuildGrid();
         void updateTooltip();
         juce::Path spectrumPath(const Analyzer::Curve& curve, bool closed) const;

@@ -48,6 +48,13 @@ namespace altvane::deesser::params {
         return band_high >= kBandOpen;
     }
 
+    /**
+     * a valid band from wanted edges: each within its range, the high edge (unless open) at least kMinBandRatio
+     * above the low one; when they collide the edge being set wins and the other gives way
+     * (the engine keeps the same rule with the low edge winning)
+     */
+    std::pair<float, float> constrainBand(float low, float high, bool low_wins);
+
     juce::String formatDb(float db);
 
     juce::String formatHz(float hz);

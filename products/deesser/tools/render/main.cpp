@@ -126,7 +126,14 @@ int main(const int argc, char* argv[]) {
         } else if (key == "block") {
             block = std::max(1, value.getIntValue());
         } else if (auto* para = p.parameters_.getParameter(key)) {
-            para->setValueNotifyingHost(para->getValueForText(value));
+            // a choice or switch by its index ("shape=1") or by its name ("shape=Bell"); anything else as text
+            const auto discrete = dynamic_cast<juce::AudioParameterChoice*>(para) != nullptr
+                                  || dynamic_cast<juce::AudioParameterBool*>(para) != nullptr;
+            if (discrete && value.containsOnly("0123456789")) {
+                para->setValueNotifyingHost(para->convertTo0to1(static_cast<float>(value.getIntValue())));
+            } else {
+                para->setValueNotifyingHost(para->getValueForText(value));
+            }
         } else {
             std::cerr << "unknown setting " << arg << std::endl;
             return 1;
