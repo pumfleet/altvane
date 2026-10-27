@@ -59,9 +59,10 @@ namespace altvane::dialogue::dsp {
         std::fill(data.begin(), data.begin() + count, 0.f);
     }
 
-    bool RateBridge::prepare(const double sample_rate, const int num_channels, const int max_block) {
+    bool RateBridge::prepare(const double sample_rate, const int num_channels, const int max_block, const bool stems) {
         num_channels_ = std::clamp(num_channels, 1, 2);
         max_block_ = std::max(max_block, 1);
+        stems_ = stems;
         engine_ptrs_.assign(2, nullptr);
         const auto rate = static_cast<int>(std::round(sample_rate));
         resampling_ = rate != kSampleRate;
@@ -74,7 +75,7 @@ namespace altvane::dialogue::dsp {
             latency_ = 0;
         } else if (!resampling_) {
             max_block_48_ = max_block_;
-            ready = engine_.prepare(num_channels_, max_block_);
+            ready = engine_.prepare(num_channels_, max_block_, 1, stems_);
             latency_ = engine_.getLatency();
         } else {
             // both directions use one prototype length K at the common rate R; the round trip delays (K - 1) / R
@@ -88,7 +89,7 @@ namespace altvane::dialogue::dsp {
             const auto multiple = static_cast<int>(kSampleRate / std::gcd(kSampleRate, rate));
 
             max_block_48_ = static_cast<int>((static_cast<int64_t>(max_block_) * kSampleRate + rate - 1) / rate) + 2;
-            ready = engine_.prepare(num_channels_, max_block_48_, multiple);
+            ready = engine_.prepare(num_channels_, max_block_48_, multiple, stems_);
             const auto engine_delay = static_cast<int>(static_cast<int64_t>(engine_.getLatency()) * rate / kSampleRate);
             // outputs arrive one input sample at a time, so the host can run at most a couple of samples ahead
             constexpr int kPrefill = 2;
@@ -108,6 +109,14 @@ namespace altvane::dialogue::dsp {
                 round_trip_fifo_[c].prefill(kPrefill);
                 dry48_delay_[c].assign(static_cast<size_t>(engine_.getLatency() + max_block_48_ + 8), 0.f);
                 round_trip_[c].assign(static_cast<size_t>(max_block_), 0.f);
+                for (size_t s = 0; s < kNumStems; ++s) {
+                    if (stems_) {
+                        up_stem_[s][c].prepare(kSampleRate, rate, prototype, cutoff);
+                    }
+                    stem_stage_[s][c].assign(stems_ ? static_cast<size_t>(max_block_48_ + 4) : 0, 0.f);
+                    stem_fifo_[s][c].data.assign(stems_ ? fifo_size : 0, 0.f);
+                    stem_fifo_[s][c].prefill(stems_ ? kPrefill : 0);
+                }
             }
             dry48_delay_pos_ = 0;
         }
@@ -123,23 +132,40 @@ namespace altvane::dialogue::dsp {
         engine_.release();
     }
 
-    void RateBridge::process(juce::AudioBuffer<float>& buffer, const bool realtime, const float residual_gain) {
+    void RateBridge::process(juce::AudioBuffer<float>& buffer, const bool realtime, const float residual_gain,
+                             const StemOutputs* stems, const float stem_residual_gain) {
         const auto channels = std::min(num_channels_, buffer.getNumChannels());
         const auto n = buffer.getNumSamples();
         jassert(n <= max_block_);
+        if (!stems_) {
+            stems = nullptr;
+        }
 
         for (int c = 0; c < channels; ++c) {
             delayLine(host_delay_[static_cast<size_t>(c)], host_delay_pos_, latency_, buffer.getReadPointer(c),
                       dry_out_[static_cast<size_t>(c)].data(), n, c == channels - 1);
         }
         if (!supported_) {
+            // the output is the input, so all of it is voice
+            if (stems != nullptr) {
+                for (size_t s = 0; s < kNumStems; ++s) {
+                    for (int c = 0; c < channels; ++c) {
+                        auto* dest = (*stems)[s][static_cast<size_t>(c)];
+                        if (s == kVoice) {
+                            std::copy(buffer.getReadPointer(c), buffer.getReadPointer(c) + n, dest);
+                        } else {
+                            std::fill(dest, dest + n, 0.f);
+                        }
+                    }
+                }
+            }
             return;
         }
         if (!resampling_) {
             for (int c = 0; c < channels; ++c) {
                 engine_ptrs_[static_cast<size_t>(c)] = buffer.getWritePointer(c);
             }
-            engine_.process(engine_ptrs_.data(), n, realtime);
+            engine_.process(engine_ptrs_.data(), n, realtime, stems);
             return;
         }
 
@@ -150,9 +176,12 @@ namespace altvane::dialogue::dsp {
             delayLine(dry48_delay_[cs], dry48_delay_pos_, engine_.getLatency(), stage_[cs].data(),
                       stage_dry_[cs].data(), m, c == channels - 1);
             engine_ptrs_[cs] = stage_[cs].data();
+            for (size_t s = 0; s < kNumStems; ++s) {
+                stem_ptrs_[s][cs] = stems != nullptr ? stem_stage_[s][cs].data() : nullptr;
+            }
         }
         if (m > 0) {
-            engine_.process(engine_ptrs_.data(), m, realtime);
+            engine_.process(engine_ptrs_.data(), m, realtime, stems != nullptr ? &stem_ptrs_ : nullptr);
         }
         for (int c = 0; c < channels; ++c) {
             const auto cs = static_cast<size_t>(c);
@@ -168,6 +197,20 @@ namespace altvane::dialogue::dsp {
             const auto* rt = round_trip_[cs].data();
             for (int i = 0; i < n; ++i) {
                 y[i] += residual_gain * (dry[i] - rt[i]);
+            }
+
+            if (stems != nullptr) {
+                for (size_t s = 0; s < kNumStems; ++s) {
+                    q = up_stem_[s][cs].process(stem_stage_[s][cs].data(), m, up_out_[cs].data());
+                    stem_fifo_[s][cs].push(up_out_[cs].data(), q);
+                    auto* dest = (*stems)[s][cs];
+                    stem_fifo_[s][cs].pop(dest, n);
+                    if (s == kAmbience) {
+                        for (int i = 0; i < n; ++i) {
+                            dest[i] += stem_residual_gain * (dry[i] - rt[i]);
+                        }
+                    }
+                }
             }
         }
     }

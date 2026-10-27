@@ -32,7 +32,8 @@ namespace altvane::dialogue::params {
     inline constexpr std::array<const char*, dsp::kNumStems> kStemNames{"Voice", "Ambience", "Reverb"};
     inline constexpr std::array<float, dsp::kNumStems> kLevelDefaults{0.f, -24.f, -12.f};
     inline const juce::StringArray kQualityChoices{"Eco", "High"};
-    inline const juce::StringArray kStereoChoices{"Linked", "Stereo"};
+    // in dsp::StereoMode order; new modes go at the end
+    inline const juce::StringArray kStereoChoices{"Linked", "Stereo", "Mid/Side"};
 
     /**
      * e.g. "voice_sens_3", node 0 .. kSensitivityNodes - 1

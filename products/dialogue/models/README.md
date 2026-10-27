@@ -28,13 +28,13 @@ The plug-in runs DPDFNet with its own code, not a general ONNX runtime:
   many rows share a weight matrix or the matrix is large, otherwise a register-tiled loop the compiler vectorises.
 
 Per 10 ms frame, High does about 67M multiply-adds and Eco about 21M. About 90% of that is in the dual-path blocks:
-64-wide GRUs across the 40 + 48 frequency positions, then across time at each position. Every layer that applies
-one weight matrix at all positions is a single matrix product. In Stereo mode the two channels are stacked into the
-same products, so each weight is read once per frame, not once per channel. What stays on the CPU is the
+64-wide GRUs across the 40 + 48 frequency positions, then across time at each position. Every layer that applies one
+weight matrix at all positions is a single matrix product. In Stereo and Mid/Side modes the two streams are stacked into
+the same products, so each weight is read once per frame, not once per channel. What stays on the CPU is the
 across-frequency recurrence, which is sequential: about 1,400 small steps per frame for High.
 
 `tests/model_tests.cpp` checks the output against values from ONNX Runtime. Given identical frames the two agree to
-about 130 dB, which is float rounding. It also checks that Stereo's batched streams equal separate runs, and that
+about 130 dB, which is float rounding. It also checks that two streams run together equal separate runs, and that
 the Accelerate and portable paths agree.
 
 ## Measurements
@@ -49,7 +49,7 @@ Before the change, ONNX Runtime 1.28 on an M5 Max, one thread:
 ONNX Runtime 1.31 (C++ API, the plug-in's session options) and this code side by side, on one core of a shared
 x86-64 machine (AVX2, no BLAS, so the portable path only), best of 25 runs of 120 frames:
 
-| Model | ONNX Runtime, per channel | Ours, one stream | Ours, two streams (Stereo) |
+| Model | ONNX Runtime, per channel | Ours, one stream | Ours, two streams (Stereo, Mid/Side) |
 |---|---|---|---|
 | dpdfnet2 (Eco) | 1.03 ms | 0.74 ms | 1.35 ms (2.06 ms with ONNX Runtime) |
 | dpdfnet8 (High) | 2.9 ms | 2.03 ms | 3.6 ms (5.8 ms with ONNX Runtime) |

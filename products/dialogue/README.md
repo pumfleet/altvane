@@ -10,10 +10,14 @@ Pull a voice out of a noisy location recording, dry out a reverberant room, or k
 - **See what you keep.** The spectrum stacks what each stem keeps at its level, under a faint outline of the input:
   turn the ambience down and its layer shrinks. Solo a stem, or press **Removed** to hear exactly what is being
   taken away.
+- **Stems on their own outputs.** Turn on the plug-in's Voice, Ambience and Reverb outputs in the host and each
+  stem arrives on its own channels, at its level and the output gain, to mix on its own track. Together they add up
+  to the main output. Solo and Removed change only the main output; bypassed, the stem outputs fall silent.
 - **Sensitivity across the spectrum.** Each stem has a six-point curve (120 Hz to 11 kHz): raise the voice's curve
   at the top to keep consonants, raise the ambience's at the bottom to clear rumble and wind.
-- **Eco or High** quality, **Linked** (one analysis of the mid, applied to both channels) or **Stereo** (each
-  channel on its own), 44.1–192 kHz, mono or stereo.
+- **Eco or High** quality; **Linked** (one analysis of the mid, applied to both channels), **Stereo** (each
+  channel on its own) or **Mid/Side** (the mid and the side each on their own, for centred dialogue in a wide
+  ambience); 44.1–192 kHz, mono or stereo.
 - A fixed, reported latency (about 71 ms at 48 kHz, 60 ms of which is the model's frame and look-ahead), so hosts
   compensate it exactly. Offline bounces wait for the model; in real time, a frame that would arrive late plays
   unprocessed rather than dropping out.
@@ -45,8 +49,8 @@ following the ambience level. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) a
 [models/README.md](models/README.md).
 
 The network is our own C++ implementation of DPDFNet (its weights are read from the embedded ONNX files), with the
-large matrix products on Apple's Accelerate and both channels of Stereo mode computed together. CPU per instance:
-[docs/BENCHMARK.md](docs/BENCHMARK.md).
+large matrix products on Apple's Accelerate. Stereo and Mid/Side run two analyses, computed together so each weight
+is read once per frame. CPU per instance: [docs/BENCHMARK.md](docs/BENCHMARK.md).
 
 ## Build from source
 
@@ -62,8 +66,8 @@ ctest --test-dir build/mac-arm64-debug
 Tools, with `ALTVANE_BUILD_TOOLS`:
 
 - `AltvaneDialogueRender <in.wav> <out-dir>` writes the mix and each stem of a file, latency-compensated, and
-  reports the CPU it took (`--quality`, `--stereo`, `--voice/--ambience/--reverb` in dB, `--block`, `--realtime`,
-  `--no-blas` to time the network without Accelerate).
+  reports the CPU it took (`--quality`, `--stereo linked|stereo|midside`, `--voice/--ambience/--reverb` in dB,
+  `--block`, `--realtime`, `--no-blas` to time the network without Accelerate).
 - `AltvaneDialogueSnapshot <out-dir> [scale] [speech.wav]` renders the editor's states to PNGs.
 
 ## License

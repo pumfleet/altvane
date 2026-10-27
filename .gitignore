@@ -38,3 +38,8 @@ packaging/distribution.xml
 packaging/installer.wxs
 windowstmp/
 appletmp/
+
+# impeccable working files (review captures, option mocks)
+.impeccable/review/
+.impeccable/mocks/
+.impeccable/build/

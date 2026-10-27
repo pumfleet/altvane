@@ -1,0 +1,139 @@
+---
+import Control from "../Control.astro";
+import Neutral from "./Neutral.astro";
+import { formatDb } from "../../lib/dsp";
+import { COMP_VIEW, compColumns, compThresholdY } from "../../lib/figures";
+
+interface Props {
+  controls?: boolean;
+}
+const { controls = false } = Astro.props;
+const knee = { threshold: -24, ratio: 4, width: 8 };
+const cols = compColumns(knee);
+const neutral = compColumns({ ...knee, ratio: 1 });
+const ty = compThresholdY(knee);
+---
+<figure class="figure comp-figure" data-product="compressor" data-comp-figure data-knee={JSON.stringify(knee)}>
+  <svg viewBox={`0 0 ${COMP_VIEW.w} ${COMP_VIEW.h}`} role="img" aria-label="The compressor's transfer curve as columns: input level from −60 to 0 dB across, output level as each column's height. Above the threshold the columns fall short of the diagonal by the gain reduction, outlined.">
+    <path class="comp-unity" d={`M0 ${COMP_VIEW.h}L${COMP_VIEW.w} 0`} />
+    {cols.map((c, i) => {
+      const z = neutral[i];
+      return (
+        <g class="comp-col">
+          <rect class="comp-ghost" x={c.x} y={c.ghost} width={c.w} height={Math.max(0, c.top - c.ghost)} data-n={JSON.stringify({ y: z.ghost, height: 0 })} />
+          <rect class={c.over ? "comp-bar comp-bar--over" : "comp-bar"} x={c.x} y={c.top} width={c.w} height={COMP_VIEW.h - c.top} data-n={JSON.stringify({ y: z.top, height: COMP_VIEW.h - z.top })} />
+        </g>
+      );
+    })}
+    <line class="comp-threshold" x1="0" x2={COMP_VIEW.w} y1={ty} y2={ty} />
+  </svg>
+  <Neutral />
+  <figcaption class="comp-axis t-small num" aria-hidden="true">
+    <span>−60 dB in</span><span>0 dB</span>
+  </figcaption>
+  {controls && (
+    <div class="comp-controls">
+      <Control name="threshold" label="Threshold" min={-48} max={-3} step={0.5} value={knee.threshold} display={formatDb(knee.threshold)} />
+      <Control name="ratio" label="Ratio" min={1} max={20} step={0.1} value={knee.ratio} display={`${knee.ratio.toFixed(1)} : 1`} />
+      <Control name="width" label="Knee" min={0.01} max={24} step={0.5} value={knee.width} display={`${knee.width.toFixed(1)} dB`} />
+    </div>
+  )}
+</figure>
+
+<style>
+  .comp-figure svg {
+    width: 100%;
+    height: auto;
+  }
+  .comp-unity {
+    stroke: var(--rule-strong);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+    stroke-dasharray: 2 5;
+  }
+  .comp-bar {
+    fill: var(--ink);
+  }
+  .comp-bar--over {
+    fill: var(--spot);
+  }
+  .comp-ghost {
+    fill: none;
+    stroke: var(--spot);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .comp-threshold {
+    stroke: var(--ink);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .comp-axis {
+    display: flex;
+    justify-content: space-between;
+    margin-top: var(--s3);
+    padding-top: var(--s2);
+    border-top: 1px solid var(--ink);
+  }
+  .comp-controls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s5) var(--gutter);
+    margin-top: var(--s6);
+  }
+  @media (max-width: 640px) {
+    .comp-controls {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script>
+  import { formatDb, type Knee } from "../../lib/dsp";
+  import { compColumns, compThresholdY } from "../../lib/figures";
+  import { drawIn } from "../../lib/motion";
+
+  for (const figure of document.querySelectorAll<HTMLElement>("[data-comp-figure]")) {
+    const knee: Knee = JSON.parse(figure.dataset.knee!);
+    const cols = [...figure.querySelectorAll<SVGGElement>(".comp-col")];
+    const threshold = figure.querySelector<SVGLineElement>(".comp-threshold")!;
+
+    const render = (k: Knee) => {
+      compColumns(k).forEach((c, i) => {
+        const [ghost, bar] = cols[i].children as unknown as SVGRectElement[];
+        ghost.setAttribute("y", String(c.ghost));
+        ghost.setAttribute("height", String(Math.max(0, c.top - c.ghost)));
+        bar.setAttribute("y", String(c.top));
+        bar.setAttribute("height", String(1000 - c.top));
+        bar.classList.toggle("comp-bar--over", c.over);
+      });
+      const y = String(compThresholdY(k));
+      threshold.setAttribute("y1", y);
+      threshold.setAttribute("y2", y);
+    };
+
+    // the draw-in: the columns start at 1:1, every one on the diagonal, and then the ratio takes hold
+    let touched = false;
+    drawIn(figure, (t) => {
+      if (!touched) render({ ...knee, ratio: 1 + (knee.ratio - 1) * t });
+    });
+
+    const format: Record<string, (v: number) => string> = {
+      threshold: (v) => formatDb(v),
+      ratio: (v) => `${v.toFixed(1)} : 1`,
+      width: (v) => `${v.toFixed(1)} dB`,
+    };
+    for (const input of figure.querySelectorAll<HTMLInputElement>("input[type=range]")) {
+      const key = input.name as keyof Knee;
+      const out = figure.querySelector(`[data-out='${key}']`);
+      input.addEventListener("input", () => {
+        touched = true;
+        knee[key] = Number(input.value);
+        const text = format[key](knee[key]);
+        if (out) out.textContent = text;
+        input.setAttribute("aria-valuetext", text);
+        render(knee);
+      });
+    }
+  }
+</script>
