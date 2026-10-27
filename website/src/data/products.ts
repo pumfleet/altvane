@@ -43,8 +43,8 @@ export const products: Product[] = [
     kind: "Neural dialogue isolation",
     status: "released",
     version: "0.1.0",
-    platforms: ["macOS"],
-    platformNote: "macOS on Apple silicon for now",
+    platforms: ["macOS", "Windows"],
+    platformNote: "macOS 11+ and Windows x64 for now",
     summary:
       "Pull the voice out of the room. Set the voice, the ambience and the voice's reverb on their own; the three always add up to the input, so at 0 dB it is transparent, sample for sample.",
     close: "Put Altvane Dialogue on your next edit.",

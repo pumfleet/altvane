@@ -33,7 +33,7 @@ favour direct manipulation.
 
 Visitors are in a studio or an edit suite, and often reach the site from a forum, a GitHub link or a recommendation.
 They need to know the formats (VST3, AU, LV2, Standalone; no AAX builds yet), the platforms (macOS, Windows, Linux;
-Dialogue is macOS on Apple silicon for now) and the sample rates. They evaluate a plug-in by trying it in their host.
+Dialogue is macOS 11+ and Windows x64 for now) and the sample rates. They evaluate a plug-in by trying it in their host.
 
 ## Capabilities and Constraints
 
