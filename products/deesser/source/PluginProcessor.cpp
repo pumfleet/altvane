@@ -81,6 +81,11 @@ namespace altvane::deesser {
     void PluginProcessor::releaseResources() {
     }
 
+    void PluginProcessor::reset() {
+        engine_.setControls(readControls(false));
+        engine_.reset();
+    }
+
     bool PluginProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
         const auto in = layouts.getMainInputChannelSet();
         const auto out = layouts.getMainOutputChannelSet();

@@ -517,6 +517,28 @@ TEST_CASE("the audio thread does not allocate", "[engine]") {
     CHECK(allocations == 0);
 }
 
+TEST_CASE("a host reset clears what the look-ahead held", "[engine]") {
+    PluginProcessor p;
+    setParam(p, params::kThreshold, -40.f);
+    p.setPlayConfigDetails(2, 2, kRate, 512);
+    p.prepareToPlay(kRate, 512);
+    REQUIRE(p.getLatencySamples() > 0);
+    juce::AudioBuffer<float> io(2, 512);
+    juce::MidiBuffer midi;
+    const auto input = makePhrase(2, kRate);
+    for (int b = 0; b < 20; ++b) {
+        io.copyFrom(0, 0, input, 0, b * 512, 512);
+        io.copyFrom(1, 0, input, 1, b * 512, 512);
+        p.processBlock(io, midi);
+    }
+    // the host stops and starts again without preparing: the next passage starts from silence
+    p.reset();
+    io.clear();
+    p.processBlock(io, midi);
+    CHECK(io.getMagnitude(0, 512) == 0.f);
+    p.releaseResources();
+}
+
 TEST_CASE("bypass passes the input through with the same latency", "[engine]") {
     const auto input = makePhrase(2, kRate);
     PluginProcessor p;

@@ -32,6 +32,11 @@ namespace altvane::deesser {
 
         void releaseResources() override;
 
+        /**
+         * the host stopped processing: nothing from before (delayed audio, reduction, filter state) carries over
+         */
+        void reset() override;
+
         bool isBusesLayoutSupported(const BusesLayout& layouts) const override;
 
         void processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) override;
