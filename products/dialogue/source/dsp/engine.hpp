@@ -160,7 +160,11 @@ namespace altvane::dialogue::dsp {
         juce::AudioWorkgroup workgroup_;
         std::atomic<bool> workgroup_changed_{false};
 
-        void processAvailable();
+        /**
+         * run every hop whose input has arrived
+         * @param worker the worker thread calling it, which stops early when asked to exit; nullptr runs them all
+         */
+        void processAvailable(const juce::Thread* worker = nullptr);
         void processFrame(int64_t frame);
         int selectPipeline() const;
         void updateControls();
