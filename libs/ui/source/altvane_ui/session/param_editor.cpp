@@ -69,6 +69,7 @@ namespace altvane::ui {
         if (isEditing()) {
             endEdit();
         }
+        ++edit_id_;
         edit_.name = name;
         for (auto* para : paras) {
             if (para == nullptr) {
@@ -168,11 +169,18 @@ namespace altvane::ui {
             }
             return std::nullopt;
         };
-        control.on_begin = [&editor, para, name] {
+        // the control ends only its own edit: a wheel's timer must not end an edit another control began since
+        auto edit_id = std::make_shared<uint64_t>(0);
+        control.on_begin = [&editor, para, name, edit_id] {
             juce::RangedAudioParameter* paras[] = {para};
             editor.beginEdit(paras, "Change " + name);
+            *edit_id = editor.getEditId();
         };
         control.on_change = [&editor, para](const float v) { editor.setPlain(para, v); };
-        control.on_end = [&editor] { editor.endEdit(); };
+        control.on_end = [&editor, edit_id] {
+            if (editor.isEditing(*edit_id)) {
+                editor.endEdit();
+            }
+        };
     }
 }

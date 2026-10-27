@@ -307,6 +307,10 @@ namespace altvane::ui {
     }
 
     void ValueControl::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) {
+        // a scroll during a drag would start a second edit inside the first
+        if (dragging_) {
+            return;
+        }
         const auto delta = (std::abs(wheel.deltaY) > std::abs(wheel.deltaX) ? wheel.deltaY : -wheel.deltaX)
             * (wheel.isReversed ? -1.f : 1.f);
         if (std::abs(delta) < 1e-6f) {
