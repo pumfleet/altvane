@@ -78,7 +78,7 @@ const compressor = product("compressor");
       <Readings items={dialogue.readings} />
       <div class="series__actions">
         <a class="action" href={`/${dialogue.code}`}>About {dialogue.name} <Arrow /></a>
-        <a class="action action--quiet" href={releasesUrl(dialogue.code)}>Download {dialogue.version}, macOS <Arrow dir="down" /></a>
+        <a class="action action--quiet" href={releasesUrl(dialogue.code)}>Download {dialogue.version}, macOS and Windows <Arrow dir="down" /></a>
       </div>
     </div>
   </section>
@@ -119,7 +119,7 @@ const compressor = product("compressor");
     <div class="platforms__head">
       <h2 id="platforms-title" class="t-title">Release builds</h2>
       <p class="t-small">
-        Altvane Dialogue runs on macOS on Apple silicon for now. There are no AAX builds yet.
+        Altvane Dialogue runs on macOS 11 or newer and on Windows x64 for now. There are no AAX builds yet.
       </p>
     </div>
     <div class="platforms__table">

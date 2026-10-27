@@ -6,7 +6,7 @@ shared third-party dependencies and a shared design system.
 | Product | Directory | What it is |
 |---|---|---|
 | [Altvane EQ](products/eq/README.md) | `products/eq` | Parametric and dynamic equalizer, on the ZL Equalizer 2 engine |
-| [Altvane Dialogue](products/dialogue/README.md) | `products/dialogue` | Neural dialogue isolation: voice, ambience and voice reverb levels (macOS on Apple silicon for now) |
+| [Altvane Dialogue](products/dialogue/README.md) | `products/dialogue` | Neural dialogue isolation: voice, ambience and voice reverb levels (macOS 11+ and Windows x64 for now) |
 | [Altvane Compressor](products/compressor/README.md) | `products/compressor` | Compressor, upward compressor and expander, on the ZL Compressor engine (in development) |
 | [Altvane Leveler](products/leveler/README.md) | `products/leveler` | Automatic vocal rider with lookahead, voicing detection, a music side chain and automation write |
 
