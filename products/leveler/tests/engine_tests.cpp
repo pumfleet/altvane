@@ -233,6 +233,22 @@ TEST_CASE("with nothing to ride the output is the delayed input", "[engine]") {
     CHECK(worstDifference(r.output, r.latency, input, input.getNumSamples()) < -90.f);
 }
 
+TEST_CASE("in bypass the history shows the output as heard", "[engine]") {
+    PluginProcessor p;
+    defaults(p);
+    setParam(p, params::kBypass, 1.f);
+    setParam(p, params::kOutput, 6.f);
+    constexpr double rate = 48000.0;
+    juce::AudioBuffer<float> input(1, samples(rate, 3.0));
+    input.clear();
+    addVoice(input, rate, 0, input.getNumSamples(), -32.f, false);
+    const auto r = run(p, input, rate);
+    const auto& c = columnAt(r, rate, 2.8);
+    // the rider still rides (for when bypass is lifted), but the output is the input
+    CHECK(c.gain_db > 5.f);
+    CHECK(std::abs(c.out_db - c.in_db) < .01f);
+}
+
 TEST_CASE("offline output does not depend on the block size", "[engine]") {
     PluginProcessor p;
     defaults(p);

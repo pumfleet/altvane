@@ -57,7 +57,15 @@ namespace altvane::leveler {
         if (rate > 0.0) {
             time_.setSpan(static_cast<size_t>(motion::kHistorySeconds * rate / engine.getHopSamples()));
         }
-        if (any) {
+        // the lines and the gain lane follow the controls even while no audio arrives (a host stopped and suspended)
+        const auto& t = p_ref_.parameters_;
+        const std::array<float, 6> look{
+            t.getRawParameterValue(params::kTarget)->load(), t.getRawParameterValue(params::kSensitivity)->load(),
+            t.getRawParameterValue(params::kRangeMin)->load(), t.getRawParameterValue(params::kRangeMax)->load(),
+            t.getRawParameterValue(params::kMusic)->load(), static_cast<float>(p_ref_.getKeyChannels())
+        };
+        if (any || look != look_) {
+            look_ = look;
             repaint();
         }
     }

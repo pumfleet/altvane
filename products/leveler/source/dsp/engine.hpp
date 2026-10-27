@@ -25,8 +25,9 @@ namespace altvane::leveler::dsp {
     struct Controls {
         std::atomic<float> target{-20.f}, sensitivity{0.f}, speed{.5f}, guard{.7f}, music{0.f};
         std::atomic<float> range_min{-6.f}, range_max{6.f}, idle{0.f};
-        // only for the history display; the processor applies the output gain
+        // only for the history display; the processor applies the output gain and the bypass
         std::atomic<float> output{0.f};
+        std::atomic<bool> bypass{false};
         std::atomic<bool> lookahead{true};
         std::atomic<int> mode{static_cast<int>(Mode::kOff)};
         // the rider fader parameter, followed in Read mode

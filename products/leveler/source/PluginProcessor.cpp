@@ -138,7 +138,9 @@ namespace altvane::leveler {
         playing_.store(playing, std::memory_order::relaxed);
         blocks_.fetch_add(1, std::memory_order::relaxed);
 
-        bypass_mix_.setTargetValue(force_bypass || bypass_->get() ? 1.f : 0.f);
+        const auto bypassed = force_bypass || bypass_->get();
+        engine_.getControls().bypass.store(bypassed, std::memory_order::relaxed);
+        bypass_mix_.setTargetValue(bypassed ? 1.f : 0.f);
         output_gain_.setTargetValue(juce::Decibels::decibelsToGain(output_->load(std::memory_order::relaxed)));
         for (int offset = 0; offset < main.getNumSamples(); offset += max_block_) {
             const auto n = std::min(max_block_, main.getNumSamples() - offset);

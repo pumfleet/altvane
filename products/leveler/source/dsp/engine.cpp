@@ -142,8 +142,8 @@ namespace altvane::leveler::dsp {
         energies_[level_slot_] = hop_energy_ / hop;
         // the most voice-like channel decides: a voice panned or recorded on one side still counts
         auto v = voicing_[0].analyse();
-        for (size_t c = 1; c < channels_; ++c) {
-            if (const auto other = voicing_[c].analyse(); other.periodicity > v.periodicity) {
+        for (size_t ch = 1; ch < channels_; ++ch) {
+            if (const auto other = voicing_[ch].analyse(); other.periodicity > v.periodicity) {
                 v = other;
             }
         }
@@ -236,7 +236,10 @@ namespace altvane::leveler::dsp {
         if (publishing_.load(std::memory_order::relaxed)) {
             Column column;
             column.in_db = r.in_db;
-            column.out_db = r.in_db <= kSilenceDb ? kSilenceDb : r.in_db + gain_db + c.output.load(std::memory_order::relaxed);
+            // what is heard: in bypass, the delayed input itself
+            column.out_db = r.in_db <= kSilenceDb || c.bypass.load(std::memory_order::relaxed)
+                                ? r.in_db
+                                : r.in_db + gain_db + c.output.load(std::memory_order::relaxed);
             column.key_db = r.key_db;
             column.gain_db = gain_db;
             column.target_db = r.target_db;

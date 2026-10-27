@@ -118,7 +118,9 @@ namespace altvane::leveler {
         if (near(param(params::kRangeMin), true)) {
             return Handle::kMin;
         }
-        if (near(param(params::kIdle), false)) {
+        // the marker is drawn where idle takes effect, inside the range
+        if (near(std::clamp(param(params::kIdle), std::min(param(params::kRangeMin), param(params::kRangeMax)),
+                            std::max(param(params::kRangeMin), param(params::kRangeMax))), false)) {
             return Handle::kIdle;
         }
         return Handle::kNone;
@@ -219,7 +221,8 @@ namespace altvane::leveler {
         const auto active = [&](const Handle h) { return hover_ == h || drag_ == h; };
         triangle(hi, true, active(Handle::kMax));
         triangle(lo, true, active(Handle::kMin));
-        triangle(dbToY(std::clamp(param(params::kIdle), param(params::kRangeMin), param(params::kRangeMax))), false,
+        triangle(dbToY(std::clamp(param(params::kIdle), std::min(param(params::kRangeMin), param(params::kRangeMax)),
+                                  std::max(param(params::kRangeMin), param(params::kRangeMax)))), false,
                  active(Handle::kIdle));
 
         // the cap

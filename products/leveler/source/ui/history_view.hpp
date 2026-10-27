@@ -64,6 +64,7 @@ namespace altvane::leveler {
         juce::Rectangle<float> plot_, level_area_, strip_area_, gain_area_;
         Line hover_line_{Line::kNone}, drag_line_{Line::kNone};
         std::optional<float> hover_x_;
+        std::array<float, 6> look_{};
 
         float targetDb() const;
         float floorDb() const;
