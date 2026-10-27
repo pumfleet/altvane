@@ -28,6 +28,7 @@ namespace altvane::leveler {
         };
         // a hand on the fader: in Read mode it edits the automation, otherwise it rides over the engine
         on_begin = [this] {
+            riding_ = true;
             if (p_ref_.getMode() == dsp::Mode::kRead) {
                 p_ref_.getRide()->beginChangeGesture();
                 read_gesture_ = true;
@@ -43,6 +44,7 @@ namespace altvane::leveler {
             }
         };
         on_end = [this] {
+            riding_ = false;
             if (read_gesture_) {
                 p_ref_.getRide()->endChangeGesture();
                 read_gesture_ = false;
@@ -51,6 +53,12 @@ namespace altvane::leveler {
             }
         };
         setAccent(colour::kAccent);
+    }
+
+    RiderFader::~RiderFader() {
+        if (riding_ && on_end) {
+            on_end();
+        }
     }
 
     float RiderFader::param(const char* id) const {

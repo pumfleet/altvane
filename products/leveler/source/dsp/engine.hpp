@@ -116,7 +116,9 @@ namespace altvane::leveler::dsp {
         int hop_pos_{0};
 
         std::array<KFilter, kMaxChannels> k_filters_, key_filters_;
-        VoicingDetector voicing_;
+        // one per channel: a sum would cancel a voice whose channels are out of polarity
+        std::array<VoicingDetector, kMaxChannels> voicing_;
+        size_t channels_{1};
         Rider rider_;
         double hop_energy_{0.0}, key_energy_{0.0};
         std::array<double, kLevelHops> energies_{};

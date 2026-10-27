@@ -22,6 +22,12 @@ namespace altvane::leveler {
     public:
         RiderFader(PluginProcessor& p, ui::ParamEditor& editor);
 
+        /**
+         * finishes a ride still in progress (a wheel gesture ends after a pause), so closing the editor never leaves
+         * the processor under manual override or the host inside a gesture
+         */
+        ~RiderFader() override;
+
         void tick();
 
         void paint(juce::Graphics& g) override;
@@ -54,7 +60,7 @@ namespace altvane::leveler {
         juce::Rectangle<float> track_, readout_;
         float scale_{12.f};
         Handle hover_{Handle::kNone}, drag_{Handle::kNone};
-        bool read_gesture_{false};
+        bool read_gesture_{false}, riding_{false};
         std::array<float, 4> look_{};
 
         float dbToY(float db) const;

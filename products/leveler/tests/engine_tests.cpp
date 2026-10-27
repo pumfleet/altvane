@@ -57,6 +57,22 @@ TEST_CASE("a steady voice is ridden onto the target", "[engine]") {
     CHECK(std::abs(loudness(r.output, rate, samples(rate, 3.0) + r.latency, samples(rate, 3.9) + r.latency) - (-20.f)) < .5f);
 }
 
+TEST_CASE("a stereo voice with its channels out of polarity is still a voice", "[engine]") {
+    PluginProcessor p;
+    defaults(p);
+    // no riding at all on anything that is not a voice
+    setParam(p, params::kGuard, 1.f);
+    constexpr double rate = 48000.0;
+    juce::AudioBuffer<float> input(2, samples(rate, 4.0));
+    input.clear();
+    addVoice(input, rate, 0, input.getNumSamples(), -29.f, false);
+    input.applyGain(1, 0, input.getNumSamples(), -1.f);
+    const auto r = run(p, input, rate);
+    const auto& c = columnAt(r, rate, 3.8);
+    CHECK(c.state == dsp::HopState::kVoiced);
+    CHECK(std::abs(c.gain_db - 9.f) < .5f);
+}
+
 TEST_CASE("the gain stays inside the range", "[engine]") {
     PluginProcessor p;
     defaults(p);

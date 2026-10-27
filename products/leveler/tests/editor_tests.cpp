@@ -88,6 +88,29 @@ TEST_CASE("the rider fader rides by hand without an undo step, and edits the aut
     CHECK(!f.p.session_.undo_manager.canUndo());
 }
 
+TEST_CASE("closing the editor in the middle of a ride hands the fader back", "[editor]") {
+    for (const auto mode : {dsp::Mode::kOff, dsp::Mode::kRead}) {
+        CAPTURE(static_cast<int>(mode));
+        Fixture f;
+        f.p.setMode(mode);
+        struct Gestures final : juce::AudioProcessorParameter::Listener {
+            int open{0};
+            void parameterValueChanged(int, float) override {}
+            void parameterGestureChanged(int, const bool starting) override { open += starting ? 1 : -1; }
+        } gestures;
+        f.p.getRide()->addListener(&gestures);
+        // what a scroll on the fader starts; it would end after a pause, but the editor goes first
+        auto& fader = f.editor->getRiderForTesting().getFader();
+        fader.on_begin();
+        fader.on_change(-3.f);
+        CHECK((f.p.isManualRide() || gestures.open == 1));
+        f.base.reset();
+        CHECK(!f.p.isManualRide());
+        CHECK(gestures.open == 0);
+        f.p.getRide()->removeListener(&gestures);
+    }
+}
+
 TEST_CASE("the mode chips switch the automation mode", "[editor]") {
     Fixture f;
     auto& rider = f.editor->getRiderForTesting();

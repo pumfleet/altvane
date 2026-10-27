@@ -30,7 +30,9 @@ namespace altvane::leveler::dsp {
             key_filters_[c].prepare(sample_rate);
             dry_[c].assign(static_cast<size_t>(max_block_), 0.f);
         }
-        voicing_.prepare(sample_rate, hop_);
+        for (auto& v : voicing_) {
+            v.prepare(sample_rate, hop_);
+        }
         rider_.prepare(static_cast<double>(hop_) / sample_rate);
         size_t size = 1;
         while (size < static_cast<size_t>(hop_ * kLookaheadHops + 1)) {
@@ -50,7 +52,9 @@ namespace altvane::leveler::dsp {
             key_filters_[c].reset();
             std::fill(delay_[c].begin(), delay_[c].end(), 0.f);
         }
-        voicing_.reset();
+        for (auto& v : voicing_) {
+            v.reset();
+        }
         hop_pos_ = 0;
         hop_energy_ = key_energy_ = 0.0;
         energies_.fill(0.0);
@@ -98,18 +102,17 @@ namespace altvane::leveler::dsp {
     void Engine::process(float* const* main, const int channels, const float* const* key, const int key_channels,
                          const int n) {
         const auto chans = static_cast<size_t>(std::clamp(channels, 1, static_cast<int>(kMaxChannels)));
+        channels_ = chans;
         const auto key_chans = key == nullptr ? size_t{0} : static_cast<size_t>(std::clamp(key_channels, 0, 2));
         for (int i = 0; i < n; ++i) {
             const auto idx = static_cast<size_t>(i);
-            float linked = 0.f;
             for (size_t c = 0; c < chans; ++c) {
                 const auto x = main[c][idx];
                 const auto k = k_filters_[c].process(x);
                 hop_energy_ += k * k;
-                linked += x;
+                voicing_[c].push(x);
                 delay_[c][delay_write_ & delay_mask_] = x;
             }
-            voicing_.push(linked);
             for (size_t c = 0; c < key_chans; ++c) {
                 const auto k = key_filters_[c].process(key[c][idx]);
                 key_energy_ += k * k;
@@ -137,7 +140,13 @@ namespace altvane::leveler::dsp {
 
         // levels: 20 ms for the floor, 100 ms for the display, 100 ms of voiced hops only for riding
         energies_[level_slot_] = hop_energy_ / hop;
-        const auto v = voicing_.analyse();
+        // the most voice-like channel decides: a voice panned or recorded on one side still counts
+        auto v = voicing_[0].analyse();
+        for (size_t c = 1; c < channels_; ++c) {
+            if (const auto other = voicing_[c].analyse(); other.periodicity > v.periodicity) {
+                v = other;
+            }
+        }
         double fast = 0.0;
         for (size_t i = 0; i < kFastHops; ++i) {
             fast += energies_[(level_slot_ + kLevelHops - i) % kLevelHops];
