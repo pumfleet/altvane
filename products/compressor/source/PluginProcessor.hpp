@@ -11,6 +11,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
+#include "altvane_ui/session/session.hpp"
 #include "zlp/zlp.hpp"
 #include "state/state.hpp"
 
@@ -23,13 +24,8 @@ public:
     zlstate::DummyProcessor dummy_processor_;
     juce::AudioProcessorValueTreeState parameters_;
     juce::AudioProcessorValueTreeState na_parameters_;
-    // edit history for the Altvane Compressor editor, kept here so it survives closing the editor
-    juce::UndoManager undo_manager_{30000, 200};
-    // A/B comparison slots for the Altvane Compressor editor (parameter state only), kept with the processor
-    std::array<juce::ValueTree, 2> ab_states_;
-    int ab_slot_{0};
-    // the preset file the Altvane Compressor editor last loaded or saved
-    juce::File current_preset_;
+    // the editor's undo history, A/B slots and current preset, kept here so they survive closing the editor
+    altvane::ui::Session session_;
 
     PluginProcessor();
 

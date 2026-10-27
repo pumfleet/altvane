@@ -20,15 +20,17 @@ namespace altvane::dialogue::dsp {
      * the input is resampled to 48 kHz, processed and resampled back. what the round trip loses (everything above
      * ~21 kHz, and the resamplers' own error) is added back from the delayed input, scaled like the ambience:
      *   out = up(engine(down(x))) + g * (x_delayed - up(down(x)_delayed))
-     * so with every level at unity the output is the delayed input, exactly, at any rate
+     * so with every level at unity the output is the delayed input, exactly, at any rate.
+     * the stems go through the same round trip, and what it loses joins the ambience stem
      */
     class RateBridge {
     public:
         /**
          * allocates; the engine's worker is restarted
+         * @param stems whether process() will be asked for the stems as well as the mix
          * @return false if no model could be loaded, or the rate is unsupported (the output is then the input)
          */
-        bool prepare(double sample_rate, int num_channels, int max_block);
+        bool prepare(double sample_rate, int num_channels, int max_block, bool stems = false);
 
         void release();
 
@@ -41,8 +43,11 @@ namespace altvane::dialogue::dsp {
         /**
          * process in place, at most the prepared block size
          * @param residual_gain how much of what the 48 kHz round trip loses goes to the output (the ambience level)
+         * @param stems if prepared with stems, where to write each stem at its level (as many samples as the buffer)
+         * @param stem_residual_gain how much of what the round trip loses goes to the ambience stem (its level)
          */
-        void process(juce::AudioBuffer<float>& buffer, bool realtime, float residual_gain);
+        void process(juce::AudioBuffer<float>& buffer, bool realtime, float residual_gain,
+                     const StemOutputs* stems = nullptr, float stem_residual_gain = 0.f);
 
         /**
          * the input delayed by the latency, for the bypass cross-fade; valid after process() for its samples
@@ -61,11 +66,16 @@ namespace altvane::dialogue::dsp {
 
         Engine engine_;
         int num_channels_{0}, max_block_{0}, latency_{0}, max_block_48_{0};
-        bool resampling_{false}, supported_{true};
+        bool resampling_{false}, supported_{true}, stems_{false};
 
         std::array<Resampler, 2> down_, up_, up_dry_;
         std::array<std::vector<float>, 2> stage_, stage_dry_, up_out_;
         std::array<Fifo, 2> out_fifo_, round_trip_fifo_;
+        // the stems at 48 kHz, and on their way back to the host rate
+        std::array<std::array<Resampler, 2>, kNumStems> up_stem_;
+        std::array<std::array<std::vector<float>, 2>, kNumStems> stem_stage_;
+        std::array<std::array<Fifo, 2>, kNumStems> stem_fifo_;
+        StemOutputs stem_ptrs_{};
         // delay lines: the host-rate input (for the residual and bypass) and the 48 kHz dry signal (for the round trip)
         std::array<std::vector<float>, 2> host_delay_, dry48_delay_;
         int host_delay_pos_{0}, dry48_delay_pos_{0};
