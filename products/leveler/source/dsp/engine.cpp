@@ -25,6 +25,7 @@ namespace altvane::leveler::dsp {
         sample_rate_ = sample_rate;
         max_block_ = std::max(max_block, 1);
         hop_ = std::max(1, static_cast<int>(std::lround(sample_rate * kHopSeconds)));
+        hop_shared_.store(hop_, std::memory_order::relaxed);
         for (size_t c = 0; c < kMaxChannels; ++c) {
             k_filters_[c].prepare(sample_rate);
             key_filters_[c].prepare(sample_rate);
@@ -81,7 +82,7 @@ namespace altvane::leveler::dsp {
     }
 
     int Engine::getLatency() const {
-        return controls_.lookahead.load(std::memory_order::relaxed) ? kLookaheadHops * hop_ : 0;
+        return controls_.lookahead.load(std::memory_order::relaxed) ? kLookaheadHops * getHopSamples() : 0;
     }
 
     void Engine::setPublishing(const bool publishing) {

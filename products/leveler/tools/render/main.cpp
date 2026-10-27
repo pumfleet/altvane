@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
     if (const auto key_path = option("--key", {}); key_path.isNotEmpty()) {
         double key_rate = 0.0;
         key = read(cwd.getChildFile(key_path), key_rate);
-        if (!key || key_rate != rate) {
+        if (!key || std::abs(key_rate - rate) > .5) {
             std::cerr << "cannot read " << key_path << " (or its sample rate differs)\n";
             return 1;
         }
@@ -104,6 +104,10 @@ int main(int argc, char* argv[]) {
     const auto channels = input->getNumChannels();
     const auto key_channels = key ? key->getNumChannels() : 0;
     const auto block = option("--block", "512").getIntValue();
+    if (block < 1) {
+        std::cerr << "--block must be a positive number of samples\n";
+        return 1;
+    }
 
     PluginProcessor p;
     setParam(p, params::kTarget, option("--target", "-20").getFloatValue());

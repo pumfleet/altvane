@@ -72,7 +72,10 @@ namespace altvane::leveler::dsp {
          */
         int getLatency() const;
 
-        int getHopSamples() const { return hop_; }
+        /**
+         * the hop, in samples (any thread)
+         */
+        int getHopSamples() const { return hop_shared_.load(std::memory_order::relaxed); }
 
         /**
          * the gain of the latest hop, in dB (any thread)
@@ -116,6 +119,8 @@ namespace altvane::leveler::dsp {
         Controls controls_;
         double sample_rate_{48000.0};
         int hop_{240}, max_block_{512};
+        // the hop as the message thread may read it while a host prepares on another thread
+        std::atomic<int> hop_shared_{240};
         int hop_pos_{0};
 
         std::array<KFilter, kMaxChannels> k_filters_, key_filters_;
