@@ -6,6 +6,10 @@ file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/PLATFORMS" dialogue_platforms REGEX "^
 if (NOT ALTVANE_PLATFORM IN_LIST dialogue_platforms)
     message(FATAL_ERROR "Altvane Dialogue does not build on ${ALTVANE_PLATFORM} yet (see PLATFORMS)")
 endif ()
+if (APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET AND CMAKE_OSX_DEPLOYMENT_TARGET VERSION_LESS 11)
+    # the worker thread waits with std::atomic::wait, which macOS has from 11
+    message(FATAL_ERROR "Altvane Dialogue needs macOS 11 or newer: configure with -DCMAKE_OSX_DEPLOYMENT_TARGET=11")
+endif ()
 
 # the network's large matrix products go to the platform BLAS where there is one (dsp/kernels.cpp)
 set(dialogue_blas "")

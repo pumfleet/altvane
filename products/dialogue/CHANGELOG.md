@@ -2,7 +2,7 @@
 
 ## 0.1.0
 
-First release of Altvane Dialogue.
+First release of Altvane Dialogue, for macOS 11 or newer (Apple silicon and Intel) and Windows x64.
 
 ### Separation
 

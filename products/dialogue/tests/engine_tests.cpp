@@ -633,6 +633,15 @@ TEST_CASE("state round-trips", "[params]") {
     }
 }
 
+TEST_CASE("every program has a name", "[params]") {
+    // the VST3 validator fails a plug-in whose program list has an unnamed program
+    PluginProcessor p;
+    REQUIRE(p.getNumPrograms() > 0);
+    for (int i = 0; i < p.getNumPrograms(); ++i) {
+        CHECK(p.getProgramName(i).isNotEmpty());
+    }
+}
+
 TEST_CASE("level text round-trips, with Off at the bottom", "[params]") {
     PluginProcessor p;
     auto* voice = p.parameters_.getParameter(params::kVoice);
