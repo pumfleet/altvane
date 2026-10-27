@@ -12,7 +12,8 @@ First release of Altvane Dialogue, for macOS 11 or newer (Apple silicon and Inte
 - Six-point sensitivity curve per stem
 - Voice, Ambience and Reverb outputs (off until the host enables them), each stem at its level, adding up to the
   main output
-- Linked (mid) or per-channel stereo; mono and stereo buses; 44.1–192 kHz through an exact 48 kHz round trip
+- Linked (mid), per-channel or mid/side stereo; mono and stereo buses; 44.1–192 kHz through an exact 48 kHz round
+  trip
 - Fixed reported latency; offline renders wait for the model, real-time frames that would be late play unprocessed
 - Quality and stereo-mode changes cross-fade once the new model state is warm
 
