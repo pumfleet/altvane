@@ -1,0 +1,1642 @@
+<title>Altvane Compressor</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: a scaled plugin window (1040×640 logical px, like the JUCE editor) under a slim review harness.
+   Single dark look by design: these are the libs/ui tokens of the Altvane design system. */
+:root {
+  color-scheme: dark;
+  --page: #070809;
+  --window: #0A0B0D;
+  --graph: #0E1013;
+  --raised: #15181C;
+  --overlay: rgba(26, 30, 35, .92);
+  --control: #20252B;
+  --control-hover: #282E35;
+  --hair: rgba(255, 255, 255, .07);
+  --hair-strong: rgba(255, 255, 255, .12);
+  --text1: rgba(255, 255, 255, .92);
+  --text2: rgba(255, 255, 255, .62);
+  --text3: rgba(255, 255, 255, .38);
+  --text4: rgba(255, 255, 255, .22);
+  --accent: #47D2E8;
+  --warn: #F2B84B;
+  --danger: #F0656A;
+  --side: #E59A62;
+  --curve: #F4F6F8;
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+html, body { height: 100%; }
+body {
+  background: var(--page);
+  color: var(--text1);
+  font-family: var(--font);
+  font-size: 12px;
+  -webkit-font-smoothing: antialiased;
+}
+.page {
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 32px;
+  display: flex; flex-direction: column; gap: 14px; align-items: center;
+}
+.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- review harness (outside the plugin) ---------- */
+.harness {
+  width: 100%; max-width: 1040px;
+  display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between;
+}
+.harness .group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+.harness .label { color: var(--text3); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; margin-right: 4px; }
+.hbtn {
+  font: 500 12px var(--font); color: var(--text2); background: transparent;
+  border: 1px solid var(--hair-strong); border-radius: 999px; padding: 5px 11px; cursor: pointer;
+}
+.hbtn:hover { color: var(--text1); border-color: rgba(255,255,255,.22); }
+.hbtn.on { color: var(--window); background: var(--text1); border-color: var(--text1); }
+.hbtn:focus-visible, .ctl:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.stage { width: 100%; max-width: 1240px; display: flex; justify-content: center; }
+.stage-inner { position: relative; }
+.notes {
+  width: 100%; max-width: 1040px; color: var(--text3); font-size: 12px; line-height: 1.6;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 4px 24px;
+}
+.notes b { color: var(--text2); font-weight: 500; }
+
+/* ---------- the plugin window ---------- */
+.plugin {
+  position: absolute; left: 0; top: 0; transform-origin: 0 0;
+  width: 1040px; height: 640px;
+  background: var(--window); border-radius: 8px; overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 30px 80px rgba(0,0,0,.6);
+  display: flex; flex-direction: column;
+  user-select: none; -webkit-user-select: none;
+}
+.header {
+  height: 40px; flex: none; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  padding: 0 12px; border-bottom: 1px solid var(--hair);
+}
+.lockup { display: flex; align-items: center; gap: 10px; }
+.lockup .name { font-weight: 600; font-size: 13px; letter-spacing: .16em; }
+.lockup .prod { font-weight: 400; font-size: 13px; letter-spacing: .08em; color: var(--text2); margin-left: -3px; }
+.preset {
+  display: flex; align-items: center; width: 260px; height: 26px; border-radius: 6px; background: var(--control);
+  position: relative;
+}
+.preset button { all: unset; cursor: pointer; display: grid; place-items: center; width: 28px; height: 26px; color: var(--text2); }
+.preset button:hover { color: var(--text1); }
+.preset .pname { flex: 1; text-align: center; font-weight: 500; cursor: pointer; height: 26px; line-height: 26px; position: relative; }
+.preset .pname .dot { display: none; position: absolute; width: 5px; height: 5px; border-radius: 50%; background: var(--warn); top: 7px; margin-left: 5px; }
+.preset.modified .pname .dot { display: inline-block; }
+.hright { display: flex; justify-content: flex-end; gap: 4px; align-items: center; }
+.ib {
+  all: unset; box-sizing: border-box; cursor: pointer; height: 24px; min-width: 24px; padding: 0 6px; border-radius: 4px;
+  display: grid; place-items: center; color: var(--text2); font-weight: 600; font-size: 11px;
+}
+.ib:hover { background: var(--control-hover); color: var(--text1); }
+.ib.on { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.ib[disabled] { color: var(--text4); pointer-events: none; }
+.ib:focus-visible { outline: 2px solid var(--accent); }
+.sep { width: 1px; height: 18px; background: var(--hair-strong); margin: 0 6px; }
+
+.main { position: relative; flex: 1; min-height: 0; }
+#level { position: absolute; left: 0; top: 0; }
+.rail { position: absolute; right: 0; top: 0; bottom: 0; width: 76px; border-left: 1px solid var(--hair); background: var(--window); }
+#meters { position: absolute; inset: 0; }
+
+/* knee display */
+.knee {
+  position: absolute; top: 12px; right: 88px; width: 340px; height: 340px;
+  background: rgba(14, 16, 19, .9); border: 1px solid var(--hair-strong); border-radius: 10px;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  transition: opacity .16s ease, transform .16s ease;
+}
+.knee.hidden { opacity: 0; transform: translateX(16px); pointer-events: none; }
+#kneeCanvas { position: absolute; inset: 0; border-radius: 10px; }
+.knee-tab {
+  position: absolute; top: 24px; right: 76px; width: 18px; height: 54px; border-radius: 6px 0 0 6px;
+  background: var(--raised); border: 1px solid var(--hair-strong); border-right: none; cursor: pointer;
+  display: grid; place-items: center; color: var(--text2);
+}
+.knee-tab span { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 9px; font-weight: 600; letter-spacing: .14em; }
+.knee-tab:hover { color: var(--text1); background: var(--control); }
+.knee-tab.open { right: 428px; top: 24px; }
+
+/* floating control card */
+.card {
+  position: absolute; left: 50%; bottom: 40px; transform: translateX(calc(-50% - 38px));
+  display: flex; align-items: stretch; gap: 0;
+  padding: 12px 14px 10px; border-radius: 12px;
+  background: rgba(21, 24, 28, .84); border: 1px solid var(--hair-strong);
+  backdrop-filter: blur(16px) saturate(1.2); -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  box-shadow: 0 16px 48px rgba(0,0,0,.5);
+}
+.grp { display: flex; align-items: flex-start; gap: 6px; }
+.vdiv { width: 1px; background: var(--hair); margin: 4px 10px; }
+.col { display: flex; flex-direction: column; gap: 6px; justify-content: flex-start; padding-top: 14px; }
+.modecol { width: 136px; gap: 6px; padding-top: 2px; }
+.cap { font-size: 10px; font-weight: 500; letter-spacing: .08em; color: var(--text3); text-transform: uppercase; height: 14px; line-height: 14px; }
+
+.knob { width: 62px; display: flex; flex-direction: column; align-items: center; cursor: ns-resize; position: relative; outline: none; }
+.knob .cap { text-align: center; width: 100%; }
+.knob svg { display: block; }
+.knob .val { height: 18px; line-height: 18px; font-size: 12px; color: rgba(255,255,255,.8); font-variant-numeric: tabular-nums; white-space: nowrap; cursor: text; }
+.knob.drag .val { color: var(--text1); }
+.knob.big { width: 68px; }
+.knob .sub { position: absolute; top: 18px; right: 2px; }
+.knob:focus-visible svg .ring { stroke: var(--accent); }
+
+.slider { width: 124px; height: 34px; display: flex; flex-direction: column; justify-content: center; cursor: ew-resize; outline: none; border-radius: 4px; }
+.slider .row { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.slider .row .cap { height: auto; }
+.slider .v { font-size: 12px; color: rgba(255,255,255,.82); font-variant-numeric: tabular-nums; cursor: text; }
+.slider .track { position: relative; height: 3px; border-radius: 2px; background: var(--hair-strong); margin-top: 6px; }
+.slider .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--accent); }
+.slider .thumb { position: absolute; top: -3px; width: 9px; height: 9px; border-radius: 50%; background: var(--text1); margin-left: -4.5px; box-shadow: 0 0 0 3px rgba(10,11,13,.8); opacity: 0; transition: opacity .12s; }
+.slider:hover .thumb, .slider.drag .thumb, .slider:focus-visible .thumb { opacity: 1; }
+.slider.dim { opacity: .35; }
+.slider .inf { all: unset; cursor: pointer; font-size: 10px; font-weight: 600; color: var(--text3); padding: 0 4px; border-radius: 3px; margin-left: auto; margin-right: 4px; }
+.slider .inf.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); }
+
+.sel {
+  all: unset; box-sizing: border-box; cursor: pointer; height: 26px; border-radius: 4px; background: var(--control);
+  display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 10px; font-weight: 500; font-size: 12px; color: var(--text1);
+}
+.sel:hover { background: var(--control-hover); }
+.sel svg { color: var(--text3); }
+.seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; background: rgba(32,37,43,.55); border-radius: 4px; padding: 2px; }
+.seg.two { grid-template-columns: repeat(2, 1fr); }
+.seg button { all: unset; cursor: pointer; height: 22px; border-radius: 3px; display: grid; place-items: center; color: var(--text3); font-size: 11px; font-weight: 500; }
+.seg button:hover { color: var(--text1); background: var(--control-hover); }
+.seg button.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); }
+.seg button:focus-visible { outline: 2px solid var(--accent); }
+.dirname { display: flex; justify-content: space-between; font-size: 11px; color: var(--text2); }
+.dirname .hint { color: var(--text3); }
+.chipbtn {
+  all: unset; box-sizing: border-box; cursor: pointer; height: 22px; padding: 0 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
+  color: var(--text2); background: rgba(32,37,43,.55); display: inline-flex; align-items: center; gap: 6px;
+}
+.chipbtn:hover { color: var(--text1); background: var(--control-hover); }
+.chipbtn.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); }
+.chipbtn.learn.on { color: var(--warn); background: color-mix(in srgb, var(--warn) 15%, transparent); }
+.chipbtn:focus-visible { outline: 2px solid var(--accent); }
+.chipbtn .led { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: .5; }
+.chipbtn.on .led { opacity: 1; box-shadow: 0 0 6px currentColor; }
+
+/* side chain button under the card */
+.scbtn {
+  all: unset; position: absolute; bottom: 8px; left: 50%; transform: translateX(calc(-50% - 38px)); cursor: pointer; height: 24px; padding: 0 12px 0 10px; border-radius: 999px;
+  display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text2); background: rgba(21,24,28,.84); border: 1px solid var(--hair-strong);
+}
+.scbtn:hover { color: var(--text1); }
+.scbtn .glow { width: 6px; height: 6px; border-radius: 50%; background: var(--text4); }
+.scbtn.active .glow { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+.scbtn.active { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+.scbtn .chev { transition: transform .2s; }
+.scbtn.open .chev { transform: rotate(180deg); }
+.scbtn:focus-visible { outline: 2px solid var(--accent); }
+
+/* side chain panel */
+.scpanel { flex: none; height: 0; overflow: hidden; border-top: 1px solid transparent; background: var(--window); }
+.scpanel.open { height: 214px; border-top-color: var(--hair); }
+.scinner { height: 214px; display: flex; }
+.scctl { width: 300px; flex: none; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; border-right: 1px solid var(--hair); }
+.scrow { display: flex; gap: 6px; align-items: center; }
+.scknobs { display: flex; gap: 0; justify-content: space-between; }
+.scknobs .knob { width: 62px; }
+.sceq { position: relative; flex: 1; min-width: 0; }
+#sceqCanvas { position: absolute; inset: 0; }
+.sceq .eqtools { position: absolute; left: 10px; top: 8px; display: flex; gap: 6px; }
+.sceq .eqhint { position: absolute; right: 12px; top: 10px; font-size: 11px; color: var(--text3); pointer-events: none; }
+
+/* footer */
+.footer {
+  height: 36px; flex: none; border-top: 1px solid var(--hair); display: flex; align-items: center; gap: 6px; padding: 0 8px 0 12px;
+}
+.footer .flabel { font-size: 10px; letter-spacing: .1em; color: var(--text3); text-transform: uppercase; margin: 0 2px 0 8px; }
+.footer .sel { height: 24px; min-width: 64px; gap: 8px; background: transparent; }
+.footer .sel:hover { background: var(--control-hover); }
+.footer .spacer { flex: 1; }
+.power { all: unset; cursor: pointer; width: 28px; height: 24px; border-radius: 4px; display: grid; place-items: center; color: var(--text2); position: relative; }
+.power:hover { background: var(--control-hover); color: var(--text1); }
+.power.off { color: var(--danger); }
+.power:focus-visible { outline: 2px solid var(--accent); }
+
+/* popovers, menus, balloons */
+.menu {
+  position: absolute; z-index: 50; min-width: 160px; padding: 4px; border-radius: 8px; background: var(--overlay);
+  border: 1px solid var(--hair-strong); box-shadow: 0 16px 40px rgba(0,0,0,.55);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.menu .mi { padding: 6px 10px 6px 26px; border-radius: 5px; cursor: pointer; position: relative; color: var(--text1); white-space: nowrap; }
+.menu .mi small { display: block; color: var(--text3); font-size: 11px; margin-top: 1px; }
+.menu .mi:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.menu .mi.checked::before { content: ""; position: absolute; left: 10px; top: 11px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.menu .mi.dim { color: var(--text3); }
+.menu .mh { padding: 8px 10px 4px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); }
+.menu .msep { height: 1px; background: var(--hair); margin: 4px 6px; }
+
+.pop {
+  position: absolute; z-index: 40; padding: 12px 14px; border-radius: 10px; background: var(--overlay);
+  border: 1px solid var(--hair-strong); box-shadow: 0 18px 50px rgba(0,0,0,.6);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  display: grid; grid-template-columns: repeat(3, auto); gap: 6px 18px;
+}
+.pop h4 { margin: 0 0 2px; font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text2); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.pop .pcol { display: flex; flex-direction: column; gap: 4px; }
+
+.balloon {
+  position: absolute; z-index: 60; pointer-events: none; max-width: 240px; padding: 7px 9px; border-radius: 6px;
+  background: var(--overlay); border: 1px solid var(--hair-strong); box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  font-size: 11px; line-height: 1.45; color: var(--text2); opacity: 0; transition: opacity .12s;
+}
+.balloon.show { opacity: 1; }
+.balloon b { color: var(--text1); font-weight: 600; }
+.balloon .bv { float: right; margin-left: 12px; color: var(--text1); font-variant-numeric: tabular-nums; }
+
+.sheet {
+  position: absolute; z-index: 45; right: 12px; top: 46px; width: 260px; padding: 14px; border-radius: 10px; background: var(--overlay);
+  border: 1px solid var(--hair-strong); box-shadow: 0 18px 50px rgba(0,0,0,.6); display: flex; flex-direction: column; gap: 12px;
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+}
+.sheet .srow { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.sheet .swatches { display: flex; gap: 6px; }
+.sheet .sw { all: unset; cursor: pointer; width: 16px; height: 16px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.3); }
+.sheet .sw.on { box-shadow: 0 0 0 2px var(--window), 0 0 0 3.5px currentColor; }
+.sheet .credit { color: var(--text3); font-size: 11px; line-height: 1.5; border-top: 1px solid var(--hair); padding-top: 10px; }
+.switch { all: unset; cursor: pointer; width: 30px; height: 18px; border-radius: 9px; background: var(--control); position: relative; }
+.switch::after { content: ""; position: absolute; left: 2px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--text1); transition: left .12s; }
+.switch.on { background: var(--accent); }
+.switch.on::after { left: 14px; }
+
+.textedit {
+  position: absolute; z-index: 70; font: 500 12px var(--font); color: var(--text1); background: var(--control-hover);
+  border: 1px solid var(--accent); border-radius: 4px; text-align: center; outline: none; padding: 2px 4px; font-variant-numeric: tabular-nums;
+}
+
+/* states */
+.plugin.bypassed .main canvas, .plugin.bypassed .card, .plugin.bypassed .knee { filter: saturate(.25) brightness(.7); }
+
+/* compact: hardware-style strip, no displays */
+.plugin.compact .main { flex: none; height: 214px; }
+.plugin.compact #level, .plugin.compact .knee, .plugin.compact .knee-tab { display: none; }
+.plugin.compact .card { left: 14px; bottom: auto; top: 12px; transform: none; box-shadow: none; background: var(--raised); }
+.plugin.compact .rail { left: 0; right: 0; top: auto; bottom: 0; width: auto; height: 40px; border-left: none; border-top: 1px solid var(--hair); }
+.plugin.compact .scbtn { left: auto; right: 14px; bottom: 50px; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .scpanel, .knee, .balloon, .switch::after { transition: none; }
+}
+</style>
+
+<div class="page">
+  <div class="harness" role="toolbar" aria-label="Mock states">
+    <div class="group">
+      <span class="label">State</span>
+      <button class="hbtn" id="st-default" data-state="default">Default</button>
+      <button class="hbtn" data-state="heavy">Heavy drums</button>
+      <button class="hbtn" data-state="inflate">Upward inflate</button>
+      <button class="hbtn" data-state="sidechain">Side-chain EQ</button>
+      <button class="hbtn" data-state="compact">Compact</button>
+      <button class="hbtn" data-state="bypassed">Bypassed</button>
+    </div>
+    <div class="group">
+      <span class="label">Signal</span>
+      <button class="hbtn" data-src="drums">Drums</button>
+      <button class="hbtn" data-src="vocal">Vocal</button>
+      <button class="hbtn" data-src="bass">Bass</button>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="stage-inner" id="stageInner">
+      <div class="plugin" id="plugin">
+        <header class="header">
+          <div class="lockup" aria-label="Altvane Compressor">
+            <svg width="16" height="16" viewBox="0 0 1 1" aria-hidden="true">
+              <g transform="translate(.5 .5) scale(1.2) rotate(-45) translate(-.5 -.5)" fill="var(--accent)" stroke="var(--accent)">
+                <line x1=".10" y1=".5" x2=".78" y2=".5" stroke-width=".07" fill="none"/>
+                <polygon points=".96,.5 .72,.36 .72,.64" stroke="none"/>
+                <polygon points=".02,.36 .24,.36 .32,.5 .24,.64 .02,.64 .10,.5" stroke="none"/>
+                <circle cx=".5" cy=".5" r=".065" stroke="none"/>
+              </g>
+            </svg>
+            <span class="name">ALTVANE</span><span class="prod">COMPRESSOR</span>
+          </div>
+          <div class="preset" id="preset">
+            <button id="presetPrev" aria-label="Previous preset"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M6.5 1.5 3 5l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <div class="pname" id="presetName" tabindex="0" role="button" aria-haspopup="menu">Default<span class="dot"></span></div>
+            <button id="presetNext" aria-label="Next preset"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M3.5 1.5 7 5 3.5 8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          </div>
+          <div class="hright">
+            <button class="ib on" id="abA" aria-pressed="true">A</button>
+            <button class="ib" id="abB" aria-pressed="false">B</button>
+            <button class="ib" id="abCopy" aria-label="Copy to the other slot" data-help="Copy A to B|Copies the current settings to the other slot.">
+              <svg width="14" height="14" viewBox="0 0 16 16"><rect x="5" y="5" width="8.5" height="8.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M3.5 10.5h-.5A1.5 1.5 0 0 1 1.5 9V3A1.5 1.5 0 0 1 3 1.5h6A1.5 1.5 0 0 1 10.5 3v.5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
+            </button>
+            <span class="sep"></span>
+            <button class="ib" id="undo" aria-label="Undo" disabled><svg width="14" height="14" viewBox="0 0 16 16"><path d="M5.5 3 2.5 6l3 3M3 6h6.5a4 4 0 0 1 0 8H7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <button class="ib" id="redo" aria-label="Redo" disabled><svg width="14" height="14" viewBox="0 0 16 16"><path d="M10.5 3l3 3-3 3M13 6H6.5a4 4 0 0 0 0 8H9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <span class="sep"></span>
+            <button class="ib" id="settingsBtn" aria-label="Settings"><svg width="15" height="15" viewBox="0 0 16 16"><path d="M2 4.5h7M12 4.5h2M2 11.5h2M7 11.5h7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="10.5" cy="4.5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5.5" cy="11.5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.4"/></svg></button>
+          </div>
+        </header>
+
+        <div class="main" id="main">
+          <canvas id="level" aria-label="Level display: input, output and gain reduction over time"></canvas>
+          <div class="knee" id="knee"><canvas id="kneeCanvas" aria-label="Transfer curve"></canvas></div>
+          <div class="knee-tab open" id="kneeTab" role="button" tabindex="0" aria-label="Show or hide the knee display"><span>KNEE</span></div>
+          <div class="rail"><canvas id="meters" aria-label="Input, gain reduction and output meters"></canvas></div>
+
+          <div class="card" id="card">
+            <div class="col modecol">
+              <div class="cap">Style</div>
+              <button class="sel" id="styleSel" aria-haspopup="menu" data-help="Style|How the detector and envelope behave. Changes the feel, not the settings."><span id="styleName">Clean</span><svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5 5 6.5l3-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <div class="seg" id="dirSeg" role="radiogroup" aria-label="Direction"></div>
+              <div class="dirname"><span id="dirName">Compress</span><button class="chipbtn" id="advBtn" aria-haspopup="dialog" data-help="Advanced|Detection, envelope shaping and the output clipper.">
+                <svg width="11" height="11" viewBox="0 0 16 16"><path d="M2 4.5h7M12 4.5h2M2 11.5h2M7 11.5h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10.5" cy="4.5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="5.5" cy="11.5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>More</button></div>
+            </div>
+            <div class="vdiv"></div>
+            <div class="grp" id="gDyn"></div>
+            <div class="vdiv"></div>
+            <div class="grp" id="gTime"></div>
+            <div class="vdiv"></div>
+            <div class="grp" id="gOut"></div>
+          </div>
+
+          <button class="scbtn" id="scBtn" aria-expanded="false" data-help="Side chain|What the detector listens to: source, stereo handling and its own EQ. Glows when it changes the sound.">
+            <span class="glow"></span>Side chain
+            <svg class="chev" width="10" height="10" viewBox="0 0 10 10"><path d="M2 6.5 5 3.5l3 3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+
+        <section class="scpanel" id="scPanel" aria-label="Side chain">
+          <div class="scinner">
+            <div class="scctl">
+              <div class="scrow">
+                <div class="seg two" id="srcSeg" style="flex:1" role="radiogroup" aria-label="Side-chain source">
+                  <button data-v="0" class="on">Internal</button><button data-v="1">External</button>
+                </div>
+                <button class="chipbtn" id="listenBtn" data-help="Listen|Hear the side-chain signal. Click to latch, hold to listen only while pressed.">Listen</button>
+              </div>
+              <div class="scrow">
+                <button class="sel" id="stereoSel" style="flex:1" aria-haspopup="menu" data-help="Stereo|Detect on mid/side or left/right. Max modes let the louder channel drive both."><span id="stereoName">Left / Right</span><svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5 5 6.5l3-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                <button class="chipbtn" id="swapBtn" data-help="Swap|Swap the two side-chain channels (mid and side, or left and right).">Swap</button>
+              </div>
+              <div class="scknobs" id="gSide"></div>
+            </div>
+            <div class="sceq" id="sceq">
+              <canvas id="sceqCanvas" aria-label="Side-chain EQ"></canvas>
+              <div class="eqtools">
+                <button class="chipbtn on" id="eqOn" data-help="Side-chain EQ|Turns the whole side-chain EQ on or off without losing its bands."><span class="led"></span>EQ</button>
+              </div>
+              <div class="eqhint" id="eqHint">Double-click to add a band</div>
+            </div>
+          </div>
+        </section>
+
+        <footer class="footer">
+          <span class="flabel">Oversampling</span>
+          <button class="sel" id="osSel" data-help="Oversampling|Runs the compressor at a higher rate to reduce aliasing from fast gain changes. Adds latency."><span id="osName">Off</span><svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5 5 6.5l3-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="chipbtn" id="deltaBtn" data-help="Delta|Hear only what the compressor removes.">Delta</button>
+          <span class="sep"></span>
+          <span class="flabel">Display</span>
+          <button class="sel" id="timeSel" data-help="Display time|How much history the level display shows."><span id="timeName">6 s</span><svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5 5 6.5l3-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="sel" id="scaleSel" data-help="Scale|The dB range of the level display, knee display and meters."><span id="scaleName">48 dB</span><svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5 5 6.5l3-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div class="seg two" id="magSeg" style="width:96px" role="radiogroup" aria-label="Level type"><button data-v="0" class="on">Peak</button><button data-v="1">RMS</button></div>
+          <span class="spacer"></span>
+          <span class="flabel">Size</span>
+          <button class="sel" id="sizeSel" data-help="Interface size|Compact hides the displays for a hardware-style strip."><span id="sizeName">Medium</span><svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5 5 6.5l3-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <span class="sep"></span>
+          <button class="power" id="powerBtn" aria-pressed="true" data-help="Bypass|Turns the compressor off, with latency kept so nothing jumps.">
+            <svg width="15" height="15" viewBox="0 0 16 16"><path d="M8 1.8v5.4M4.6 3.8a5.3 5.3 0 1 0 6.8 0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </button>
+        </footer>
+
+        <div class="balloon" id="balloon"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div><b>Knobs and sliders.</b> Drag up or down, Shift for fine, scroll to nudge. Cmd-click or double-click resets; double-click the value to type one.</div>
+    <div><b>Level display.</b> Drag the threshold line. Hover to read the level and gain reduction at any moment.</div>
+    <div><b>Knee display.</b> Drag the elbow for threshold, the upper slope for ratio, the shoulder marks for knee width.</div>
+    <div><b>Side-chain EQ.</b> Double-click to add a band, drag to move, scroll for Q, Alt-click to bypass, right-click for shape or delete.</div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+// ------------------------------------------------------------------ helpers
+const $ = (s, r = document) => r.querySelector(s);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lin2db = (x) => 20 * Math.log10(Math.max(x, 1e-9));
+const db2lin = (d) => Math.pow(10, d / 20);
+const MINUS = '−';
+const fmtNum = (v, d) => (v < 0 ? MINUS : '') + Math.abs(v).toFixed(d);
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+let ACCENT = '#47D2E8';
+const GR = '#F0656A', UP = '#5FD39A', WARN = '#F2B84B', SIDE = '#E59A62';
+const BANDS = ['#76B4FF', '#ED9C55', '#6FC884', '#DF92D8', '#C4B345', '#00C9D1', '#F98E8F', '#A1A7FF'];
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ------------------------------------------------------------------ ranges (mirroring zlp_definitions.hpp)
+const skewRange = (min, max, centre) => {
+  const s = Math.log(.5) / Math.log((centre - min) / (max - min));
+  return { min, max, toN: v => Math.pow(clamp((v - min) / (max - min), 0, 1), s), fromN: n => min + (max - min) * Math.pow(clamp(n, 0, 1), 1 / s) };
+};
+const linRange = (min, max) => ({ min, max, toN: v => clamp((v - min) / (max - min), 0, 1), fromN: n => min + (max - min) * clamp(n, 0, 1) });
+const twoPiece = (min, mid, max) => ({ min, max,
+  toN: v => v <= mid ? .5 * (v - min) / (mid - min) : .5 + .5 * (v - mid) / (max - mid),
+  fromN: n => n <= .5 ? min + (mid - min) * n * 2 : mid + (max - mid) * (n - .5) * 2 });
+const symLog = (max, centre) => { const k = Math.log(centre / max) / Math.log(.5);
+  return { min: -max, max, toN: v => { const u = Math.sign(v) * Math.pow(Math.abs(v) / max, 1 / k); return clamp((u + 1) / 2, 0, 1); },
+    fromN: n => { const u = clamp(n, 0, 1) * 2 - 1; return Math.sign(u) * max * Math.pow(Math.abs(u), k); } }; };
+
+const fmtDb = v => fmtNum(v, Math.abs(v) < 100 ? 1 : 0) + ' dB';
+const fmtMs = v => v >= 1000 ? (v / 1000).toFixed(2) + ' s' : v < 10 ? v.toFixed(2) + ' ms' : v < 100 ? v.toFixed(1) + ' ms' : v.toFixed(0) + ' ms';
+const fmtPct = v => v.toFixed(0) + '%';
+const parseNum = s => { const m = String(s).replace(MINUS, '-').match(/-?\d*\.?\d+/); return m ? parseFloat(m[0]) : NaN; };
+const parseMs = s => { const v = parseNum(s); return /\ds\b|\d\s*s$/.test(s.trim()) && !/ms/.test(s) ? v * 1000 : v; };
+
+const P = {
+  threshold: { label: 'Threshold', r: skewRange(-100, 0, -32), def: -32, fmt: fmtDb, help: 'Level where the gain change starts. Also drag the line on the display or the elbow of the knee curve.' },
+  ratio: { label: 'Ratio', r: skewRange(1, 100, 3), def: 3, fmt: v => (v >= 99.95 ? '100' : v < 10 ? v.toFixed(2) : v.toFixed(1)) + ':1', help: 'How strongly level above the threshold is reduced. 100:1 behaves like a limiter.' },
+  knee: { label: 'Knee', r: { ...skewRange(0, 32, 8), toN: v => Math.pow(v / 32, .5), fromN: n => 32 * n * n }, def: 8, fmt: fmtDb, help: 'Half-width of the soft knee around the threshold. 0 dB is a hard knee.' },
+  range: { label: 'Range', r: twoPiece(0, 18, 80), def: 80, fmt: v => v.toFixed(1) + ' dB', help: 'The most gain the compressor may change. Turn ∞ on for no limit.' },
+  attack: { label: 'Attack', r: skewRange(0, 1000, 100), def: 100, fmt: fmtMs, parse: parseMs, help: 'How fast gain reduction reacts once the level crosses the threshold.' },
+  release: { label: 'Release', r: skewRange(0, 5000, 500), def: 500, fmt: fmtMs, parse: parseMs, help: 'How fast gain reduction recovers after the level drops.' },
+  hold: { label: 'Hold', r: skewRange(0, 1000, 100), def: 0, fmt: fmtMs, parse: parseMs, help: 'Keeps the gain reduction steady for this long before release starts.' },
+  lookahead: { label: 'Lookahead', r: symLog(20, 5), def: 0, fmt: v => fmtNum(v, Math.abs(v) < 10 ? 2 : 1) + ' ms', bipolar: true, help: 'Positive values delay the audio so the detector reacts early. Negative values delay the side chain. Adds latency.' },
+  makeup: { label: 'Makeup', r: linRange(-30, 30), def: 0, fmt: v => (v > 0 ? '+' : '') + fmtDb(v), bipolar: true, help: 'Output gain after compression. Learn sets it to match the input loudness.' },
+  wet: { label: 'Wet', r: linRange(0, 100), def: 100, fmt: fmtPct, help: 'Scales the whole gain change. Below 100% is parallel compression.' },
+  curve: { label: 'Curve', r: linRange(-100, 100), def: 0, fmt: v => (v > 0 ? '+' : '') + v.toFixed(0) + '%', bipolar: true, help: 'Bends the curve above the threshold: positive gets harder towards 0 dB, negative softer.' },
+  floor: { label: 'Floor', r: linRange(-200, -80), def: -140, fmt: fmtDb, help: 'Below this level the expander or inflator stops acting.' },
+  pump: { label: 'Pump', r: linRange(0, 100), def: 0, fmt: fmtPct, help: 'Limits how fast the gain may swing back, for an audible breathing release.' },
+  smooth: { label: 'Smooth', r: linRange(0, 100), def: 0, fmt: fmtPct, help: 'Rounds off the envelope so fast transients cause less distortion.' },
+  rmsMix: { label: 'RMS mix', r: linRange(0, 100), def: 50, fmt: fmtPct, help: 'Blend between peak and RMS detection.' },
+  rmsLength: { label: 'Length', r: skewRange(0, 160, 32), def: 32, fmt: fmtMs, parse: parseMs, help: 'The RMS averaging window.' },
+  rmsSpeed: { label: 'Speed', r: skewRange(0, 8, 1), def: 1, fmt: v => v.toFixed(2) + '×', help: 'Scales attack and release for the RMS detector.' },
+  clipper: { label: 'Clipper', r: linRange(0, 100), def: 0, fmt: fmtPct, help: 'A soft clipper after the compressor that catches what the attack lets through.' },
+  scGain: { label: 'Gain', r: symLog(15, 3.75), def: 0, fmt: v => (v > 0 ? '+' : '') + fmtDb(v), bipolar: true, help: 'Level of the side-chain signal going into the detector.' },
+  link: { label: 'Link', r: linRange(0, 100), def: 100, fmt: fmtPct, help: '0% compresses each channel on its own; 100% applies the same gain to both.' },
+  amt1: { label: 'Left', r: linRange(0, 100), def: 100, fmt: fmtPct, help: 'How much of the gain change reaches this channel.' },
+  amt2: { label: 'Right', r: linRange(0, 100), def: 100, fmt: fmtPct, help: 'How much of the gain change reaches this channel.' },
+};
+const CHOICES = {
+  style: { def: 0, names: ['Clean', 'Classic', 'Optical', 'Vocal'], desc: ['Feed-forward, transparent', 'Feedback, smooth and musical', 'Program-dependent, like an opto cell', 'Feedback on linear gain, rides vocals'] },
+  direction: { def: 0, names: ['Compress', 'Inflate', 'Expand', 'Shape'], desc: ['Turns loud parts down', 'Brings quiet parts up', 'Turns quiet parts down', 'Brings loud parts up'] },
+  oversample: { def: 0, names: ['Off', '2×', '4×', '8×'] },
+  stereo: { def: 1, names: ['Mid / Side', 'Left / Right', 'Mid / Side max', 'Left / Right max'] },
+};
+const BOOLS = { rangeInf: false, rmsOn: false, extSide: false, listen: false, eqOn: true, swap: false, delta: false, bypass: false };
+
+// ------------------------------------------------------------------ session state
+const defBands = () => Array.from({ length: 8 }, () => ({ on: false, type: 0, freq: 1000, gain: 0, q: .707, order: 2 }));
+const S = { v: {}, c: {}, b: {}, bands: defBands() };
+const resetState = () => {
+  for (const k in P) S.v[k] = P[k].def;
+  for (const k in CHOICES) S.c[k] = CHOICES[k].def;
+  Object.assign(S.b, BOOLS);
+  S.bands = defBands();
+};
+resetState();
+const UI = { source: 'drums', time: 6, scale: 48, rms: false, kneeOpen: true, scOpen: false, size: 'Medium', help: true };
+
+const snapshot = () => JSON.stringify({ v: S.v, c: S.c, b: { ...S.b, listen: false }, bands: S.bands });
+const restore = (json) => { const o = JSON.parse(json); S.v = { ...o.v }; S.c = { ...o.c }; S.b = { ...o.b }; S.bands = o.bands.map(b => ({ ...b })); syncAll(); };
+
+// undo / A-B / presets
+const history = { past: [], future: [] };
+let gestureStart = null;
+const beginGesture = () => { if (gestureStart === null) gestureStart = snapshot(); };
+const endGesture = () => {
+  if (gestureStart === null) return;
+  const now = snapshot();
+  if (now !== gestureStart) { history.past.push(gestureStart); history.future = []; if (history.past.length > 200) history.past.shift(); markModified(); }
+  gestureStart = null; syncUndo();
+};
+const oneShot = (fn) => { beginGesture(); fn(); endGesture(); };
+const undo = () => { if (!history.past.length) return; history.future.push(snapshot()); restore(history.past.pop()); syncUndo(); markModified(); };
+const redo = () => { if (!history.future.length) return; history.past.push(snapshot()); restore(history.future.pop()); syncUndo(); markModified(); };
+const syncUndo = () => { $('#undo').disabled = !history.past.length; $('#redo').disabled = !history.future.length; };
+
+const PRESETS = [
+  { name: 'Default', src: null, set: {} },
+  { name: 'Drum Smash', src: 'drums', set: { threshold: -30, ratio: 8, knee: 4, attack: 4, release: 90, makeup: 9, style: 0 } },
+  { name: 'Drum Bus Glue', src: 'drums', set: { threshold: -20, ratio: 2, knee: 10, attack: 30, release: 200, makeup: 3, style: 1 } },
+  { name: 'Vocal Leveler', src: 'vocal', set: { threshold: -26, ratio: 3, knee: 12, attack: 12, release: 160, makeup: 5, style: 3 } },
+  { name: 'Mix Bus Gentle', src: 'drums', set: { threshold: -16, ratio: 1.6, knee: 14, attack: 50, release: 300, makeup: 1.5, style: 1 } },
+  { name: 'Bass Control', src: 'bass', set: { threshold: -24, ratio: 4, knee: 8, attack: 20, release: 140, makeup: 4, style: 2 } },
+  { name: 'Parallel Smash', src: 'drums', set: { threshold: -36, ratio: 20, knee: 2, attack: 1, release: 80, makeup: 14, wet: 45 } },
+  { name: 'Upward Inflate', src: 'vocal', set: { direction: 1, threshold: -24, ratio: 2.5, knee: 6, attack: 20, release: 220, style: 0 } },
+  { name: 'Gate-ish Expander', src: 'drums', set: { direction: 2, threshold: -30, ratio: 3, knee: 4, attack: 1, release: 120, range: 24 } },
+];
+let presetIdx = 0, modified = false;
+const markModified = () => { modified = true; $('#preset').classList.add('modified'); };
+const loadPreset = (i, withSource = true) => {
+  presetIdx = (i + PRESETS.length) % PRESETS.length;
+  const pr = PRESETS[presetIdx];
+  beginGesture();
+  resetState();
+  for (const k in pr.set) { if (k in P) S.v[k] = pr.set[k]; else if (k in CHOICES) S.c[k] = pr.set[k]; }
+  if (pr.bands) S.bands = pr.bands.map(b => ({ ...b }));
+  endGesture();
+  if (withSource && pr.src) setSource(pr.src);
+  modified = false; $('#preset').classList.remove('modified');
+  $('#presetName').firstChild.textContent = pr.name;
+  syncAll();
+};
+const ab = { slot: 0, states: [snapshot(), snapshot()] };
+const switchAB = (slot) => {
+  if (slot === ab.slot) return;
+  ab.states[ab.slot] = snapshot(); ab.slot = slot;
+  beginGesture(); restore(ab.states[slot]); endGesture();
+  $('#abA').classList.toggle('on', slot === 0); $('#abB').classList.toggle('on', slot === 1);
+  $('#abA').setAttribute('aria-pressed', slot === 0); $('#abB').setAttribute('aria-pressed', slot === 1);
+  $('#abCopy').dataset.help = slot === 0 ? 'Copy A to B|Copies the current settings to the other slot.' : 'Copy B to A|Copies the current settings to the other slot.';
+};
+
+// ------------------------------------------------------------------ the gain computer (ported from upstream dsp/compressor/computer)
+const compDiff = (x, t, r, w, c) => {
+  w = Math.max(w, .01); r = Math.max(1, r);
+  const low = t - w, high = t + w;
+  if (x <= low) return 0;
+  if (x < high) { const a0 = (1 / r - 1) / (4 * w), a1 = -low; return (a0 * x + 2 * a0 * a1) * x + a0 * a1 * a1; }
+  const lb = 1 / r, lc = t * (1 - lb);
+  let h0, h1, h2;
+  if (c >= 0) { const tmp = .5 / r, a = tmp / Math.min(t + w, -.0001), cd = tmp * (w - t) + t;
+    h2 = (1 - c) * lc + c * cd; h1 = (1 - c) * lb; h0 = c * a; }
+  else { const tmp = .5 * (1 - r) / r, a = tmp / Math.min(t + w, -.0001), cu = tmp * (w - t);
+    h2 = (1 + c) * lc - c * cu; h1 = (1 + c) * lb - c; h0 = -c * a; }
+  h1 -= 1;
+  if (x < 0) return (h0 * x + h1) * x + h2;
+  return high <= 0 ? h1 * x + h2 : (lb - 1) * x + lc;
+};
+const expDiff = (x, t, r, w, floor) => {
+  w = Math.max(w, .01);
+  const low = t - w, high = t + w, cf = Math.min(floor, low - 1);
+  if (x >= high) return 0;
+  if (x > low) { const a0 = (1 - r) / (4 * w), a1 = -high; return (a0 * x + 2 * a0 * a1) * x + a0 * a1 * a1; }
+  if (x > cf) { const sc = r - 1, cb = -cf + t, db = cb - w, i2 = 1 / (db * db), i3 = i2 / db;
+    const l0 = sc * (cb + w) * i3, l1 = -sc * (cb + 2 * w) * i2, xs = x - cf; return (l0 * xs + l1) * xs * xs; }
+  return 0;
+};
+// static gain change in dB for detector level x, before range / wet / makeup
+const staticDiff = (x) => {
+  const { threshold: t, ratio: r, knee: w, curve, floor } = S.v;
+  switch (S.c.direction) {
+    case 0: return compDiff(x, t, r, w, curve / 100);
+    case 1: return -expDiff(x, t, clamp(2 - 1 / r, 1, 2), w, floor);
+    case 2: return expDiff(x, t, r, w, floor);
+    default: return -compDiff(x, t, r, w, curve / 100);
+  }
+};
+const applyRange = (d) => S.b.rangeInf ? d : clamp(d, -S.v.range, S.v.range);
+const outputFor = (x) => x + applyRange(staticDiff(x)) * S.v.wet / 100 + S.v.makeup;
+
+// ------------------------------------------------------------------ side-chain EQ (RBJ biquads on the unit circle, 48 kHz)
+const FS = 48000;
+const TYPES = ['Peak', 'Low shelf', 'Low pass', 'High shelf', 'High pass', 'Notch', 'Band pass', 'Tilt shelf'];
+const ORDERS = [1, 2, 4, 8, 12, 16];
+const biquad = (type, f, g, q) => {
+  const A = Math.pow(10, g / 40), w0 = 2 * Math.PI * clamp(f, 10, 22000) / FS, cw = Math.cos(w0), sw = Math.sin(w0), al = sw / (2 * q);
+  switch (type) {
+    case 'peak': return [1 + al * A, -2 * cw, 1 - al * A, 1 + al / A, -2 * cw, 1 - al / A];
+    case 'ls': { const s = 2 * Math.sqrt(A) * al; return [A * ((A + 1) - (A - 1) * cw + s), 2 * A * ((A - 1) - (A + 1) * cw), A * ((A + 1) - (A - 1) * cw - s), (A + 1) + (A - 1) * cw + s, -2 * ((A - 1) + (A + 1) * cw), (A + 1) + (A - 1) * cw - s]; }
+    case 'hs': { const s = 2 * Math.sqrt(A) * al; return [A * ((A + 1) + (A - 1) * cw + s), -2 * A * ((A - 1) + (A + 1) * cw), A * ((A + 1) + (A - 1) * cw - s), (A + 1) - (A - 1) * cw + s, 2 * ((A - 1) - (A + 1) * cw), (A + 1) - (A - 1) * cw - s]; }
+    case 'lp': return [(1 - cw) / 2, 1 - cw, (1 - cw) / 2, 1 + al, -2 * cw, 1 - al];
+    case 'hp': return [(1 + cw) / 2, -(1 + cw), (1 + cw) / 2, 1 + al, -2 * cw, 1 - al];
+    case 'notch': return [1, -2 * cw, 1, 1 + al, -2 * cw, 1 - al];
+    case 'bp': return [al, 0, -al, 1 + al, -2 * cw, 1 - al];
+    case 'lp1': { const k = Math.tan(w0 / 2); return [k, k, 0, 1 + k, k - 1, 0]; }
+    case 'hp1': { const k = Math.tan(w0 / 2); return [1, -1, 0, 1 + k, k - 1, 0]; }
+  }
+};
+const magDb = (c, f) => {
+  const w = 2 * Math.PI * f / FS, c1 = Math.cos(w), s1 = Math.sin(w), c2 = Math.cos(2 * w), s2 = Math.sin(2 * w);
+  const nr = c[0] + c[1] * c1 + c[2] * c2, ni = -(c[1] * s1 + c[2] * s2);
+  const dr = c[3] + c[4] * c1 + c[5] * c2, di = -(c[4] * s1 + c[5] * s2);
+  return 10 * Math.log10((nr * nr + ni * ni) / Math.max(dr * dr + di * di, 1e-30));
+};
+const bandSections = (b) => {
+  const t = b.type, o = b.order;
+  const cut = (k) => { if (o === 1) return [biquad(k + '1', b.freq, 0, b.q)]; const n = o / 2, out = [biquad(k, b.freq, 0, b.q)];
+    for (let i = 1; i < n; i++) out.push(biquad(k, b.freq, 0, .7071)); return out; };
+  switch (t) {
+    case 0: return [biquad('peak', b.freq, b.gain, b.q)];
+    case 1: return [biquad('ls', b.freq, b.gain, b.q)];
+    case 2: return cut('lp');
+    case 3: return [biquad('hs', b.freq, b.gain, b.q)];
+    case 4: return cut('hp');
+    case 5: return [biquad('notch', b.freq, 0, b.q)];
+    case 6: return [biquad('bp', b.freq, 0, b.q)];
+    default: return [biquad('ls', b.freq, -b.gain / 2, b.q), biquad('hs', b.freq, b.gain / 2, b.q)];
+  }
+};
+const bandDb = (b, f) => bandSections(b).reduce((s, c) => s + magDb(c, f), 0);
+const eqDb = (f) => { if (!S.b.eqOn) return 0; let s = 0; for (const b of S.bands) if (b.on) s += bandDb(b, f); return s; };
+let eqCache = null;
+const eqLin = (f) => { if (!eqCache) eqCache = new Map(); let v = eqCache.get(f); if (v === undefined) { v = db2lin(eqDb(f)); eqCache.set(f, v); } return v; };
+const invalidateEq = () => { eqCache = null; };
+
+// ------------------------------------------------------------------ signal sources (envelopes of synthetic material, 1 kHz control rate)
+const CR = 1000;
+let rnd = 1;
+const rand = () => { rnd = (rnd * 16807) % 2147483647; return rnd / 2147483647; };
+const SOURCES = {
+  drums(t) {
+    const beat = .5, bar = 2, tb = t % bar, out = [];
+    const hit = (start, amp, dec, f, pan = 0) => { const d = tb - start; if (d >= 0 && d < dec * 7) out.push({ a: amp * (d < .002 ? d / .002 : Math.exp(-d / dec)), f, pan }); };
+    hit(0, .95, .11, 60); hit(1, .95, .11, 60); hit(1.25, .7, .1, 60);
+    hit(.5, .55, .07, 220); hit(.5, .38, .09, 4000, .1); hit(1.5, .58, .07, 220); hit(1.5, .4, .09, 4000, .1);
+    for (let i = 0; i < 16; i++) hit(i * .125, (i % 2 ? .07 : .12), .025, 9000, .5);
+    out.push({ a: .004, f: 1000 });
+    return out;
+  },
+  vocal(t) {
+    const phrase = 3.2, tp = t % phrase, out = [], idx = Math.floor(t / phrase);
+    if (tp < 2.6) {
+      const syl = .2, k = Math.floor(tp / syl), ts = tp - k * syl, seed = Math.sin(idx * 91.7 + k * 12.9) * .5 + .5;
+      const amp = .12 + .38 * seed * (k % 5 === 3 ? 1.3 : 1) * (1 - .25 * tp / 2.6);
+      const env = ts < .03 ? ts / .03 : .6 + .4 * Math.exp(-(ts - .03) / .08);
+      out.push({ a: amp * env, f: 400 }, { a: amp * env * .45, f: 2500 });
+      if ((k * 7 + idx) % 6 === 2 && ts < .07) out.push({ a: .3 * (1 - ts / .07), f: 7000 });
+    }
+    out.push({ a: .003, f: 1000 });
+    return out;
+  },
+  bass(t) {
+    const note = .5, tn = t % note, n = Math.floor(t / note), out = [];
+    const vel = [.8, .55, .7, .6, .85, .5, .65, .6][n % 8];
+    const env = tn < .004 ? tn / .004 : tn < .42 ? .5 + .5 * Math.exp(-tn / .07) : (.5 + .5 * Math.exp(-.42 / .07)) * Math.exp(-(tn - .42) / .02);
+    out.push({ a: vel * env, f: 80 }, { a: vel * env * .3, f: 700 });
+    out.push({ a: .003, f: 1000 });
+    return out;
+  },
+};
+const KEY = (t) => { const tb = t % 1, d = tb; return [{ a: .9 * (d < .002 ? d / .002 : Math.exp(-d / .09)), f: 60 }]; };
+
+// ------------------------------------------------------------------ the simulated engine
+const N = 4096;
+const hist = { inp: new Float32Array(N), out: new Float32Array(N), gr: new Float32Array(N), sc: new Float32Array(N), head: 0, count: 0 };
+const sim = {
+  t: 0, acc: 0, colAcc: 0, rms: [0, 0],
+  env: [0, 0], hold: [0, 0], opt: [0, 0], prevOut: [-120, -120],
+  delay: [], // lookahead ring for main levels
+  col: { inp: -200, out: -200, gr: 0, sc: -200 },
+  meter: { inL: -120, inR: -120, outL: -120, outR: -120, gr: 0, inPk: -120, outPk: -120, grPk: 0 },
+  scLevel: -120, det: -120, lufs: null,
+};
+let colsPerSec = 150;
+const tick = () => {
+  const t = sim.t; sim.t += 1 / CR;
+  const comps = SOURCES[UI.source](t);
+  // main level per channel (peak of the envelope, with grit like a real waveform)
+  const grit = .72 + .28 * rand();
+  let mL = 0, mR = 0, sL = 0, sR = 0;
+  const scComps = S.b.extSide ? KEY(t) : comps;
+  for (const c of comps) { const p = c.pan || 0; mL += c.a * (1 - Math.max(0, p)); mR += c.a * (1 + Math.min(0, p)); }
+  const scg = db2lin(S.v.scGain);
+  for (const c of scComps) { const p = c.pan || 0, e = eqLin(c.f) * scg; sL += c.a * e * (1 - Math.max(0, p)); sR += c.a * e * (1 + Math.min(0, p)); }
+  const trim = .32; mL *= grit * trim; mR *= grit * trim * (.96 + .04 * rand()); sL *= grit * trim; sR *= grit * trim;
+  if (S.b.swap) [sL, sR] = [sR, sL];
+  const inDb = [lin2db(mL), lin2db(mR)];
+
+  // detector per channel
+  const fs = CR, at = S.v.attack, rt = S.v.release;
+  const ac = at <= 0 ? 0 : Math.exp(-1 / (at * fs / 1000)), rc = rt <= 0 ? 0 : Math.exp(-1 / (rt * fs / 1000));
+  const diffs = [0, 0];
+  const scDb = [lin2db(sL), lin2db(sR)];
+  for (let ch = 0; ch < 2; ch++) {
+    let x = scDb[ch];
+    if (S.b.rmsOn) {
+      const len = Math.max(1, S.v.rmsLength), k = Math.exp(-1 / (len * fs / 1000 / Math.max(S.v.rmsSpeed, .05)));
+      const lin = db2lin(x); sim.rms[ch] = k * sim.rms[ch] + (1 - k) * lin * lin;
+      const r = lin2db(Math.sqrt(sim.rms[ch]) * 1.414);
+      x = x + (r - x) * S.v.rmsMix / 100;
+    }
+    const style = (S.c.direction === 1 || S.c.direction === 2) && S.c.style > 1 ? 0 : S.c.style;
+    let target;
+    if (style === 1) target = staticDiff(x + sim.env[ch] * .5);            // feedback
+    else if (style === 2) { const k = x > sim.opt[ch] ? .6 : .995; sim.opt[ch] = k * sim.opt[ch] + (1 - k) * x; target = staticDiff(Math.max(x - 3, sim.opt[ch])); }
+    else target = staticDiff(x);
+    let e = sim.env[ch];
+    const away = Math.abs(target) > Math.abs(e);
+    const relC = style === 3 ? Math.pow(rc, 1 + Math.abs(e) / 12) : rc;
+    // hold keeps the deepest gain change for hold ms before release starts
+    if (away) { e = target + (e - target) * ac; sim.hold[ch] = S.v.hold; }
+    else if (sim.hold[ch] > 0) sim.hold[ch] -= 1000 / CR;
+    else e = target + (e - target) * relC;
+    if (S.v.smooth > 0) e = e * (1 - S.v.smooth / 300) + sim.env[ch] * (S.v.smooth / 300);
+    sim.env[ch] = e;
+    diffs[ch] = applyRange(e);
+  }
+  // stereo link
+  const k = S.v.link / 100, avg = (diffs[0] + diffs[1]) / 2;
+  const isMax = S.c.stereo >= 2;
+  const lnk = isMax ? (Math.abs(diffs[0]) > Math.abs(diffs[1]) ? diffs[0] : diffs[1]) : avg;
+  const g = [diffs[0] + (lnk - diffs[0]) * k, diffs[1] + (lnk - diffs[1]) * k];
+  const amts = [S.v.amt1 / 100, S.v.amt2 / 100];
+
+  // lookahead: positive delays the main signal, so the gain change lands early
+  sim.delay.push(inDb);
+  const la = Math.round(Math.max(0, S.v.lookahead));
+  while (sim.delay.length > la + 1) sim.delay.shift();
+  const mainDb = sim.delay[0];
+
+  const wet = S.v.wet / 100;
+  let outDb = [0, 0];
+  for (let ch = 0; ch < 2; ch++) {
+    const gc = S.b.bypass ? 0 : g[ch] * wet * amts[ch];
+    outDb[ch] = mainDb[ch] + gc + (S.b.bypass ? 0 : S.v.makeup);
+    if (S.b.delta && !S.b.bypass) outDb[ch] = lin2db(Math.abs(db2lin(mainDb[ch]) - db2lin(mainDb[ch] + gc)));
+    if (S.v.clipper > 0 && !S.b.bypass) { const ceil = -S.v.clipper / 20; if (outDb[ch] > ceil) outDb[ch] = ceil + (outDb[ch] - ceil) * .25; }
+  }
+  if (S.b.listen) outDb = [lin2db(sL), lin2db(sR)];
+  const grNow = S.b.bypass ? 0 : (Math.abs(g[0]) > Math.abs(g[1]) ? g[0] : g[1]) * wet;
+
+  // columns for the level display
+  const c = sim.col;
+  c.inp = Math.max(c.inp, inDb[0], inDb[1]);
+  c.out = Math.max(c.out, outDb[0], outDb[1]);
+  c.gr = Math.abs(grNow) > Math.abs(c.gr) ? grNow : c.gr;
+  c.sc = Math.max(c.sc, scDb[0], scDb[1]);
+  sim.colAcc += colsPerSec / CR;
+  while (sim.colAcc >= 1) {
+    sim.colAcc -= 1;
+    const h = hist.head = (hist.head + 1) % N;
+    hist.inp[h] = c.inp; hist.out[h] = c.out; hist.gr[h] = c.gr; hist.sc[h] = c.sc; hist.count = Math.min(N, hist.count + 1);
+    c.inp = -200; c.out = -200; c.gr = 0; c.sc = -200;
+  }
+  // meters
+  const m = sim.meter;
+  m.inL = Math.max(m.inL, inDb[0]); m.inR = Math.max(m.inR, inDb[1]);
+  m.outL = Math.max(m.outL, outDb[0]); m.outR = Math.max(m.outR, outDb[1]);
+  m.gr = Math.abs(grNow) > Math.abs(m.gr) ? grNow : m.gr;
+  sim.scLevel = Math.max(sim.scLevel, scDb[0], scDb[1]);
+  sim.det = Math.max(sim.det, Math.max(scDb[0], scDb[1]));
+  if (sim.lufs) { sim.lufs.i += db2lin(Math.max(inDb[0], inDb[1])) ** 2; sim.lufs.o += db2lin(Math.max(outDb[0], outDb[1])) ** 2; sim.lufs.n++; }
+};
+
+// ------------------------------------------------------------------ canvases
+const plugin = $('#plugin');
+const fitCanvas = (cv) => {
+  const r = cv.parentElement.getBoundingClientRect(), s = scale || 1;
+  const w = Math.round(r.width / s), h = Math.round(r.height / s);
+  const dpr = Math.min(3, (window.devicePixelRatio || 1) * Math.max(1, s));
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.width = w + 'px'; cv.style.height = h + 'px';
+  }
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+};
+const localPos = (e, el) => { const r = el.getBoundingClientRect(); return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale }; };
+
+// level display geometry
+const levelCv = $('#level');
+const LV = { w: 0, h: 0, plotR: 0, padT: 14, padB: 10, hover: null, dragTh: false, thHover: false };
+const yOf = (db) => LV.padT + (-db / UI.scale) * (LV.h - LV.padT - LV.padB);
+const dbOf = (y) => -(y - LV.padT) / (LV.h - LV.padT - LV.padB) * UI.scale;
+
+const drawLevel = () => {
+  const { ctx, w, h } = fitLevel();
+  LV.w = w; LV.h = h;
+  const kneeEl = $('#knee');
+  const kneeLeft = UI.kneeOpen ? kneeEl.offsetLeft - 12 : w;
+  LV.plotR = kneeLeft - 40; LV.labelX = kneeLeft - 8;
+  const plotW = LV.plotR;
+  colsPerSec = plotW / UI.time;
+  ctx.fillStyle = '#0E1013'; ctx.fillRect(0, 0, w, h);
+
+  // grid
+  const step = UI.scale <= 18 ? 3 : UI.scale <= 30 ? 6 : UI.scale <= 60 ? 6 : 12;
+  ctx.font = '500 10px Inter, sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let d = 0; d <= UI.scale; d += step) {
+    const y = Math.round(yOf(-d)) + .5;
+    ctx.strokeStyle = d === 0 ? 'rgba(255,255,255,.14)' : 'rgba(255,255,255,.055)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(plotW, y); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.34)'; ctx.fillText(d === 0 ? '0' : MINUS + d, LV.labelX, y);
+  }
+  // seconds ticks
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  for (let s = 1; s < UI.time; s++) {
+    const x = Math.round(plotW - s * colsPerSec) + .5;
+    ctx.strokeStyle = 'rgba(255,255,255,.03)'; ctx.beginPath(); ctx.moveTo(x, LV.padT); ctx.lineTo(x, h - LV.padB); ctx.stroke();
+  }
+
+  const n = Math.min(hist.count, Math.floor(plotW) + 2);
+  const colX = (i) => plotW - i; // i columns ago
+  const at = (arr, i) => arr[(hist.head - i + N) % N];
+  const bottom = h - LV.padB;
+  const ytop = (db) => clamp(yOf(db), LV.padT, bottom);
+
+  // input: filled area
+  ctx.beginPath(); ctx.moveTo(colX(0), bottom);
+  for (let i = 0; i < n; i++) ctx.lineTo(colX(i), ytop(at(hist.inp, i)));
+  ctx.lineTo(colX(n - 1), bottom); ctx.closePath();
+  const gIn = ctx.createLinearGradient(0, LV.padT, 0, bottom);
+  gIn.addColorStop(0, 'rgba(143,163,184,.30)'); gIn.addColorStop(1, 'rgba(143,163,184,.10)');
+  ctx.fillStyle = gIn; ctx.fill();
+
+  // output: light line with a faint fill
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) { const y = ytop(at(hist.out, i)); i ? ctx.lineTo(colX(i), y) : ctx.moveTo(colX(i), y); }
+  ctx.strokeStyle = S.b.delta ? 'rgba(242,184,75,.9)' : 'rgba(236,241,246,.82)'; ctx.lineWidth = 1.25; ctx.lineJoin = 'round'; ctx.stroke();
+
+  // gain change: hangs from the top edge
+  const up = S.c.direction === 1 || S.c.direction === 3;
+  const grCol = up ? UP : GR;
+  const gy = (d) => LV.padT + (Math.abs(d) / UI.scale) * (bottom - LV.padT);
+  ctx.beginPath(); ctx.moveTo(colX(0), LV.padT);
+  for (let i = 0; i < n; i++) ctx.lineTo(colX(i), gy(at(hist.gr, i)));
+  ctx.lineTo(colX(n - 1), LV.padT); ctx.closePath();
+  const gGr = ctx.createLinearGradient(0, LV.padT, 0, LV.padT + 120);
+  gGr.addColorStop(0, hexA(grCol, .26)); gGr.addColorStop(1, hexA(grCol, .04));
+  ctx.fillStyle = gGr; ctx.fill();
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) { const y = gy(at(hist.gr, i)); i ? ctx.lineTo(colX(i), y) : ctx.moveTo(colX(i), y); }
+  ctx.strokeStyle = grCol; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // threshold line
+  const ty = Math.round(yOf(S.v.threshold)) + .5;
+  if (S.v.threshold > -UI.scale) {
+    const hot = LV.thHover || LV.dragTh;
+    ctx.save();
+    ctx.setLineDash(hot ? [] : [5, 4]);
+    ctx.strokeStyle = hexA(ACCENT, hot ? 1 : .7); ctx.lineWidth = hot ? 1.5 : 1;
+    ctx.beginPath(); ctx.moveTo(0, ty); ctx.lineTo(plotW, ty); ctx.stroke();
+    ctx.restore();
+    // tag
+    const label = 'Threshold ' + fmtDb(S.v.threshold);
+    ctx.font = '600 10px Inter, sans-serif';
+    const tw = ctx.measureText(label).width + 14;
+    const tx = plotW - tw - 10; roundRect(ctx, tx, ty - 9, tw, 18, 4); ctx.fillStyle = hot ? ACCENT : 'rgba(21,24,28,.92)'; ctx.fill();
+    ctx.strokeStyle = hexA(ACCENT, .6); ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = hot ? '#0A0B0D' : ACCENT; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(label, tx + 7, ty + .5);
+  }
+
+  // legend
+  ctx.font = '500 10px Inter, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  let lx = 12; const ly = LV.padT + 10;
+  const legend = [['rgba(143,163,184,.55)', 'Input', 'fill'], ['rgba(236,241,246,.85)', S.b.delta ? 'Delta' : 'Output', 'line'], [grCol, up ? 'Gain' : 'Gain reduction', 'line']];
+  for (const [col, name, kind] of legend) {
+    if (kind === 'fill') { ctx.fillStyle = col; ctx.fillRect(lx, ly - 4, 10, 8); }
+    else { ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + 10, ly); ctx.stroke(); }
+    ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.fillText(name, lx + 15, ly); lx += 15 + ctx.measureText(name).width + 14;
+  }
+
+  // hover readout
+  if (LV.hover && !LV.dragTh) {
+    const i = Math.round(plotW - LV.hover.x);
+    if (i >= 0 && i < n) {
+      const x = Math.round(colX(i)) + .5;
+      ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, LV.padT); ctx.lineTo(x, bottom); ctx.stroke();
+      const rows = [[MINUS + (i / colsPerSec).toFixed(2) + ' s', ''], ['In', fmtDb(at(hist.inp, i))], ['Out', fmtDb(at(hist.out, i))], [up ? 'Gain' : 'GR', fmtDb(at(hist.gr, i))]];
+      drawTip(ctx, x, LV.hover.y, rows, plotW);
+      ctx.fillStyle = grCol; ctx.beginPath(); ctx.arc(x, gy(at(hist.gr, i)), 3, 0, 7); ctx.fill();
+      ctx.fillStyle = '#ECF1F6'; ctx.beginPath(); ctx.arc(x, ytop(at(hist.out, i)), 3, 0, 7); ctx.fill();
+    }
+  }
+};
+const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const roundRect = (ctx, x, y, w, h, r) => { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); };
+const drawTip = (ctx, x, y, rows, maxX) => {
+  ctx.font = '500 11px Inter, sans-serif';
+  const w = 128, h = 10 + rows.length * 16;
+  let bx = x + 12; if (bx + w > maxX - 6) bx = x - 12 - w;
+  const by = clamp(y - h / 2, 18, LV.h - h - 12);
+  roundRect(ctx, bx, by, w, h, 6); ctx.fillStyle = 'rgba(26,30,35,.94)'; ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.stroke();
+  rows.forEach(([k, v], j) => { const ry = by + 13 + j * 16; ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left'; ctx.fillStyle = j === 0 ? 'rgba(255,255,255,.62)' : 'rgba(255,255,255,.45)'; ctx.fillText(k, bx + 9, ry);
+    ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fillText(v, bx + w - 9, ry); });
+};
+
+// threshold drag on the level display
+levelCv.addEventListener('pointermove', (e) => {
+  const p = localPos(e, levelCv);
+  if (LV.dragTh) { S.v.threshold = clamp(Math.round(dbOf(p.y) * 10) / 10, -100, 0); syncAll(); return; }
+  LV.hover = p.x < LV.plotR ? p : null;
+  LV.thHover = Math.abs(p.y - yOf(S.v.threshold)) < 6 && p.x < LV.plotR;
+  levelCv.style.cursor = LV.thHover ? 'ns-resize' : 'crosshair';
+  if (LV.thHover) showBalloon(levelCv, 'threshold', p); else hideBalloon();
+});
+levelCv.addEventListener('pointerleave', () => { LV.hover = null; LV.thHover = false; hideBalloon(); });
+levelCv.addEventListener('pointerdown', (e) => {
+  if (!LV.thHover) return;
+  if (e.metaKey || e.ctrlKey) { oneShot(() => { S.v.threshold = P.threshold.def; }); syncAll(); return; }
+  LV.dragTh = true; beginGesture(); levelCv.setPointerCapture(e.pointerId); hideBalloon();
+});
+levelCv.addEventListener('pointerup', () => { if (LV.dragTh) { LV.dragTh = false; endGesture(); } });
+
+// ------------------------------------------------------------------ knee display
+const kneeCv = $('#kneeCanvas');
+const KN = { pad: 30, w: 0, h: 0, hover: null, drag: null, trail: [], dot: -120 };
+const kx = (db) => KN.pad + (1 + db / UI.scale) * (KN.w - KN.pad - 14);
+const ky = (db) => 14 + (-db / UI.scale) * (KN.h - KN.pad - 14);
+const kdbx = (x) => ((x - KN.pad) / (KN.w - KN.pad - 14) - 1) * UI.scale;
+const kdby = (y) => -((y - 14) / (KN.h - KN.pad - 14)) * UI.scale;
+const handles = () => {
+  const t = S.v.threshold, w = S.v.knee;
+  const rx = Math.min(-.5, t + Math.max(6, (0 - t) * .62));
+  return {
+    elbow: { x: t, y: outputFor(t) },
+    kneeL: { x: t - w, y: outputFor(t - w) },
+    kneeR: { x: t + w, y: outputFor(t + w) },
+    ratio: { x: rx, y: outputFor(rx) },
+  };
+};
+const drawKnee = () => {
+  if (!UI.kneeOpen) return;
+  const { ctx, w, h } = fitCanvas(kneeCv); KN.w = w; KN.h = h;
+  ctx.clearRect(0, 0, w, h);
+  const R = UI.scale, step = R <= 30 ? 6 : 12;
+  ctx.font = '500 10px Inter, sans-serif';
+  for (let d = 0; d <= R; d += step) {
+    const x = Math.round(kx(-d)) + .5, y = Math.round(ky(-d)) + .5;
+    ctx.strokeStyle = d === 0 ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,.05)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, 14); ctx.lineTo(x, h - KN.pad); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(KN.pad, y); ctx.lineTo(w - 14, y); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.3)';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top'; if (d % (step * 2) === 0 && d) ctx.fillText(MINUS + d, x, h - KN.pad + 6);
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; if (d % (step * 2) === 0 && d) ctx.fillText(MINUS + d, KN.pad - 6, y);
+  }
+  ctx.fillStyle = 'rgba(255,255,255,.38)'; ctx.font = '600 9px Inter, sans-serif';
+  ctx.textAlign = 'right'; ctx.textBaseline = 'top'; ctx.fillText('IN', w - 14, h - KN.pad + 6);
+  ctx.textAlign = 'left'; ctx.fillText('OUT', 8, 10);
+
+  // 1:1 reference
+  ctx.save(); ctx.beginPath(); ctx.rect(KN.pad, 14, w - KN.pad - 14, h - KN.pad - 14); ctx.clip();
+  ctx.setLineDash([3, 4]); ctx.strokeStyle = 'rgba(255,255,255,.14)';
+  ctx.beginPath(); ctx.moveTo(kx(-R), ky(-R)); ctx.lineTo(kx(0), ky(0)); ctx.stroke(); ctx.setLineDash([]);
+
+  // threshold guide + knee band
+  const t = S.v.threshold, kw = S.v.knee;
+  ctx.fillStyle = hexA(ACCENT, .05); ctx.fillRect(kx(t - kw), 14, kx(t + kw) - kx(t - kw), h - KN.pad - 14);
+  ctx.strokeStyle = hexA(ACCENT, .25); ctx.beginPath(); ctx.moveTo(Math.round(kx(t)) + .5, 14); ctx.lineTo(Math.round(kx(t)) + .5, h - KN.pad); ctx.stroke();
+
+  // the curve, lit up to the detector level
+  const pts = [];
+  for (let px = KN.pad; px <= w - 14; px += 1) { const x = kdbx(px); pts.push([px, ky(outputFor(x)), x]); }
+  const dotDb = KN.dot;
+  ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.strokeStyle = 'rgba(244,246,248,.9)'; ctx.stroke();
+  if (!S.b.bypass) {
+    ctx.beginPath(); let started = false;
+    for (const [x, y, d] of pts) { if (d > dotDb) break; started ? ctx.lineTo(x, y) : ctx.moveTo(x, y); started = true; }
+    ctx.strokeStyle = ACCENT; ctx.lineWidth = 2.5; ctx.shadowColor = ACCENT; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
+  }
+  // trail + dot
+  if (!S.b.bypass && dotDb > -R) {
+    KN.trail.forEach((d, i) => { const a = (i + 1) / KN.trail.length; ctx.fillStyle = hexA(ACCENT, a * .25); ctx.beginPath(); ctx.arc(kx(d), ky(outputFor(d)), 1.5 + a * 2, 0, 7); ctx.fill(); });
+    const dx = kx(dotDb), dy = ky(outputFor(dotDb));
+    ctx.fillStyle = hexA(ACCENT, .25); ctx.beginPath(); ctx.arc(dx, dy, 9, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(dx, dy, 4, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+
+  // handles
+  const H = handles(), active = KN.drag || KN.hover;
+  const drawH = (key, r) => { const hh = H[key]; if (hh.x < -R || hh.x > 0) return; const x = kx(hh.x), y = ky(hh.y);
+    const on = active === key; ctx.fillStyle = on ? ACCENT : '#0E1013'; ctx.strokeStyle = on ? ACCENT : 'rgba(244,246,248,.8)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(x, y, on ? r + 1.5 : r, 0, 7); ctx.fill(); ctx.stroke(); };
+  if (active === 'kneeL' || active === 'kneeR' || active === 'elbow') { drawH('kneeL', 3); drawH('kneeR', 3); }
+  drawH('ratio', 4); drawH('elbow', 5);
+
+  // readout
+  ctx.font = '500 11px Inter, sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+  const info = active === 'ratio' ? 'Ratio ' + P.ratio.fmt(S.v.ratio) : active?.startsWith('knee') ? 'Knee ' + fmtDb(S.v.knee) : active === 'elbow' ? 'Threshold ' + fmtDb(S.v.threshold)
+    : (KN.hover?.pt ? 'In ' + fmtDb(KN.hover.pt.x) + '  →  Out ' + fmtDb(outputFor(KN.hover.pt.x)) : '');
+  if (info) { ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillText(info, w - 16, 12); }
+};
+kneeCv.addEventListener('pointermove', (e) => {
+  const p = localPos(e, kneeCv);
+  if (KN.drag) {
+    const x = clamp(kdbx(p.x), -100, 0), y = kdby(p.y);
+    if (KN.drag === 'elbow') {
+      // move along the 1:1 line: average the two axes so diagonal drags feel natural
+      const nt = clamp((x + y - S.v.makeup) / 2 + (KN.dragOff || 0), -100, 0);
+      S.v.threshold = Math.round(nt * 10) / 10;
+    } else if (KN.drag === 'ratio') {
+      const tt = S.v.threshold, dx = Math.max(.5, x - tt), dy = (y - S.v.makeup) - tt;
+      if (S.c.direction === 0) S.v.ratio = clamp(dx / Math.max(.01, dy), 1, 100);
+      else if (S.c.direction === 3) S.v.ratio = clamp(Math.max(.01, dy) / dx, 1, 100);
+      else S.v.ratio = clamp(S.v.ratio * (1 + (KN.lastY - p.y) * .01), 1, 100);
+      S.v.ratio = Math.round(S.v.ratio * 100) / 100;
+    } else {
+      S.v.knee = clamp(Math.round(Math.abs(x - S.v.threshold) * 10) / 10, 0, 32);
+    }
+    KN.lastY = p.y; syncAll(); return;
+  }
+  const H = handles(); let best = null, bd = 12;
+  for (const k of ['elbow', 'ratio', 'kneeL', 'kneeR']) { const d = Math.hypot(kx(H[k].x) - p.x, ky(H[k].y) - p.y); if (d < bd) { bd = d; best = k; } }
+  KN.hover = best || { pt: { x: kdbx(p.x) } };
+  if (!best && (p.x < KN.pad || p.y > KN.h - KN.pad)) KN.hover = null;
+  kneeCv.style.cursor = best ? (best === 'elbow' ? 'move' : best === 'ratio' ? 'ns-resize' : 'ew-resize') : 'default';
+  if (best) showBalloon(kneeCv, best === 'elbow' ? 'threshold' : best === 'ratio' ? 'ratio' : 'knee', { x: kx(H[best].x), y: ky(H[best].y) }); else hideBalloon();
+});
+kneeCv.addEventListener('pointerleave', () => { if (!KN.drag) { KN.hover = null; hideBalloon(); } });
+kneeCv.addEventListener('pointerdown', (e) => {
+  const k = typeof KN.hover === 'string' ? KN.hover : null;
+  if (!k) return;
+  const pid = k === 'elbow' ? 'threshold' : k === 'ratio' ? 'ratio' : 'knee';
+  if (e.metaKey || e.ctrlKey) { oneShot(() => { S.v[pid] = P[pid].def; }); syncAll(); return; }
+  const p = localPos(e, kneeCv);
+  KN.drag = k; KN.lastY = p.y;
+  KN.dragOff = k === 'elbow' ? S.v.threshold - (clamp(kdbx(p.x), -100, 0) + kdby(p.y) - S.v.makeup) / 2 : 0;
+  beginGesture(); kneeCv.setPointerCapture(e.pointerId); hideBalloon();
+});
+kneeCv.addEventListener('pointerup', () => { if (KN.drag) { KN.drag = null; endGesture(); } });
+kneeCv.addEventListener('dblclick', () => { const k = typeof KN.hover === 'string' ? KN.hover : null; if (!k) return;
+  const pid = k === 'elbow' ? 'threshold' : k === 'ratio' ? 'ratio' : 'knee'; oneShot(() => { S.v[pid] = P[pid].def; }); syncAll(); });
+kneeCv.addEventListener('wheel', (e) => { e.preventDefault(); const pid = e.metaKey || e.ctrlKey ? 'ratio' : 'threshold';
+  nudge(pid, -Math.sign(e.deltaY) * (e.shiftKey ? .002 : .01)); }, { passive: false });
+
+// ------------------------------------------------------------------ meters
+const meterCv = $('#meters');
+const MT = { inL: -120, inR: -120, outL: -120, outR: -120, gr: 0, inPk: -120, outPk: -120, grPk: 0, pkT: [0, 0, 0] };
+const drawMeters = (dt) => {
+  const { ctx, w, h } = fitCanvas(meterCv);
+  ctx.clearRect(0, 0, w, h);
+  const m = sim.meter, decay = 24 * dt;
+  const fall = (cur, v) => Math.max(v, cur - decay);
+  MT.inL = fall(MT.inL, m.inL); MT.inR = fall(MT.inR, m.inR); MT.outL = fall(MT.outL, m.outL); MT.outR = fall(MT.outR, m.outR);
+  MT.gr = Math.abs(m.gr) >= Math.abs(MT.gr) ? m.gr : MT.gr * Math.pow(.02, dt);
+  MT.inPk = Math.max(MT.inPk, m.inL, m.inR); MT.outPk = Math.max(MT.outPk, m.outL, m.outR);
+  MT.grPk = Math.abs(m.gr) > Math.abs(MT.grPk) ? m.gr : MT.grPk;
+  m.inL = m.inR = m.outL = m.outR = -120; m.gr = 0;
+  const up = S.c.direction === 1 || S.c.direction === 3;
+  const grCol = up ? UP : GR;
+  const R = UI.scale;
+
+  if (UI.size === 'Compact') {
+    // horizontal strip
+    const rows = [['IN', MT.inL, MT.inR, MT.inPk], ['GR', MT.gr, null, MT.grPk], ['OUT', MT.outL, MT.outR, MT.outPk]];
+    const colW = (w - 32) / 3;
+    rows.forEach(([lab, a, b, pk], i) => {
+      const x0 = 16 + i * colW, bw = colW - 90, y0 = 13;
+      ctx.font = '600 9px Inter, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.38)'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillText(lab, x0, 20);
+      const bx = x0 + 28;
+      const hbar = (y, v, col, fromRight) => { ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.fillRect(bx, y, bw, 5);
+        const f = clamp(fromRight ? Math.abs(v) / R : 1 + v / R, 0, 1); ctx.fillStyle = col; fromRight ? ctx.fillRect(bx + bw * (1 - f), y, bw * f, 5) : ctx.fillRect(bx, y, bw * f, 5); };
+      if (b === null) hbar(y0 + 4, a, grCol, true); else { hbar(y0, a, 'rgba(95,200,214,.9)', false); hbar(y0 + 8, b, 'rgba(95,200,214,.9)', false); }
+      ctx.textAlign = 'right'; ctx.font = '500 11px Inter, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.85)';
+      ctx.fillText(pk <= -119 ? MINUS + '∞' : fmtNum(pk, 1), x0 + colW - 14, 20);
+    });
+    return;
+  }
+
+  const top = 34, bottom = h - 26, H = bottom - top;
+  const yv = (db) => top + clamp(-db / R, 0, 1) * H;
+  const cols = [{ x: 8, lab: 'IN' }, { x: 30, lab: 'GR' }, { x: 50, lab: 'OUT' }];
+  // readouts (click to reset)
+  ctx.font = '500 10px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const pkTxt = (v) => v <= -119 ? MINUS + '∞' : fmtNum(v, Math.abs(v) >= 10 ? 0 : 1);
+  [[MT.inPk, 15, 'rgba(255,255,255,.75)'], [MT.grPk, 37, grCol], [MT.outPk, 61, MT.outPk > -.1 ? '#F0656A' : 'rgba(255,255,255,.9)']].forEach(([v, x, c]) => {
+    roundRect(ctx, x - 11.5, 9, 23, 16, 3); ctx.fillStyle = 'rgba(255,255,255,.04)'; ctx.fill(); ctx.fillStyle = c; ctx.font = '500 9.5px Inter, sans-serif'; ctx.fillText(pkTxt(v), x, 17.5);
+  });
+  // bars
+  const bar = (x, bw, v, col) => { ctx.fillStyle = 'rgba(255,255,255,.05)'; ctx.fillRect(x, top, bw, H);
+    const y = yv(v); const g = ctx.createLinearGradient(0, top, 0, bottom); g.addColorStop(0, col[0]); g.addColorStop(1, col[1]); ctx.fillStyle = g; ctx.fillRect(x, y, bw, bottom - y); };
+  const lvl = ['rgba(150,224,236,.95)', 'rgba(71,140,160,.75)'];
+  bar(9, 5, MT.inL, lvl); bar(16, 5, MT.inR, lvl);
+  bar(53, 5, MT.outL, lvl); bar(60, 5, MT.outR, lvl);
+  // GR from the top
+  ctx.fillStyle = 'rgba(255,255,255,.05)'; ctx.fillRect(32, top, 8, H);
+  const gyy = top + clamp(Math.abs(MT.gr) / R, 0, 1) * H; ctx.fillStyle = grCol; ctx.fillRect(32, top, 8, gyy - top);
+  const gpk = top + clamp(Math.abs(MT.grPk) / R, 0, 1) * H; ctx.fillStyle = hexA(grCol, .9); ctx.fillRect(32, gpk - 1, 8, 1.5);
+  // threshold marker on the input meter
+  const ty = yv(S.v.threshold); ctx.fillStyle = ACCENT; ctx.beginPath(); ctx.moveTo(23, ty); ctx.lineTo(27, ty - 3); ctx.lineTo(27, ty + 3); ctx.fill();
+  // labels
+  ctx.font = '600 9px Inter, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.38)';
+  ctx.fillText('IN', 15, h - 12); ctx.fillText('GR', 36, h - 12); ctx.fillText('OUT', 61, h - 12);
+};
+meterCv.addEventListener('click', (e) => { const p = localPos(e, meterCv); if (p.y < 30) { MT.inPk = -120; MT.outPk = -120; MT.grPk = 0; } });
+
+// ------------------------------------------------------------------ side-chain EQ view
+const eqCv = $('#sceqCanvas');
+const EQ = { w: 0, h: 0, maxDb: 18, hover: -1, drag: -1, spec: new Float32Array(160).fill(-100), solo: -1 };
+const fx = (f) => 14 + (Math.log(f / 20) / Math.log(20000 / 20)) * (EQ.w - 28);
+const xf = (x) => 20 * Math.pow(20000 / 20, (x - 14) / (EQ.w - 28));
+const gyq = (g) => 22 + (1 - (g + EQ.maxDb) / (2 * EQ.maxDb)) * (EQ.h - 44);
+const ygq = (y) => (1 - (y - 22) / (EQ.h - 44)) * 2 * EQ.maxDb - EQ.maxDb;
+const nodeGain = (b) => (b.type === 0 || b.type === 1 || b.type === 3 || b.type === 7) ? b.gain : 0;
+const srcSpectrum = (f) => {
+  // a rough long-term spectrum of the current side-chain source, in dB
+  const bump = (fc, wOct, a) => a * Math.exp(-Math.pow(Math.log2(f / fc) / wOct, 2));
+  const tilt = -4.5 * Math.log2(f / 1000);
+  if (S.b.extSide) return -60 + bump(60, .5, 34) + tilt * .2;
+  if (UI.source === 'drums') return -62 + bump(60, .6, 32) + bump(220, .7, 18) + bump(4000, 1.2, 16) + bump(9000, .8, 12) + tilt * .35;
+  if (UI.source === 'vocal') return -64 + bump(400, .8, 26) + bump(2500, .9, 16) + bump(7000, .5, 12 + (Math.sin(sim.t * 5) > .6 ? 10 : 0)) + tilt * .35;
+  return -60 + bump(80, .6, 30) + bump(700, .9, 12) + tilt * .3;
+};
+const drawEq = (dt) => {
+  if (!UI.scOpen) return;
+  const { ctx, w, h } = fitCanvas(eqCv); EQ.w = w; EQ.h = h;
+  ctx.fillStyle = '#0E1013'; ctx.fillRect(0, 0, w, h);
+  // grid
+  ctx.font = '500 10px Inter, sans-serif';
+  for (const f of [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]) {
+    const x = Math.round(fx(f)) + .5; ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h - 16); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.fillText(f >= 1000 ? f / 1000 + 'k' : f, x, h - 3);
+  }
+  for (let g = -EQ.maxDb + 6; g < EQ.maxDb; g += 6) { const y = Math.round(gyq(g)) + .5; ctx.strokeStyle = g === 0 ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,.04)'; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillStyle = 'rgba(255,255,255,.28)'; if (g) ctx.fillText((g > 0 ? '+' : MINUS) + Math.abs(g), w - 6, y); }
+  // spectrum after the EQ (what the detector hears)
+  const nP = EQ.spec.length;
+  ctx.beginPath(); ctx.moveTo(fx(20), h - 16);
+  for (let i = 0; i < nP; i++) {
+    const f = 20 * Math.pow(1000, i / (nP - 1));
+    const target = srcSpectrum(f) + eqDb(f) + S.v.scGain + (rand() - .5) * 5;
+    EQ.spec[i] = target > EQ.spec[i] ? target : EQ.spec[i] - 30 * dt;
+    const y = clamp(h - 16 - ((EQ.spec[i] + 80) / 80) * (h - 30), 10, h - 16);
+    ctx.lineTo(fx(f), y);
+  }
+  ctx.lineTo(fx(20000), h - 16); ctx.closePath();
+  const sg = ctx.createLinearGradient(0, 0, 0, h); sg.addColorStop(0, 'rgba(229,154,98,.22)'); sg.addColorStop(1, 'rgba(229,154,98,.03)');
+  ctx.fillStyle = sg; ctx.fill(); ctx.strokeStyle = 'rgba(229,154,98,.55)'; ctx.lineWidth = 1; ctx.stroke();
+
+  const on = S.b.eqOn;
+  // per-band fills
+  S.bands.forEach((b, i) => {
+    if (!b.on) return;
+    const active = EQ.hover === i || EQ.drag === i;
+    ctx.beginPath(); ctx.moveTo(14, gyq(0));
+    for (let x = 14; x <= w - 14; x += 3) ctx.lineTo(x, gyq(clamp(bandDb(b, xf(x)), -EQ.maxDb - 2, EQ.maxDb + 2)));
+    ctx.lineTo(w - 14, gyq(0)); ctx.closePath(); ctx.fillStyle = hexA(BANDS[i], on ? (active ? .2 : .1) : .04); ctx.fill();
+  });
+  // composite
+  ctx.beginPath();
+  for (let x = 14; x <= w - 14; x += 2) { const y = gyq(clamp(eqDb(xf(x)), -EQ.maxDb - 2, EQ.maxDb + 2)); x === 14 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+  ctx.strokeStyle = on ? 'rgba(244,246,248,.92)' : 'rgba(244,246,248,.25)'; ctx.lineWidth = 1.6; ctx.stroke();
+  // nodes
+  S.bands.forEach((b, i) => {
+    if (!b.on && !b.bypassed) return;
+    const x = fx(b.freq), y = gyq(clamp(nodeGain(b), -EQ.maxDb, EQ.maxDb)), active = EQ.hover === i || EQ.drag === i;
+    ctx.fillStyle = b.bypassed ? '#0E1013' : BANDS[i]; ctx.strokeStyle = BANDS[i]; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(x, y, active ? 8 : 7, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = b.bypassed ? BANDS[i] : '#0A0B0D'; ctx.font = '600 9px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(i + 1, x, y + .5);
+    if (active) {
+      const rows = [[TYPES[b.type], b.type === 2 || b.type === 4 ? b.order * 6 + ' dB/oct' : ''], ['Freq', b.freq >= 1000 ? (b.freq / 1000).toFixed(2) + ' kHz' : b.freq.toFixed(0) + ' Hz']];
+      if (nodeGain(b) || b.type === 0) rows.push(['Gain', (b.gain > 0 ? '+' : '') + fmtDb(b.gain)]);
+      rows.push(['Q', b.q.toFixed(2)]);
+      const saved = LV.h; LV.h = h; drawTip(ctx, x, y, rows, w); LV.h = saved;
+    }
+  });
+};
+const freeBand = () => S.bands.findIndex(b => !b.on && !b.bypassed);
+const nodeAt = (p) => { let best = -1, bd = 12; S.bands.forEach((b, i) => { if (!b.on && !b.bypassed) return; const d = Math.hypot(fx(b.freq) - p.x, gyq(clamp(nodeGain(b), -EQ.maxDb, EQ.maxDb)) - p.y); if (d < bd) { bd = d; best = i; } }); return best; };
+eqCv.addEventListener('dblclick', (e) => {
+  const p = localPos(e, eqCv); const hit = nodeAt(p);
+  if (hit >= 0) return;
+  const i = freeBand(); if (i < 0) return;
+  oneShot(() => { const f = xf(p.x), g = Math.round(ygq(p.y) * 10) / 10;
+    S.bands[i] = { on: true, type: f < 60 ? 4 : f > 12000 ? 2 : 0, freq: f, gain: f < 60 || f > 12000 ? 0 : g, q: .707, order: 2 }; });
+  invalidateEq(); syncSideGlow(); EQ.hover = i; $('#eqHint').hidden = true;
+});
+eqCv.addEventListener('pointermove', (e) => {
+  const p = localPos(e, eqCv);
+  if (EQ.drag >= 0) {
+    const b = S.bands[EQ.drag];
+    let f = xf(p.x), g = ygq(p.y);
+    if (e.altKey) { if (Math.abs(p.x - EQ.start.x) > Math.abs(p.y - EQ.start.y)) g = EQ.start.g; else f = EQ.start.f; }
+    b.freq = clamp(f, 10, 20000); if (nodeGain(b) !== 0 || b.type === 0 || b.type === 1 || b.type === 3 || b.type === 7) b.gain = clamp(Math.round(g * 10) / 10, -30, 30);
+    invalidateEq(); syncSideGlow(); return;
+  }
+  EQ.hover = nodeAt(p); eqCv.style.cursor = EQ.hover >= 0 ? 'grab' : 'default';
+});
+eqCv.addEventListener('pointerleave', () => { if (EQ.drag < 0) EQ.hover = -1; });
+eqCv.addEventListener('pointerdown', (e) => {
+  const p = localPos(e, eqCv), i = nodeAt(p);
+  if (i < 0) return;
+  if (e.button === 2) return;
+  if (e.altKey && !e.shiftKey) { oneShot(() => { const b = S.bands[i]; b.bypassed = b.on; b.on = !b.on; }); invalidateEq(); return; }
+  EQ.drag = i; EQ.start = { x: p.x, y: p.y, f: S.bands[i].freq, g: S.bands[i].gain }; beginGesture(); eqCv.setPointerCapture(e.pointerId); eqCv.style.cursor = 'grabbing';
+});
+eqCv.addEventListener('pointerup', () => { if (EQ.drag >= 0) { EQ.drag = -1; endGesture(); eqCv.style.cursor = 'grab'; } });
+eqCv.addEventListener('wheel', (e) => { const i = EQ.hover; if (i < 0) return; e.preventDefault();
+  oneShot(() => { const b = S.bands[i]; if (b.type === 2 || b.type === 4) { const oi = ORDERS.indexOf(b.order); b.order = ORDERS[clamp(oi - Math.sign(e.deltaY), 0, ORDERS.length - 1)]; }
+    else b.q = clamp(b.q * Math.pow(1.08, -Math.sign(e.deltaY)), .025, 25); }); invalidateEq(); }, { passive: false });
+eqCv.addEventListener('contextmenu', (e) => {
+  e.preventDefault(); const p = localPos(e, eqCv), i = nodeAt(p); if (i < 0) return;
+  const b = S.bands[i];
+  const items = TYPES.map((t, k) => ({ label: t, checked: b.type === k, act: () => oneShot(() => { b.type = k; if (k === 2 || k === 4) b.gain = 0; }) }));
+  items.push('-', { label: b.on ? 'Bypass band' : 'Enable band', act: () => oneShot(() => { b.bypassed = b.on; b.on = !b.on; }) },
+    { label: 'Delete band', act: () => oneShot(() => { S.bands[i] = { on: false, type: 0, freq: 1000, gain: 0, q: .707, order: 2 }; }) });
+  openMenu(eqCv, items, p, () => { invalidateEq(); syncSideGlow(); });
+});
+
+// ------------------------------------------------------------------ controls
+const controls = {};
+const knobSvg = (size, bipolar) => {
+  const r = size / 2, ar = r - 2;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true">
+    <path class="track" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="2" stroke-linecap="round"/>
+    <path class="meter" fill="none" stroke-width="2" stroke-linecap="butt"/>
+    <path class="arc" fill="none" stroke-width="2" stroke-linecap="round"/>
+    <circle class="body" cx="${r}" cy="${r}" r="${r - 7}"/>
+    <circle class="ring" cx="${r}" cy="${r}" r="${r - 7.5}" fill="none" stroke="rgba(255,255,255,.06)"/>
+    <line class="ind" stroke="rgba(255,255,255,.92)" stroke-width="1.8" stroke-linecap="round"/>
+  </svg>`;
+};
+const arcPath = (cx, cy, r, a0, a1) => {
+  if (Math.abs(a1 - a0) < 1e-4) return '';
+  const p = (a) => [cx + Math.sin(a) * r, cy - Math.cos(a) * r];
+  const [x0, y0] = p(a0), [x1, y1] = p(a1);
+  return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${Math.abs(a1 - a0) > Math.PI ? 1 : 0} ${a1 > a0 ? 1 : 0} ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+};
+const K0 = -.75 * Math.PI, K1 = .75 * Math.PI;
+
+const makeKnob = (id, parent, opts = {}) => {
+  const p = P[id], size = opts.size || 50;
+  const el = document.createElement('div');
+  el.className = 'knob ctl' + (opts.big ? ' big' : '');
+  el.tabIndex = 0; el.setAttribute('role', 'slider'); el.setAttribute('aria-label', opts.label || p.label);
+  el.innerHTML = `<div class="cap">${opts.label || p.label}</div>${knobSvg(size)}<div class="val"></div>`;
+  const svg = el.querySelector('svg'), r = size / 2;
+  svg.querySelector('.track').setAttribute('d', arcPath(r, r, r - 2, K0, K1));
+  const body = svg.querySelector('.body'), gid = 'g' + id;
+  svg.insertAdjacentHTML('afterbegin', `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2A3038"/><stop offset="1" stop-color="#1A1E23"/></linearGradient></defs>`);
+  body.setAttribute('fill', `url(#${gid})`);
+  parent.appendChild(el);
+  const c = { el, id, p, svg, size, opts, update() {
+    const v = S.v[id], n = p.r.toN(v), a = K0 + n * (K1 - K0), from = p.bipolar ? 0 : K0;
+    const arc = svg.querySelector('.arc');
+    arc.setAttribute('d', arcPath(r, r, r - 2, Math.min(from, a), Math.max(from, a)));
+    arc.setAttribute('stroke', opts.colour || ACCENT);
+    const ind = svg.querySelector('.ind'), inner = r - 7;
+    ind.setAttribute('x1', r + Math.sin(a) * inner * .35); ind.setAttribute('y1', r - Math.cos(a) * inner * .35);
+    ind.setAttribute('x2', r + Math.sin(a) * inner * .8); ind.setAttribute('y2', r - Math.cos(a) * inner * .8);
+    el.querySelector('.val').textContent = (opts.fmt || p.fmt)(v);
+    el.setAttribute('aria-valuetext', p.fmt(v));
+    el.style.opacity = opts.enabled && !opts.enabled() ? .35 : '';
+  } };
+  bindValue(c, el, 'y');
+  controls[id] = c; c.update();
+  return c;
+};
+const makeSlider = (id, parent, opts = {}) => {
+  const p = P[id];
+  const el = document.createElement('div');
+  el.className = 'slider ctl'; el.tabIndex = 0; el.setAttribute('role', 'slider'); el.setAttribute('aria-label', opts.label || p.label);
+  el.innerHTML = `<div class="row"><span class="cap">${opts.label || p.label}</span>${opts.inf ? '<button class="inf" aria-pressed="false">∞</button>' : ''}<span class="v"></span></div><div class="track"><div class="fill"></div><div class="thumb"></div></div>`;
+  parent.appendChild(el);
+  const c = { el, id, p, opts, update() {
+    const v = S.v[id], n = p.r.toN(v), fill = el.querySelector('.fill'), thumb = el.querySelector('.thumb');
+    if (p.bipolar) { fill.style.left = Math.min(n, .5) * 100 + '%'; fill.style.width = Math.abs(n - .5) * 100 + '%'; }
+    else { fill.style.left = '0'; fill.style.width = n * 100 + '%'; }
+    thumb.style.left = n * 100 + '%';
+    let txt = p.fmt(v);
+    if (opts.inf && S.b.rangeInf) txt = '∞';
+    el.querySelector('.v').textContent = txt; el.setAttribute('aria-valuetext', txt);
+    const dim = (opts.inf && S.b.rangeInf) || (opts.enabled && !opts.enabled());
+    el.classList.toggle('dim', !!dim && !opts.inf);
+    fill.style.opacity = dim ? .3 : 1;
+    if (opts.inf) { const b = el.querySelector('.inf'); b.classList.toggle('on', S.b.rangeInf); b.setAttribute('aria-pressed', S.b.rangeInf); }
+  } };
+  if (opts.inf) el.querySelector('.inf').addEventListener('click', (e) => { e.stopPropagation(); oneShot(() => { S.b.rangeInf = !S.b.rangeInf; }); syncAll(); });
+  bindValue(c, el, 'x');
+  controls[id] = c; c.update();
+  return c;
+};
+const setNorm = (id, n) => { const p = P[id]; S.v[id] = p.r.fromN(clamp(n, 0, 1)); };
+const nudge = (id, dn) => { oneShot(() => setNorm(id, P[id].r.toN(S.v[id]) + dn)); syncAll(); };
+function bindValue(c, el, axis) {
+  let drag = null;
+  el.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0 || e.target.closest('.inf')) return;
+    if (e.target.closest('.val, .v') && e.detail >= 2) return;
+    if (e.metaKey || e.ctrlKey) { oneShot(() => { S.v[c.id] = c.p.def; }); syncAll(); return; }
+    drag = { n: c.p.r.toN(S.v[c.id]), x: e.clientX, y: e.clientY };
+    beginGesture(); el.setPointerCapture(e.pointerId); el.classList.add('drag'); hideBalloon(); showBalloon(el, c.id, null, true);
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (!drag) { return; }
+    const d = axis === 'y' ? drag.y - e.clientY : e.clientX - drag.x;
+    drag.x = e.clientX; drag.y = e.clientY;
+    drag.n = clamp(drag.n + d / (axis === 'y' ? 200 : 260) * (e.shiftKey ? .15 : 1), 0, 1);
+    setNorm(c.id, drag.n); syncAll(); showBalloon(el, c.id, null, true);
+  });
+  const end = () => { if (!drag) return; drag = null; el.classList.remove('drag'); endGesture(); hideBalloon(); };
+  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+  el.addEventListener('dblclick', (e) => {
+    if (e.target.closest('.val, .v')) { textEdit(el.querySelector('.val, .v'), c); return; }
+    oneShot(() => { S.v[c.id] = c.p.def; }); syncAll();
+  });
+  el.addEventListener('wheel', (e) => { e.preventDefault(); nudge(c.id, -Math.sign(e.deltaY || -e.deltaX) * (e.shiftKey ? .002 : .01)); showBalloon(el, c.id, null, true); clearTimeout(c.wt); c.wt = setTimeout(hideBalloon, 700); }, { passive: false });
+  el.addEventListener('keydown', (e) => {
+    const step = e.shiftKey ? .002 : .01;
+    if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { nudge(c.id, step); e.preventDefault(); }
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { nudge(c.id, -step); e.preventDefault(); }
+    else if (e.key === 'Enter') { textEdit(el.querySelector('.val, .v'), c); e.preventDefault(); }
+    else if (e.key === 'Backspace' || e.key === 'Delete') { oneShot(() => { S.v[c.id] = c.p.def; }); syncAll(); }
+  });
+  el.addEventListener('pointerenter', () => { if (!drag) hoverHelp(el, c.id); });
+  el.addEventListener('pointerleave', () => { if (!drag) hideBalloon(); });
+}
+const textEdit = (target, c) => {
+  const r = target.getBoundingClientRect(), pr = plugin.getBoundingClientRect();
+  const inp = document.createElement('input'); inp.className = 'textedit'; inp.value = c.p.fmt(S.v[c.id]).replace(MINUS, '-');
+  inp.style.left = (r.left - pr.left) / scale - 8 + 'px'; inp.style.top = (r.top - pr.top) / scale - 2 + 'px'; inp.style.width = r.width / scale + 16 + 'px';
+  plugin.appendChild(inp); inp.focus(); inp.select();
+  const done = (commit) => { if (!inp.isConnected) return;
+    if (commit) { const v = (c.p.parse || parseNum)(inp.value); if (!isNaN(v)) { oneShot(() => { S.v[c.id] = clamp(v, c.p.r.min, c.p.r.max); }); syncAll(); } }
+    inp.remove(); c.el.focus(); };
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(true); if (e.key === 'Escape') done(false); e.stopPropagation(); });
+  inp.addEventListener('blur', () => done(true));
+};
+
+// balloons: name, value and a one-line hint
+const balloon = $('#balloon');
+let hoverTimer = 0;
+const showBalloon = (el, id, at, now) => {
+  const p = P[id]; if (!p) return;
+  balloon.innerHTML = `<b>${p.label}</b><span class="bv">${p.fmt(S.v[id])}</span>${UI.help && !now ? '<br>' + p.help : ''}`;
+  placeBalloon(el, at);
+};
+const placeBalloon = (el, at) => {
+  const r = el.getBoundingClientRect(), pr = plugin.getBoundingClientRect();
+  let x = (r.left - pr.left) / scale + (at ? at.x : r.width / scale / 2), y = (r.top - pr.top) / scale + (at ? at.y : 0);
+  balloon.classList.add('show');
+  const bw = balloon.offsetWidth, bh = balloon.offsetHeight;
+  x = clamp(x - bw / 2, 8, plugin.offsetWidth - bw - 8); y = y - bh - 10; if (y < 44) y = (r.bottom - pr.top) / scale + 10;
+  balloon.style.left = x + 'px'; balloon.style.top = y + 'px';
+};
+const hoverHelp = (el, id) => { clearTimeout(hoverTimer); hoverTimer = setTimeout(() => showBalloon(el, id), 450); };
+const hideBalloon = () => { clearTimeout(hoverTimer); balloon.classList.remove('show'); };
+const helpFor = (el) => { const [t, d] = el.dataset.help.split('|'); return `<b>${t}</b>${UI.help ? '<br>' + d : ''}`; };
+document.querySelectorAll('[data-help]').forEach(el => {
+  el.addEventListener('pointerenter', () => { clearTimeout(hoverTimer); hoverTimer = setTimeout(() => { balloon.innerHTML = helpFor(el); placeBalloon(el); }, 450); });
+  el.addEventListener('pointerleave', hideBalloon); el.addEventListener('pointerdown', hideBalloon);
+});
+
+// menus
+let openMenuEl = null;
+const closeMenu = () => { if (openMenuEl) { openMenuEl.remove(); openMenuEl = null; } };
+const openMenu = (anchor, items, at, after) => {
+  closeMenu(); hideBalloon();
+  const m = document.createElement('div'); m.className = 'menu'; m.setAttribute('role', 'menu');
+  for (const it of items) {
+    if (it === '-') { m.insertAdjacentHTML('beforeend', '<div class="msep"></div>'); continue; }
+    if (it.header) { m.insertAdjacentHTML('beforeend', `<div class="mh">${it.header}</div>`); continue; }
+    const d = document.createElement('div'); d.className = 'mi' + (it.checked ? ' checked' : '') + (it.dim ? ' dim' : ''); d.setAttribute('role', 'menuitemradio'); d.tabIndex = -1;
+    d.innerHTML = it.label + (it.desc ? `<small>${it.desc}</small>` : '');
+    d.addEventListener('click', (e) => { e.stopPropagation(); it.act(); closeMenu(); after && after(); syncAll(); });
+    m.appendChild(d);
+  }
+  plugin.appendChild(m);
+  const r = anchor.getBoundingClientRect(), pr = plugin.getBoundingClientRect();
+  let x = (r.left - pr.left) / scale + (at ? at.x : 0), y = (r.top - pr.top) / scale + (at ? at.y : r.height / scale + 4);
+  if (x + m.offsetWidth > plugin.offsetWidth - 8) x = plugin.offsetWidth - m.offsetWidth - 8;
+  if (y + m.offsetHeight > plugin.offsetHeight - 8) y = (r.top - pr.top) / scale - m.offsetHeight - 4;
+  m.style.left = Math.max(8, x) + 'px'; m.style.top = Math.max(8, y) + 'px';
+  openMenuEl = m;
+};
+document.addEventListener('pointerdown', (e) => {
+  if (openMenuEl && !openMenuEl.contains(e.target)) closeMenu();
+  if (adv && !adv.contains(e.target) && !e.target.closest('#advBtn')) closeAdv();
+  if (sheet && !sheet.contains(e.target) && !e.target.closest('#settingsBtn')) closeSheet();
+}, true);
+
+// ------------------------------------------------------------------ build the card
+const DIR_ICONS = [
+  'M2 14 L8 8 L14 6', // compress: slope flattens above the knee
+  'M2 10 L8 8 L14 2', // inflate: lifts below
+  'M2 15 L7 10 L14 3', // expand: steeper below
+  'M2 14 L8 8 L14 1', // shape: steeper above
+];
+const dirSeg = $('#dirSeg');
+CHOICES.direction.names.forEach((nm, i) => {
+  const b = document.createElement('button'); b.setAttribute('role', 'radio'); b.setAttribute('aria-label', nm);
+  b.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2 14 L14 2" stroke="currentColor" stroke-opacity=".25" stroke-width="1" fill="none"/><path d="${DIR_ICONS[i]}" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  b.addEventListener('click', () => { oneShot(() => { S.c.direction = i; }); syncAll(); });
+  b.addEventListener('pointerenter', () => { clearTimeout(hoverTimer); hoverTimer = setTimeout(() => { balloon.innerHTML = `<b>${nm}</b>${UI.help ? '<br>' + CHOICES.direction.desc[i] + '.' : ''}`; placeBalloon(b); }, 350); });
+  b.addEventListener('pointerleave', hideBalloon);
+  dirSeg.appendChild(b);
+});
+
+const gDyn = $('#gDyn'), gTime = $('#gTime'), gOut = $('#gOut');
+const thKnob = makeKnob('threshold', gDyn, { big: true, size: 56 });
+thKnob.svg.querySelector('.meter').setAttribute('stroke', 'rgba(229,154,98,.0)');
+makeKnob('ratio', gDyn, { big: true, size: 56, enabled: () => true });
+const dynCol = document.createElement('div'); dynCol.className = 'col'; gDyn.appendChild(dynCol);
+makeSlider('knee', dynCol); makeSlider('range', dynCol, { inf: true });
+makeKnob('attack', gTime, { big: true, size: 56 }); makeKnob('release', gTime, { big: true, size: 56 });
+const tCol = document.createElement('div'); tCol.className = 'col'; gTime.appendChild(tCol);
+makeSlider('hold', tCol); makeSlider('lookahead', tCol);
+const mk = makeKnob('makeup', gOut, { big: true, size: 56 });
+makeKnob('wet', gOut, { size: 56 });
+const learn = document.createElement('button'); learn.className = 'chipbtn learn'; learn.textContent = 'Learn';
+learn.dataset.help = 'Learn makeup|Play the loudest part, then click again. Makeup is set so the output matches the input loudness.';
+learn.style.cssText = 'position:absolute; bottom:-22px; left:50%; transform:translateX(-50%); height:18px; font-size:10px;';
+mk.el.appendChild(learn); mk.el.style.marginBottom = '20px';
+learn.addEventListener('pointerdown', e => e.stopPropagation());
+learn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (!sim.lufs) { sim.lufs = { i: 0, o: 0, n: 0 }; learn.classList.add('on'); learn.textContent = 'Learning…'; }
+  else { const l = sim.lufs; sim.lufs = null; learn.classList.remove('on'); learn.textContent = 'Learn';
+    if (l.n > 50) { const d = 10 * Math.log10(l.i / l.n) - 10 * Math.log10(l.o / l.n); oneShot(() => { S.v.makeup = clamp(Math.round((S.v.makeup + d) * 10) / 10, -30, 30); }); syncAll(); } }
+});
+learn.addEventListener('pointerenter', () => { clearTimeout(hoverTimer); hoverTimer = setTimeout(() => { balloon.innerHTML = helpFor(learn); placeBalloon(learn); }, 450); });
+learn.addEventListener('pointerleave', hideBalloon);
+
+// side chain knobs
+const gSide = $('#gSide');
+makeKnob('scGain', gSide, { size: 42, label: 'Gain' });
+makeKnob('link', gSide, { size: 42 });
+const a1 = makeKnob('amt1', gSide, { size: 42, label: 'Left' });
+const a2 = makeKnob('amt2', gSide, { size: 42, label: 'Right' });
+
+// style menu
+$('#styleSel').addEventListener('click', (e) => {
+  const forced = S.c.direction === 1 || S.c.direction === 2;
+  openMenu($('#styleSel'), CHOICES.style.names.map((nm, i) => ({ label: nm, desc: forced && i > 1 ? 'Uses Clean when inflating or expanding' : CHOICES.style.desc[i], checked: S.c.style === i, dim: forced && i > 1,
+    act: () => oneShot(() => { S.c.style = i; }) })));
+});
+$('#stereoSel').addEventListener('click', () => openMenu($('#stereoSel'), CHOICES.stereo.names.map((nm, i) => ({ label: nm, checked: S.c.stereo === i, act: () => oneShot(() => { S.c.stereo = i; }) }))));
+$('#osSel').addEventListener('click', () => openMenu($('#osSel'), CHOICES.oversample.names.map((nm, i) => ({ label: nm, desc: i ? 'Adds ' + [0, 1.4, 1.7, 1.8][i].toFixed(1) + ' ms latency' : 'No added latency', checked: S.c.oversample === i, act: () => oneShot(() => { S.c.oversample = i; }) }))));
+$('#timeSel').addEventListener('click', () => openMenu($('#timeSel'), [6, 9, 12, 18].map(t => ({ label: t + ' s', checked: UI.time === t, act: () => { UI.time = t; hist.count = 0; } }))));
+$('#scaleSel').addEventListener('click', () => openMenu($('#scaleSel'), [18, 30, 48, 60, 90].map(s => ({ label: s + ' dB', checked: UI.scale === s, act: () => { UI.scale = s; } }))));
+$('#sizeSel').addEventListener('click', () => openMenu($('#sizeSel'), ['Compact', 'Small', 'Medium', 'Large'].map(s => ({ label: s, checked: UI.size === s, act: () => setSize(s) }))));
+$('#presetName').addEventListener('click', () => openMenu($('#presetName'), [{ header: 'Factory' }, ...PRESETS.map((p, i) => ({ label: p.name, checked: presetIdx === i, act: () => loadPreset(i) }))]));
+$('#presetPrev').addEventListener('click', () => loadPreset(presetIdx - 1));
+$('#presetNext').addEventListener('click', () => loadPreset(presetIdx + 1));
+$('#abA').addEventListener('click', () => switchAB(0));
+$('#abB').addEventListener('click', () => switchAB(1));
+$('#abCopy').addEventListener('click', () => { ab.states[1 - ab.slot] = snapshot(); });
+$('#undo').addEventListener('click', undo); $('#redo').addEventListener('click', redo);
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+  if (e.key === 'Escape') { closeMenu(); closeAdv(); closeSheet(); }
+});
+$('#powerBtn').addEventListener('click', () => { oneShot(() => { S.b.bypass = !S.b.bypass; }); syncAll(); });
+$('#deltaBtn').addEventListener('click', () => { oneShot(() => { S.b.delta = !S.b.delta; }); syncAll(); });
+$('#magSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; UI.rms = b.dataset.v === '1'; syncAll(); });
+$('#srcSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; oneShot(() => { S.b.extSide = b.dataset.v === '1'; }); syncAll(); });
+$('#swapBtn').addEventListener('click', () => { oneShot(() => { S.b.swap = !S.b.swap; }); syncAll(); });
+$('#eqOn').addEventListener('click', () => { oneShot(() => { S.b.eqOn = !S.b.eqOn; }); invalidateEq(); syncAll(); });
+// listen: click latches, holding for longer than 300 ms is momentary
+(() => { const b = $('#listenBtn'); let t0 = 0, was = false;
+  b.addEventListener('pointerdown', (e) => { t0 = performance.now(); was = S.b.listen; S.b.listen = true; syncAll(); b.setPointerCapture(e.pointerId); });
+  b.addEventListener('pointerup', () => { const held = performance.now() - t0 > 300; S.b.listen = held ? false : !was; syncAll(); }); })();
+
+const toggleKnee = () => { UI.kneeOpen = !UI.kneeOpen; syncAll(); };
+$('#kneeTab').addEventListener('click', toggleKnee);
+$('#kneeTab').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleKnee(); } });
+const toggleSc = () => { UI.scOpen = !UI.scOpen; layout(); };
+$('#scBtn').addEventListener('click', toggleSc);
+
+// advanced popover
+let adv = null;
+const closeAdv = () => { if (adv) { adv.remove(); adv = null; $('#advBtn').classList.remove('on'); for (const k of ['rmsMix', 'rmsLength', 'rmsSpeed', 'pump', 'smooth', 'curve', 'floor', 'clipper']) delete controls[k]; } };
+$('#advBtn').addEventListener('click', () => {
+  if (adv) { closeAdv(); return; }
+  adv = document.createElement('div'); adv.className = 'pop'; adv.setAttribute('role', 'dialog'); adv.setAttribute('aria-label', 'Advanced');
+  adv.innerHTML = `<div class="pcol" id="pDet"><h4>Detection <button class="switch" id="rmsSw" aria-label="RMS detection"></button></h4></div>
+    <div class="pcol" id="pEnv"><h4>Envelope</h4></div><div class="pcol" id="pClip"><h4>Output</h4></div>`;
+  plugin.appendChild(adv);
+  const rmsOn = () => S.b.rmsOn;
+  makeSlider('rmsMix', $('#pDet', adv), { label: 'RMS mix', enabled: rmsOn }); makeSlider('rmsLength', $('#pDet', adv), { enabled: rmsOn }); makeSlider('rmsSpeed', $('#pDet', adv), { enabled: rmsOn });
+  makeSlider('pump', $('#pEnv', adv)); makeSlider('smooth', $('#pEnv', adv));
+  const expandish = () => S.c.direction === 1 || S.c.direction === 2;
+  makeSlider(expandish() ? 'floor' : 'curve', $('#pEnv', adv));
+  makeSlider('clipper', $('#pClip', adv));
+  $('#rmsSw', adv).addEventListener('click', () => { oneShot(() => { S.b.rmsOn = !S.b.rmsOn; }); syncAll(); });
+  adv.querySelectorAll('.slider').forEach(s => s.style.width = '140px');
+  const r = $('#advBtn').getBoundingClientRect(), pr = plugin.getBoundingClientRect();
+  adv.style.left = Math.max(8, (r.left - pr.left) / scale - 20) + 'px';
+  adv.style.top = (r.top - pr.top) / scale - adv.offsetHeight - 10 + 'px';
+  $('#advBtn').classList.add('on'); syncAll();
+});
+
+// settings sheet
+let sheet = null;
+const closeSheet = () => { if (sheet) { sheet.remove(); sheet = null; } };
+$('#settingsBtn').addEventListener('click', () => {
+  if (sheet) { closeSheet(); return; }
+  sheet = document.createElement('div'); sheet.className = 'sheet'; sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-label', 'Settings');
+  const acc = [['Cyan', '#47D2E8'], ['Violet', '#A99BFF'], ['Amber', '#F2B84B'], ['Green', '#5FD39A'], ['Rose', '#F28BA8']];
+  sheet.innerHTML = `<div class="srow"><span>Help hints on hover</span><button class="switch ${UI.help ? 'on' : ''}" id="helpSw" aria-label="Help hints"></button></div>
+    <div class="srow"><span>Accent</span><div class="swatches">${acc.map(([n, c]) => `<button class="sw ${c === ACCENT ? 'on' : ''}" style="background:${c};color:${c}" data-c="${c}" aria-label="${n}"></button>`).join('')}</div></div>
+    <div class="credit">Altvane Compressor 0.1 (design mock). Based on ZL Compressor by ZL Audio, licensed under AGPL-3.0.</div>`;
+  plugin.appendChild(sheet);
+  $('#helpSw', sheet).addEventListener('click', (e) => { UI.help = !UI.help; e.currentTarget.classList.toggle('on', UI.help); });
+  sheet.querySelectorAll('.sw').forEach(b => b.addEventListener('click', () => { ACCENT = b.dataset.c; document.documentElement.style.setProperty('--accent', ACCENT);
+    sheet.querySelectorAll('.sw').forEach(x => x.classList.toggle('on', x === b)); syncAll(); }));
+});
+
+// ------------------------------------------------------------------ sync
+const isScNonDefault = () => S.b.extSide || S.v.scGain !== 0 || S.bands.some(b => b.on) || S.c.stereo !== CHOICES.stereo.def || S.v.link !== P.link.def || S.b.swap || S.v.amt1 !== 100 || S.v.amt2 !== 100;
+const syncSideGlow = () => $('#scBtn').classList.toggle('active', isScNonDefault());
+const syncAll = () => {
+  invalidateEq();
+  for (const k in controls) controls[k].update();
+  $('#styleName').textContent = CHOICES.style.names[S.c.style] + ((S.c.direction === 1 || S.c.direction === 2) && S.c.style > 1 ? ' → Clean' : '');
+  [...dirSeg.children].forEach((b, i) => { b.classList.toggle('on', S.c.direction === i); b.setAttribute('aria-checked', S.c.direction === i); });
+  $('#dirName').textContent = CHOICES.direction.names[S.c.direction];
+  $('#stereoName').textContent = CHOICES.stereo.names[S.c.stereo];
+  const ms = S.c.stereo % 2 === 0;
+  a1.el.querySelector('.cap').textContent = ms ? 'Mid' : 'Left'; a2.el.querySelector('.cap').textContent = ms ? 'Side' : 'Right';
+  P.amt1.label = ms ? 'Mid' : 'Left'; P.amt2.label = ms ? 'Side' : 'Right';
+  $('#osName').textContent = CHOICES.oversample.names[S.c.oversample];
+  $('#timeName').textContent = UI.time + ' s'; $('#scaleName').textContent = UI.scale + ' dB'; $('#sizeName').textContent = UI.size;
+  [...$('#magSeg').children].forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === UI.rms));
+  [...$('#srcSeg').children].forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === S.b.extSide));
+  $('#swapBtn').classList.toggle('on', S.b.swap); $('#listenBtn').classList.toggle('on', S.b.listen);
+  $('#eqOn').classList.toggle('on', S.b.eqOn);
+  $('#deltaBtn').classList.toggle('on', S.b.delta);
+  $('#powerBtn').classList.toggle('off', S.b.bypass); $('#powerBtn').setAttribute('aria-pressed', !S.b.bypass);
+  plugin.classList.toggle('bypassed', S.b.bypass);
+  $('#knee').classList.toggle('hidden', !UI.kneeOpen); $('#kneeTab').classList.toggle('open', UI.kneeOpen);
+  $('#scPanel').classList.toggle('open', UI.scOpen); $('#scBtn').classList.toggle('open', UI.scOpen); $('#scBtn').setAttribute('aria-expanded', UI.scOpen);
+  $('#eqHint').hidden = S.bands.some(b => b.on || b.bypassed);
+  const rs = $('#rmsSw'); if (rs) rs.classList.toggle('on', S.b.rmsOn);
+  syncSideGlow();
+};
+
+// ------------------------------------------------------------------ sizing and the harness
+let scale = 1;
+const SIZES = { Compact: [1040, 292], Small: [900, 560], Medium: [1040, 640], Large: [1240, 760] };
+const setSize = (s) => { UI.size = s; layout(); };
+const layout = () => {
+  const [w, h0] = SIZES[UI.size];
+  const h = h0 + (UI.scOpen ? 214 : 0);
+  plugin.classList.toggle('compact', UI.size === 'Compact');
+  plugin.style.width = w + 'px'; plugin.style.height = h + 'px';
+  const avail = $('#stage').clientWidth;
+  scale = Math.min(1, avail / w);
+  plugin.style.transform = `scale(${scale})`;
+  $('#stageInner').style.width = w * scale + 'px'; $('#stageInner').style.height = h * scale + 'px';
+  // knee panel: square, fits above the card
+  const mainH = $('#main').clientHeight, kh = clamp(mainH - 196, 180, 420);
+  const knee = $('#knee'); knee.style.width = kh + 'px'; knee.style.height = kh + 'px';
+  $('#kneeTab').style.right = UI.kneeOpen ? (88 + kh) + 'px' : '76px';
+  syncAll();
+};
+const fitLevel = () => {
+  const m = $('#main'), w = m.clientWidth - 76, h = m.clientHeight;
+  const dpr = Math.min(3, (window.devicePixelRatio || 1) * Math.max(1, scale));
+  if (levelCv.width !== Math.round(w * dpr) || levelCv.height !== Math.round(h * dpr)) { levelCv.width = Math.round(w * dpr); levelCv.height = Math.round(h * dpr); }
+  levelCv.style.width = w + 'px'; levelCv.style.height = h + 'px';
+  const ctx = levelCv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); return { ctx, w, h };
+};
+
+
+const setSource = (s) => { UI.source = s; document.querySelectorAll('[data-src]').forEach(b => b.classList.toggle('on', b.dataset.src === s)); };
+document.querySelectorAll('[data-src]').forEach(b => b.addEventListener('click', () => setSource(b.dataset.src)));
+const STATES = {
+  default() { setSize('Medium'); loadPreset(0); setSource('drums'); UI.scOpen = false; UI.kneeOpen = true; },
+  heavy() { setSize('Medium'); loadPreset(1); UI.scOpen = false; UI.kneeOpen = true; },
+  inflate() { setSize('Medium'); loadPreset(7); UI.scOpen = false; UI.kneeOpen = true; },
+  sidechain() {
+    setSize('Medium'); loadPreset(0); setSource('vocal');
+    oneShot(() => { Object.assign(S.v, { threshold: -30, ratio: 4, knee: 6, attack: 2, release: 60, makeup: 0 }); S.c.style = 0;
+      S.bands[0] = { on: true, type: 4, freq: 140, gain: 0, q: .707, order: 4 };
+      S.bands[1] = { on: true, type: 0, freq: 6800, gain: 12, q: 2.2, order: 2 }; });
+    UI.scOpen = true; UI.kneeOpen = false; $('#presetName').firstChild.textContent = 'De-ess (side chain)';
+  },
+  compact() { loadPreset(2); setSize('Compact'); },
+  bypassed() { setSize('Medium'); loadPreset(1); oneShot(() => { S.b.bypass = true; }); },
+};
+document.querySelectorAll('[data-state]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('[data-state]').forEach(x => x.classList.toggle('on', x === b));
+  S.b.bypass = false; closeAdv(); closeSheet(); STATES[b.dataset.state](); invalidateEq(); syncAll(); layout();
+}));
+
+// ------------------------------------------------------------------ frame loop
+let last = performance.now();
+const frame = (now) => {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  const steps = Math.round(dt * CR);
+  for (let i = 0; i < steps; i++) tick();
+  // knee dot follows the detector level with a short ballistic
+  const target = sim.det > -119 ? sim.det : -120; sim.det = -120;
+  KN.dot = target > KN.dot ? target : KN.dot - 30 * dt;
+  KN.trail.push(KN.dot); if (KN.trail.length > 14) KN.trail.shift();
+  // the threshold knob rings the side-chain level
+  const meter = thKnob.svg.querySelector('.meter'), r = thKnob.size / 2;
+  const scN = clamp(P.threshold.r.toN(clamp(sim.scLevel, -100, 0)), 0, 1); sim.scLevel = -120;
+  thKnob.ring = Math.max(scN, (thKnob.ring || 0) - dt * .8);
+  meter.setAttribute('d', arcPath(r, r, r - 2, K0, K0 + thKnob.ring * (K1 - K0) + 1e-3));
+  meter.setAttribute('stroke', 'rgba(229,154,98,.38)');
+  if (UI.size !== 'Compact') drawLevel();
+  drawKnee(); drawMeters(dt); drawEq(dt);
+  requestAnimationFrame(frame);
+};
+
+
+window.addEventListener('resize', layout);
+layout();
+$('#st-default').classList.add('on'); setSource('drums');
+requestAnimationFrame(frame);
+})();
+</script>

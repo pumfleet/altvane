@@ -1,0 +1,19 @@
+# Altvane Compressor's audio engine is ZL Compressor's, vendored unmodified.
+# scripts/check_upstream.sh compressor   verifies the vendored code matches this pin (CI runs it)
+# scripts/sync_upstream.sh compressor    moves the pin and re-vendors (read by bash: keep it KEY="value")
+
+# where the engine comes from, and the commit it is vendored at
+REPO="https://github.com/ZL-Audio/ZLCompressor"
+COMMIT="2f7b45cd63f146d31682d8719799f9ad8bef02bb"
+
+# upstream directories copied byte-for-byte into products/compressor/<same path>
+VENDORED="source/dsp source/zlp source/chore"
+
+# upstream submodules pinned at the same commit in products/compressor/<same path>
+SUBMODULES="zldsp_fft"
+
+# upstream submodules Altvane shares across products in third_party/<name>: reported on sync, never moved
+SHARED_SUBMODULES="JUCE highway"
+
+# upstream files Altvane Compressor adapted rather than vendored: sync lists their upstream changes for porting by hand
+WATCH="source/PluginProcessor.cpp source/PluginProcessor.hpp source/state CMakeLists.txt"

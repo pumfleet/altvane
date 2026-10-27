@@ -15,3 +15,6 @@
 [submodule "third_party/r8brain"]
 	path = third_party/r8brain
 	url = https://github.com/avaneev/r8brain-free-src.git
+[submodule "products/compressor/zldsp_fft"]
+	path = products/compressor/zldsp_fft
+	url = https://github.com/ZL-Audio/zldsp_fft.git

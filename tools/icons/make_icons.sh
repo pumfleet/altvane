@@ -3,18 +3,20 @@
 # (macOS: needs iconutil and sips).
 #   cmake --preset mac-arm64-debug -DALTVANE_BUILD_TOOLS=ON && cmake --build --preset mac-arm64-debug --target AltvaneIcons
 #   tools/icons/make_icons.sh build/mac-arm64-debug/tools/icons/AltvaneIcons_artefacts/Debug/AltvaneIcons eq EQ
+#   tools/icons/make_icons.sh <tool> compressor COMPRESSOR knee    (optional motif behind the mark: grid or knee)
 set -euo pipefail
 
 tool="${1:?path to the AltvaneIcons executable}"
 product="${2:?product directory name under products/, e.g. eq}"
 label="${3:?label shown under the brand name, e.g. EQ}"
+motif="${4:-grid}"
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 out="$root/products/$product/packaging"
 [ -d "$out" ] || { echo "no such directory: $out" >&2; exit 1; }
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
-"$tool" "$work/png" "$label"
+"$tool" "$work/png" "$label" "$motif"
 
 # plug-in / standalone icon
 cp "$work/png/icon_1024.png" "$out/icon.png"
