@@ -65,3 +65,29 @@ TEST_CASE("the spectra read a tone at its level", "[analysis]") {
     // nothing sibilant was heard
     CHECK(analyzer.getFinder().confidence == 0.f);
 }
+
+TEST_CASE("in Side mode the spectra show the side", "[analysis]") {
+    constexpr double rate = 48000.0;
+    // all side: the right channel is the left upside down
+    juce::AudioBuffer<float> input(2, 48000);
+    input.clear();
+    addSine(input, 0, 0, input.getNumSamples(), rate, 1000.0, .5f);
+    addSine(input, 1, 0, input.getNumSamples(), rate, 1000.0, -.5f);
+    dsp::Engine engine;
+    engine.setFeedsActive(true);
+    dsp::Controls c;
+    c.threshold_db = 0.f;
+    c.stereo = dsp::StereoMode::kSide;
+    runEngine(engine, c, input, rate);
+    Analyzer analyzer;
+    CHECK(analyzer.process(engine));
+    const auto point = [](const Analyzer::Curve& curve) {
+        float loudest = Analyzer::kSilenceDb;
+        for (const auto v : curve) {
+            loudest = std::max(loudest, v);
+        }
+        return loudest;
+    };
+    CHECK(std::abs(point(analyzer.getPre()) - juce::Decibels::gainToDecibels(.5f)) < 1.f);
+    CHECK(std::abs(point(analyzer.getPost()) - juce::Decibels::gainToDecibels(.5f)) < 1.f);
+}

@@ -394,7 +394,10 @@ namespace altvane::deesser::dsp {
                     history_count_ = 0;
                 }
                 const auto mono_side = detection_channels == 2 ? .5f * (det[0] + det[1]) : det[0];
-                const auto mono_out = stereo ? .5f * (final[0] + final[1]) : final[0];
+                // the output's part that was processed: its side in Side mode, else its mid
+                const auto mono_out = !stereo                         ? final[0]
+                                      : c.stereo == StereoMode::kSide ? .5f * (final[0] - final[1])
+                                                                      : .5f * (final[0] + final[1]);
                 analysis_->push({mono_side, mono_out, in_event_ ? 1.f : 0.f});
             }
         }
