@@ -16,45 +16,59 @@ if (CMAKE_OSX_ARCHITECTURES)
 else ()
     set(dialogue_arch ${CMAKE_SYSTEM_PROCESSOR})
 endif ()
-# MSVC's debug and release runtimes don't mix, so a Windows debug build links a debug ONNX Runtime
-if (MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(dialogue_ort_config Debug)
-    set(dialogue_ort_suffix "-debug")
-else ()
-    set(dialogue_ort_config Release)
-    set(dialogue_ort_suffix "")
+# MSVC's debug and release runtimes don't mix, so the Debug configuration on Windows links a Debug ONNX Runtime
+# (multi-config generators get both)
+get_property(dialogue_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+set(dialogue_ort_configs "")
+if (MSVC AND (dialogue_multi_config OR CMAKE_BUILD_TYPE STREQUAL "Debug"))
+    list(APPEND dialogue_ort_configs Debug)
+endif ()
+if (NOT MSVC OR dialogue_multi_config OR NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+    list(APPEND dialogue_ort_configs Release)
 endif ()
 set(dialogue_ops_config "${CMAKE_CURRENT_SOURCE_DIR}/models/required_operators.config")
-set(ALTVANE_ONNXRUNTIME_DIR "${CMAKE_SOURCE_DIR}/build/deps/onnxruntime-1.28.0-${dialogue_arch}${dialogue_ort_suffix}"
-        CACHE PATH "Static ONNX Runtime built by scripts/build_onnxruntime.py")
+set(ALTVANE_ONNXRUNTIME_DIR "${CMAKE_SOURCE_DIR}/build/deps/onnxruntime-1.28.0-${dialogue_arch}"
+        CACHE PATH "Static ONNX Runtime built by scripts/build_onnxruntime.py (a Debug one in <dir>-debug)")
 find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
-set(dialogue_ort_options --config ${dialogue_ort_config} --cmake "${CMAKE_COMMAND}")
+set(dialogue_ort_options --cmake "${CMAKE_COMMAND}")
 if (CMAKE_OSX_DEPLOYMENT_TARGET)
     list(APPEND dialogue_ort_options --macos-target ${CMAKE_OSX_DEPLOYMENT_TARGET})
 endif ()
-# a no-op when the library is up to date
-execute_process(
-        COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/scripts/build_onnxruntime.py"
-        ${dialogue_arch} "${dialogue_ops_config}" "${ALTVANE_ONNXRUNTIME_DIR}" ${dialogue_ort_options}
-        RESULT_VARIABLE dialogue_ort_result)
-if (NOT dialogue_ort_result EQUAL 0)
-    message(FATAL_ERROR "Building ONNX Runtime failed; run scripts/build_onnxruntime.py by hand to see why")
+if (WIN32)
+    set(dialogue_ort_lib onnxruntime.lib)
+else ()
+    set(dialogue_ort_lib libonnxruntime.a)
 endif ()
 add_library(altvane_onnxruntime STATIC IMPORTED GLOBAL)
-set_target_properties(altvane_onnxruntime PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${ALTVANE_ONNXRUNTIME_DIR}/include")
+foreach (config ${dialogue_ort_configs})
+    if (config STREQUAL "Debug")
+        set(dir "${ALTVANE_ONNXRUNTIME_DIR}-debug")
+    else ()
+        set(dir "${ALTVANE_ONNXRUNTIME_DIR}")
+    endif ()
+    # a no-op when the library is up to date
+    execute_process(
+            COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/scripts/build_onnxruntime.py"
+            ${dialogue_arch} "${dialogue_ops_config}" "${dir}" --config ${config} ${dialogue_ort_options}
+            RESULT_VARIABLE dialogue_ort_result)
+    if (NOT dialogue_ort_result EQUAL 0)
+        message(FATAL_ERROR "Building ONNX Runtime failed; run scripts/build_onnxruntime.py by hand to see why")
+    endif ()
+    # with both, the Debug archive is only for the Debug configuration
+    if (config STREQUAL "Debug" AND "Release" IN_LIST dialogue_ort_configs)
+        set_target_properties(altvane_onnxruntime PROPERTIES IMPORTED_LOCATION_DEBUG "${dir}/lib/${dialogue_ort_lib}")
+    else ()
+        set_target_properties(altvane_onnxruntime PROPERTIES IMPORTED_LOCATION "${dir}/lib/${dialogue_ort_lib}")
+    endif ()
+    set_target_properties(altvane_onnxruntime PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${dir}/include")
+endforeach ()
 if (WIN32)
-    set_target_properties(altvane_onnxruntime PROPERTIES
-            IMPORTED_LOCATION "${ALTVANE_ONNXRUNTIME_DIR}/lib/onnxruntime.lib"
-            INTERFACE_LINK_LIBRARIES "$<$<CONFIG:Debug>:dbghelp>")
+    set_target_properties(altvane_onnxruntime PROPERTIES INTERFACE_LINK_LIBRARIES "$<$<CONFIG:Debug>:dbghelp>")
 elseif (APPLE)
-    set_target_properties(altvane_onnxruntime PROPERTIES
-            IMPORTED_LOCATION "${ALTVANE_ONNXRUNTIME_DIR}/lib/libonnxruntime.a"
-            INTERFACE_LINK_LIBRARIES "-framework Foundation")
+    set_target_properties(altvane_onnxruntime PROPERTIES INTERFACE_LINK_LIBRARIES "-framework Foundation")
 else ()
     find_package(Threads REQUIRED)
-    set_target_properties(altvane_onnxruntime PROPERTIES
-            IMPORTED_LOCATION "${ALTVANE_ONNXRUNTIME_DIR}/lib/libonnxruntime.a"
-            INTERFACE_LINK_LIBRARIES "Threads::Threads;${CMAKE_DL_LIBS}")
+    set_target_properties(altvane_onnxruntime PROPERTIES INTERFACE_LINK_LIBRARIES "Threads::Threads;${CMAKE_DL_LIBS}")
 endif ()
 
 # ---- the models, downloaded at a pinned revision, checked, and embedded in the plug-in ----
