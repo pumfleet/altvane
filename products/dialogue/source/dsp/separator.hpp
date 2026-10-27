@@ -12,74 +12,70 @@
 #include <vector>
 #include <juce_core/juce_core.h>
 
+#include "dpdfnet.hpp"
 #include "spectral.hpp"
 
 namespace altvane::dialogue::dsp {
     enum class Quality { kEco, kHigh };
 
     /**
+     * activations for running the separation, one per thread that runs it (allocates, so not on the audio thread)
+     */
+    using SeparatorScratch = DpdfNet::Scratch;
+
+    /**
      * a streaming speech-estimation model, loaded once per process and shared by every instance
-     * (DPDFNet: one STFT frame in, the speech estimate of the frame kModelLag hops earlier out,
-     * with its recurrent state passed in and out explicitly)
+     * (DPDFNet: one STFT frame in, the speech estimate of the frame kModelLag hops earlier out)
      */
     class SeparatorModel {
     public:
+        static constexpr int kMaxStreams = DpdfNet::kMaxStreams;
+
         /**
          * the shared model for a quality; loads it on first use (allocates, so not on the audio thread)
          * @return nullptr if the model could not be loaded
          */
         static std::shared_ptr<SeparatorModel> get(Quality quality);
 
-        virtual ~SeparatorModel() = default;
-
-        size_t getStateSize() const { return initial_state_.size(); }
-
-        const std::vector<float>& getInitialState() const { return initial_state_; }
-
         juce::String getName() const { return name_; }
 
-        /**
-         * run one frame; thread-safe, but allocates inside ONNX Runtime, so only from worker threads
-         * @param spec_in / spec_out kBins interleaved (re, im) pairs
-         * @return false if inference failed
-         */
-        bool run(const float* spec_in, const float* state_in, float* spec_out, float* state_out) const;
-
-    protected:
-        SeparatorModel() = default;
-
-        juce::String name_;
-        std::vector<float> initial_state_;
+        const DpdfNet& getNetwork() const { return network_; }
 
     private:
-        struct Impl;
-        std::unique_ptr<Impl> impl_;
+        struct Token {
+        };
 
-        friend struct ModelLoader;
+    public:
+        SeparatorModel(Token, std::span<const std::byte> onnx, juce::String name);
+
+    private:
+        DpdfNet network_;
+        juce::String name_;
     };
 
     /**
-     * one stream through a shared model: its recurrent state, preallocated
+     * one or more streams through a shared model (the channels of Stereo mode, or the mid of Linked), with their
+     * recurrent states preallocated; the streams of a frame run together, so each weight is read once per frame
      */
-    class SeparatorStream {
+    class SeparatorStreams {
     public:
-        explicit SeparatorStream(std::shared_ptr<SeparatorModel> model);
+        SeparatorStreams(std::shared_ptr<SeparatorModel> model, int count);
 
         void reset();
 
+        int size() const { return static_cast<int>(states_.size()); }
+
         /**
-         * @param in the frame just analysed
-         * @param speech receives the speech estimate of the frame kModelLag hops earlier
-         * @return false if the model failed; speech is then left unchanged
+         * thread-safe for distinct streams and scratch; never allocates
+         * @param in each stream's frame just analysed
+         * @param speech receives each stream's speech estimate of the frame kModelLag hops earlier
          */
-        bool process(std::span<const Complex, kBins> in, std::span<Complex, kBins> speech);
+        void process(std::span<const Spectrum* const> in, std::span<Spectrum* const> speech, SeparatorScratch& scratch);
 
         const SeparatorModel& getModel() const { return *model_; }
 
     private:
         std::shared_ptr<SeparatorModel> model_;
-        std::vector<float> state_a_, state_b_;
-        bool a_is_input_{true};
-        std::array<float, kBins * 2> spec_out_{};
+        std::vector<DpdfNet::State> states_;
     };
 }

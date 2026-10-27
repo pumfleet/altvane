@@ -20,6 +20,7 @@
 #include <juce_audio_formats/juce_audio_formats.h>
 
 #include "PluginProcessor.hpp"
+#include "dsp/kernels.hpp"
 
 using altvane::dialogue::PluginProcessor;
 namespace params = altvane::dialogue::params;
@@ -94,7 +95,7 @@ int main(int argc, char* argv[]) {
     if (args.size() < 2) {
         std::cerr << "usage: AltvaneDialogueRender <in.wav> <out-dir> [--quality eco|high]"
                      " [--stereo linked|stereo|midside] [--block N] [--voice dB] [--ambience dB] [--reverb dB]"
-                     " [--realtime]\n";
+                     " [--realtime] [--no-blas]\n";
         return 1;
     }
     auto option = [&](const juce::String& name, const juce::String& fallback) {
@@ -118,6 +119,8 @@ int main(int argc, char* argv[]) {
     const auto rate = reader->sampleRate;
     const auto block = option("--block", "512").getIntValue();
     const auto realtime = args.contains("--realtime");
+    // the network's matrix products without Accelerate, to time what it brings
+    dsp::kernels::setBlasEnabled(!args.contains("--no-blas"));
 
     PluginProcessor p;
     setParam(p, params::kQuality, option("--quality", "high") == "eco" ? 0.f : 1.f);

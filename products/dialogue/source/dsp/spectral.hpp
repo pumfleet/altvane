@@ -22,10 +22,12 @@ namespace altvane::dialogue::dsp {
     inline constexpr int kBins = kFftSize / 2 + 1;
     // the models' estimate of a frame arrives this many frames later (their look-ahead)
     inline constexpr int kModelLag = 4;
-    // from a sample entering to its processed version leaving, with every hop processed as soon as it can be
-    inline constexpr int kAlgorithmicLatency = kFftSize + kModelLag * kHop;
+    // from a sample entering to its processed version leaving, with every hop processed the moment its last sample
+    // arrives: a hop of output is complete once the frame kModelLag hops after it is analysed
+    inline constexpr int kAlgorithmicLatency = kFftSize + kModelLag * kHop - 1;
 
     using Complex = std::complex<float>;
+    using Spectrum = std::array<Complex, kBins>;
 
     /**
      * the square root of a power-complementary window: analysis and synthesis with it at 50% overlap
