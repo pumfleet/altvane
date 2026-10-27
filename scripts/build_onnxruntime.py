@@ -144,6 +144,9 @@ def main():
         defines += [f"CMAKE_OSX_DEPLOYMENT_TARGET={macos_target}", f"CMAKE_OSX_ARCHITECTURES={args.arch}"]
     elif SYSTEM == "Windows":
         command += ["--enable_msvc_static_runtime"]
+        # build.py's default, one .pdb per target, fails when a compiler cache (sccache in CI) runs several cl.exe
+        # at once; use what its --use_cache gives instead: no debug info in Release, embedded (/Z7) in Debug
+        defines += ["CMAKE_MSVC_DEBUG_INFORMATION_FORMAT=$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>"]
     run(*command, "--cmake_extra_defines", *defines)
 
     built = build / args.config
