@@ -186,10 +186,9 @@ TEST_CASE("panels open and close with the session", "[editor]") {
     CHECK(f.editor->getLoudnessForTesting().isVisible());
 }
 
-TEST_CASE("match target waits for unity gain to be off", "[editor]") {
+TEST_CASE("match target waits for bypass, audition and unity gain to be off", "[editor]") {
     Fixture f;
     set(f.p.na_parameters_, zlstate::PLoudnessTarget::kID, 0.f);
-    set(f.p, zlp::PInputOutputLink::kID, 1.f);
     juce::AudioBuffer<float> buffer(2, kBlock);
     juce::MidiBuffer midi;
     const auto signal = sine(1000.0, -23.f);
@@ -201,15 +200,29 @@ TEST_CASE("match target waits for unity gain to be off", "[editor]") {
         }
         f.p.processBlock(buffer, midi);
     }
-    f.frame();
     auto& panel = f.editor->getLoudnessForTesting();
-    // with unity on, the output gives the gain back: moving it would not move the loudness
-    CHECK_FALSE(panel.getGainToTarget().has_value());
-    panel.matchTarget();
-    CHECK_THAT(f.raw(zlp::PInputGain::kID), WithinAbs(0.0, .01));
-    set(f.p, zlp::PInputOutputLink::kID, 0.f);
+    // bypassed the meter hears the dry input, in Audition what the limiter removes, and unity gain gives the gain
+    // back: in each, moving the gain would not move the loudness
+    for (const auto* id : {zlp::PBypass::kID, zlp::PDelta::kID, zlp::PInputOutputLink::kID}) {
+        CAPTURE(id);
+        set(f.p, id, 1.f);
+        f.frame();
+        CHECK(panel.getMatchBlocker().has_value());
+        CHECK_FALSE(panel.getGainToTarget().has_value());
+        panel.matchTarget();
+        CHECK_THAT(f.raw(zlp::PInputGain::kID), WithinAbs(0.0, .01));
+        set(f.p, id, 0.f);
+        f.frame();
+        CHECK_FALSE(panel.getMatchBlocker().has_value());
+        CHECK(panel.getGainToTarget().has_value());
+    }
+    // and the host's bypass, which Altvane learns from the blocks the host sends
+    f.p.processBlockBypassed(buffer, midi);
     f.frame();
-    CHECK(panel.getGainToTarget().has_value());
+    CHECK(panel.getMatchBlocker().has_value());
+    f.p.processBlock(buffer, midi);
+    f.frame();
+    CHECK_FALSE(panel.getMatchBlocker().has_value());
 }
 
 TEST_CASE("the display's output is what is heard, in bypass and in audition", "[editor]") {

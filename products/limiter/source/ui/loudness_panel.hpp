@@ -41,7 +41,10 @@ namespace altvane::limiter {
 
         std::optional<float> getGainToTarget() const;
 
-        bool isUnityOn() const;
+        /**
+         * why the gain cannot reach the target now (bypass, audition or unity gain), shown on the button
+         */
+        std::optional<juce::String> getMatchBlocker() const;
 
         ui::Selector& getTargetSelectorForTesting() { return target_; }
 

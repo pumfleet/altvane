@@ -134,13 +134,24 @@ namespace altvane::limiter {
         histogram_ = show_histogram_ ? b.withTrimmedTop(b.getHeight() - kHistogram) : juce::Rectangle<float>{};
     }
 
-    bool LoudnessPanel::isUnityOn() const {
-        return index(p_ref_.parameters_, zlp::PInputOutputLink::kID) > 0;
+    std::optional<juce::String> LoudnessPanel::getMatchBlocker() const {
+        // the meter measures what is heard: bypassed that is the dry input and in Audition what the limiter
+        // removes, and unity gain takes the gain back off the output, so in each the gain cannot move the loudness
+        auto& params = p_ref_.parameters_;
+        if (p_ref_.isHostBypassed() || value(params, zlp::PBypass::kID) > .5f) {
+            return juce::String("Turn off bypass to match");
+        }
+        if (value(params, zlp::PDelta::kID) > .5f) {
+            return juce::String("Turn off audition to match");
+        }
+        if (index(params, zlp::PInputOutputLink::kID) > 0) {
+            return juce::String("Turn off unity gain to match");
+        }
+        return std::nullopt;
     }
 
     std::optional<float> LoudnessPanel::getGainToTarget() const {
-        // unity gain takes the gain back off the output, so moving the gain cannot move the loudness
-        if (!r_.has_integrated || !current_.lufs.has_value() || r_.seconds < 1.0 || isUnityOn()) {
+        if (!r_.has_integrated || !current_.lufs.has_value() || r_.seconds < 1.0 || getMatchBlocker().has_value()) {
             return std::nullopt;
         }
         const auto gain = value(p_ref_.parameters_, zlp::PInputGain::kID);
@@ -183,8 +194,8 @@ namespace altvane::limiter {
         juce::String text;
         if (!current_.lufs.has_value()) {
             text = "No loudness target";
-        } else if (isUnityOn()) {
-            text = "Turn off unity gain to match";
+        } else if (const auto blocker = getMatchBlocker()) {
+            text = *blocker;
         } else if (!delta.has_value()) {
             text = "Match target";
         } else if (std::abs(*delta) < .05f) {
