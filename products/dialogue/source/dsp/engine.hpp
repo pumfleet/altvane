@@ -177,7 +177,11 @@ namespace altvane::dialogue::dsp {
         juce::AudioWorkgroup workgroup_;
         std::atomic<bool> workgroup_changed_{false};
 
-        void processAvailable();
+        /**
+         * run every hop whose input has arrived
+         * @param worker the worker thread, which stops early when it should exit; nullptr runs them all
+         */
+        void processAvailable(const juce::Thread* worker = nullptr);
         void processFrame(int64_t frame);
         void synthesise(const Spectrum& x, const Spectrum& transfer, std::array<float, kFftSize>& ola,
                         std::vector<float>& ring, int64_t out_begin);

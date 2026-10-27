@@ -152,7 +152,7 @@ namespace altvane::dialogue::dsp {
                     }
                 }
                 const auto seen = sequence_.load(std::memory_order::acquire);
-                engine_.processAvailable();
+                engine_.processAvailable(this);
                 if (threadShouldExit()) {
                     break;
                 }
@@ -352,10 +352,12 @@ namespace altvane::dialogue::dsp {
         processAvailable();
     }
 
-    void Engine::processAvailable() {
+    void Engine::processAvailable(const juce::Thread* worker) {
         const std::scoped_lock lock(hop_mutex_);
-        // frame f covers input [(f - 1) * hop, (f + 1) * hop)
-        while ((next_frame_ + 1) * kHop <= written_.load(std::memory_order::acquire)) {
+        // frame f covers input [(f - 1) * hop, (f + 1) * hop). a worker asked to stop leaves the rest, so release()
+        // never waits for a backlog (the thread would otherwise be killed mid-hop, then outlive the engine)
+        while ((next_frame_ + 1) * kHop <= written_.load(std::memory_order::acquire)
+               && (worker == nullptr || !worker->threadShouldExit())) {
             processFrame(next_frame_++);
         }
     }

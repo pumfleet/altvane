@@ -410,6 +410,25 @@ TEST_CASE("the audio thread neither allocates nor locks", "[engine]") {
     CHECK(allocations == 0);
 }
 
+TEST_CASE("releasing does not wait for the worker's backlog", "[engine]") {
+    PluginProcessor p;
+    const auto buffer_channels = prepare(p, 2, 48000.0, 512, true, true);
+    juce::AudioBuffer<float> io(buffer_channels, 512);
+    juce::MidiBuffer midi;
+    const auto input = makeSignal(2, 512, 48000.0);
+    // far faster than real time: the worker falls seconds of hops behind
+    for (int block = 0; block < 400; ++block) {
+        for (int c = 0; c < buffer_channels; ++c) {
+            io.copyFrom(c, 0, input, c % 2, 0, 512);
+        }
+        p.processBlock(io, midi);
+    }
+    const auto start = juce::Time::getMillisecondCounterHiRes();
+    p.releaseResources();
+    // a hop or two, not the backlog (which, past four seconds, would get the worker killed by force)
+    CHECK(juce::Time::getMillisecondCounterHiRes() - start < 500.0);
+}
+
 TEST_CASE("parameter IDs never change", "[params]") {
     // saved sessions and presets refer to these; this list may only grow
     const juce::StringArray frozen{
