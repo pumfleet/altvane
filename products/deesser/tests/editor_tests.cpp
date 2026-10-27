@@ -354,3 +354,44 @@ TEST_CASE("one band field's edit survives the other's wheel ending", "[editor]")
     f.p.session_.undo_manager.redo();
     CHECK(std::abs(f.value(params::kBandHigh) - 14000.f) < 1.f);
 }
+
+TEST_CASE("a wheel that lost its edit to another control opens a fresh one", "[editor]") {
+    Fixture f;
+    auto& undo = f.p.session_.undo_manager;
+    auto& deck = f.editor->getDeckForTesting();
+    auto& threshold = deck.getThreshold();
+    auto& range = deck.getRange();
+    undo.clearUndoHistory();
+    // a notch on the threshold, a drag on the range, another notch before the threshold's timer fires
+    threshold.on_begin();
+    threshold.on_change(-30.f);
+    range.on_begin();
+    range.on_change(12.f);
+    range.on_end();
+    threshold.on_change(-20.f);
+    threshold.on_end();
+    undo.undo();
+    CHECK(std::abs(f.value(params::kThreshold) + 30.f) < .05f);
+    CHECK(std::abs(f.value(params::kRange) - 12.f) < .05f);
+
+    // the band's wheel too
+    auto& band = f.editor->getBandViewForTesting();
+    auto* high = f.p.parameters_.getParameter(params::kBandHigh);
+    high->setValueNotifyingHost(high->convertTo0to1(9000.f));
+    f.editor->runFrameForTesting(f.time += .02);
+    undo.clearUndoHistory();
+    const juce::Point at{band.freqX(7000.f), band.getPlot().getCentreY()};
+    juce::MouseWheelDetails notch{0.f, .25f, false, false, false};
+    band.mouseWheelMove(mouse(band, at, at, false), notch);
+    range.on_begin();
+    range.on_change(6.f);
+    range.on_end();
+    const auto low_before = f.value(params::kBandLow);
+    band.mouseWheelMove(mouse(band, at, at, false), notch);
+    CHECK(f.value(params::kBandLow) < low_before - 1.f);
+    // the second notch is its own undo step, closed here by touching another control
+    range.on_begin();
+    range.on_end();
+    undo.undo();
+    CHECK(std::abs(f.value(params::kBandLow) - low_before) < 1.f);
+}

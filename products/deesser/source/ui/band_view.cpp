@@ -596,7 +596,8 @@ namespace altvane::deesser {
         if (hit(e.position) != Target::kBand || dragged_ != Target::kNone) {
             return;
         }
-        if (!wheel_active_) {
+        // a fresh edit unless the last notch's is still open (another control may have taken over since)
+        if (!wheel_active_ || !editor_.isEditing(edit_id_)) {
             wheel_active_ = true;
             juce::RangedAudioParameter* paras[] = {param(params::kBandLow), param(params::kBandHigh)};
             editor_.beginEdit(paras, "Change Band Width");

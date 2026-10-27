@@ -51,8 +51,9 @@ audio: ─► delay (look-ahead) ─► [mid/side encode] ─► y = x + (g − 
 
 The audio thread never waits and never allocates (`tests` counts allocations, including across look-ahead and listen
 changes). The latency is the look-ahead, reported in `prepareToPlay` and whenever the parameter changes. Hosts are only told
-on the message thread: a change made there is reported at once, and one automated from the audio thread is picked up
-by a 10 Hz timer (posting a message from the audio thread could lock or allocate). Bypass goes through the same
+on the message thread, so look-ahead is not automatable: a change (from the editor, a preset or a host's generic
+editor) is reported at once, and one a host makes anywhere else is picked up by a 10 Hz timer (posting a message from
+the audio thread could lock or allocate). Bypass goes through the same
 delay, so it keeps the latency. A change of stereo mode resets both channels' detection and reduction, so a channel
 that sat idle, or now carries mid instead of left, never resumes with stale reduction.
 

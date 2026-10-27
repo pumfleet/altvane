@@ -111,7 +111,9 @@ namespace altvane::deesser::params {
             juce::AudioParameterFloatAttributes()
             .withStringFromValueFunction([](const float v, int) { return ui::format::ms(v); })
             .withValueFromStringFunction([](const juce::String& t) { return parseNumber(t); })
-            .withLabel("ms")));
+            .withLabel("ms")
+            // it sets the latency, which hosts only take from the message thread: not something to automate
+            .withAutomatable(false)));
         layout.add(std::make_unique<juce::AudioParameterFloat>(
             juce::ParameterID{kStereoLink, kVersion}, "Stereo Link",
             juce::NormalisableRange<float>(0.f, 100.f, 1.f), 100.f,

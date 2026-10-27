@@ -43,7 +43,8 @@ namespace altvane::deesser {
         side_chain_ = parameters_.getRawParameterValue(params::kSideChain);
         output_ = parameters_.getRawParameterValue(params::kOutput);
         parameters_.addParameterListener(params::kLookahead, this);
-        // automation from the audio thread is picked up here: posting a message from there could lock or allocate
+        // look-ahead is not automatable, but a host may still set it off the message thread: picked up here
+        // (posting a message from the audio thread could lock or allocate)
         startTimerHz(10);
     }
 

@@ -176,7 +176,16 @@ namespace altvane::ui {
             editor.beginEdit(paras, "Change " + name);
             *edit_id = editor.getEditId();
         };
-        control.on_change = [&editor, para](const float v) { editor.setPlain(para, v); };
+        control.on_change = [&editor, para, name, edit_id](const float v) {
+            // a wheel's next notch after another control took over: open a fresh edit rather than change the
+            // parameter outside any gesture or undo step
+            if (!editor.isEditing(*edit_id)) {
+                juce::RangedAudioParameter* paras[] = {para};
+                editor.beginEdit(paras, "Change " + name);
+                *edit_id = editor.getEditId();
+            }
+            editor.setPlain(para, v);
+        };
         control.on_end = [&editor, edit_id] {
             if (editor.isEditing(*edit_id)) {
                 editor.endEdit();

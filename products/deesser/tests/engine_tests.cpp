@@ -634,6 +634,12 @@ TEST_CASE("the drawn response is what the engine does", "[engine]") {
     }
 }
 
+TEST_CASE("look-ahead, which sets the latency, is not automatable", "[params]") {
+    PluginProcessor p;
+    CHECK_FALSE(p.parameters_.getParameter(params::kLookahead)->isAutomatable());
+    CHECK(p.parameters_.getParameter(params::kThreshold)->isAutomatable());
+}
+
 TEST_CASE("the one program has a name", "[params]") {
     PluginProcessor p;
     CHECK(p.getNumPrograms() == 1);
