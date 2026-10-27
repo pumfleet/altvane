@@ -10,6 +10,10 @@
 #include <catch2/generators/catch_generators.hpp>
 
 #include <clocale>
+#include <cmath>
+#include <complex>
+#include <numbers>
+#include <vector>
 #include <model_data.hpp>
 
 #include "dsp/engine.hpp"

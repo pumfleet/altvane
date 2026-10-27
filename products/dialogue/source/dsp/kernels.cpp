@@ -12,6 +12,10 @@
 #include <cstring>
 
 #if defined(__APPLE__)
+// the classic CBLAS interface is deprecated from macOS 13.3, which brings its replacement; the call is the same
+#if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ >= 130300
+#define ACCELERATE_NEW_LAPACK
+#endif
 #include <Accelerate/Accelerate.h>
 #define ALTVANE_DIALOGUE_BLAS 1
 #elif defined(ALTVANE_DIALOGUE_CBLAS)
