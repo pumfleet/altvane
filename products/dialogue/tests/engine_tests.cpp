@@ -51,30 +51,55 @@ namespace {
     }
 
     struct Run {
-        juce::AudioBuffer<float> output;
+        juce::AudioBuffer<float> output; // the main output's channels, then each stem output's
         int latency{0};
     };
+
+    juce::AudioProcessor::BusesLayout makeLayout(const juce::AudioChannelSet& main, const bool stems) {
+        juce::AudioProcessor::BusesLayout layout;
+        layout.inputBuses.add(main);
+        layout.outputBuses.add(main);
+        for (int s = 0; s < dsp::kNumStems; ++s) {
+            layout.outputBuses.add(stems ? main : juce::AudioChannelSet::disabled());
+        }
+        return layout;
+    }
+
+    /**
+     * @param stems whether the host enables the stem outputs
+     * @return the number of channels in the process buffer
+     */
+    int prepare(PluginProcessor& p, const int channels, const double rate, const int max_block, const bool realtime,
+                const bool stems = false) {
+        REQUIRE(p.setBusesLayout(makeLayout(juce::AudioChannelSet::canonicalChannelSet(channels), stems)));
+        p.setRateAndBufferSizeDetails(rate, max_block);
+        p.setNonRealtime(!realtime);
+        p.prepareToPlay(rate, max_block);
+        return p.getTotalNumOutputChannels();
+    }
 
     /**
      * run a buffer through the processor in blocks (sizes from `blocks`, cycled), flushing the latency
      */
     Run run(PluginProcessor& p, const juce::AudioBuffer<float>& input, const double rate,
-            const std::vector<int>& blocks, const bool realtime) {
+            const std::vector<int>& blocks, const bool realtime, const bool stems = false) {
         const auto channels = input.getNumChannels();
         const auto max_block = *std::max_element(blocks.begin(), blocks.end());
-        p.setPlayConfigDetails(channels, channels, rate, max_block);
-        p.setNonRealtime(!realtime);
-        p.prepareToPlay(rate, max_block);
+        const auto buffer_channels = prepare(p, channels, rate, max_block, realtime, stems);
         Run result;
         result.latency = p.getLatencySamples();
         const auto total = input.getNumSamples() + result.latency;
-        result.output.setSize(channels, total);
-        juce::AudioBuffer<float> io(channels, max_block);
+        result.output.setSize(buffer_channels, total);
+        juce::AudioBuffer<float> io(buffer_channels, max_block);
         juce::MidiBuffer midi;
         size_t b = 0;
         for (int pos = 0; pos < total;) {
             const auto n = std::min(blocks[b++ % blocks.size()], total - pos);
-            io.setSize(channels, n, false, false, true);
+            io.setSize(buffer_channels, n, false, false, true);
+            // the stem outputs' channels start out with junk, as hosts may leave them
+            for (int c = channels; c < buffer_channels; ++c) {
+                juce::FloatVectorOperations::fill(io.getWritePointer(c), 1.f, n);
+            }
             for (int c = 0; c < channels; ++c) {
                 io.clear(c, 0, n);
                 const auto available = std::clamp(input.getNumSamples() - pos, 0, n);
@@ -83,13 +108,43 @@ namespace {
                 }
             }
             p.processBlock(io, midi);
-            for (int c = 0; c < channels; ++c) {
+            for (int c = 0; c < buffer_channels; ++c) {
                 result.output.copyFrom(c, pos, io, c, 0, n);
             }
             pos += n;
         }
         p.releaseResources();
         return result;
+    }
+
+    /**
+     * the largest difference between two channels of runs, in dB relative to full scale
+     */
+    float differenceDb(const juce::AudioBuffer<float>& a, const int channel_a, const juce::AudioBuffer<float>& b,
+                       const int channel_b, const float b_gain = 1.f) {
+        float worst = 0.f;
+        for (int i = 0; i < a.getNumSamples(); ++i) {
+            worst = std::max(worst, std::abs(a.getSample(channel_a, i) - b_gain * b.getSample(channel_b, i)));
+        }
+        return juce::Decibels::gainToDecibels(worst, -200.f);
+    }
+
+    /**
+     * the largest difference between the main output and the sum of the stem outputs, in dB relative to full scale
+     */
+    float stemSumResidualDb(const Run& r, const int channels) {
+        juce::AudioBuffer<float> sum(channels, r.output.getNumSamples());
+        sum.clear();
+        for (int s = 0; s < dsp::kNumStems; ++s) {
+            for (int c = 0; c < channels; ++c) {
+                sum.addFrom(c, 0, r.output, channels * (1 + s) + c, 0, r.output.getNumSamples());
+            }
+        }
+        float worst = -200.f;
+        for (int c = 0; c < channels; ++c) {
+            worst = std::max(worst, differenceDb(r.output, c, sum, c));
+        }
+        return worst;
     }
 
     /**
@@ -226,24 +281,199 @@ TEST_CASE("lowering ambience and reverb removes energy, and Removed plays what i
     CHECK(worst < 1e-4f);
 }
 
+TEST_CASE("the stem outputs add up to the main output, each its solo at its level", "[engine][stems]") {
+    const auto rate = GENERATE(44100.0, 48000.0, 96000.0);
+    const auto channels = GENERATE(1, 2);
+    CAPTURE(rate, channels);
+    PluginProcessor p;
+    constexpr std::array<float, dsp::kNumStems> kLevels{-6.f, -20.f, 3.f};
+    setLevels(p, kLevels[dsp::kVoice], kLevels[dsp::kAmbience], kLevels[dsp::kReverb]);
+    setParam(p, params::sensitivityID(dsp::kVoice, 4), .5f);
+    setParam(p, params::kOutput, -3.f);
+    const auto input = makeSignal(channels, static_cast<int>(rate * 1.5), rate);
+    const std::vector<int> blocks{512, 7, 300, 1, 512, 64, 333};
+    const auto r = run(p, input, rate, blocks, false, true);
+    CHECK(stemSumResidualDb(r, channels) < -90.f);
+
+    // with the stem outputs on, the main output is what it was without them
+    const auto plain = run(p, input, rate, blocks, false);
+    for (int c = 0; c < channels; ++c) {
+        CHECK(differenceDb(r.output, c, plain.output, c) < -110.f);
+    }
+
+    // a solo plays its stem at unity (and the output gain); the stem output has it at its level
+    for (const auto stem : {dsp::kVoice, dsp::kAmbience, dsp::kReverb}) {
+        CAPTURE(stem);
+        p.setListen(static_cast<dsp::Listen>(static_cast<int>(dsp::Listen::kVoice) + stem));
+        const auto solo = run(p, input, rate, blocks, false);
+        const auto gain = params::levelToGain(kLevels[static_cast<size_t>(stem)]);
+        for (int c = 0; c < channels; ++c) {
+            CHECK(differenceDb(r.output, channels * (1 + stem) + c, solo.output, c, gain) < -90.f);
+        }
+    }
+}
+
+TEST_CASE("the stem outputs add up to the main output when the model falls behind", "[engine][stems]") {
+    PluginProcessor p;
+    setLevels(p, -6.f, -20.f, 3.f);
+    const auto input = makeSignal(2, 48000, 48000.0);
+    // as in the real-time test above: late samples are the delayed input, in the main output and the voice's
+    const auto r = run(p, input, 48000.0, {256}, true, true);
+    CHECK(stemSumResidualDb(r, 2) < -90.f);
+}
+
+TEST_CASE("bypassed, the stem outputs are silent", "[engine][stems]") {
+    PluginProcessor p;
+    setLevels(p, -6.f, -20.f, 3.f);
+    setParam(p, params::kBypass, 1.f);
+    const auto input = makeSignal(2, 48000, 48000.0);
+    const auto r = run(p, input, 48000.0, {512}, false, true);
+    for (int c = 2; c < r.output.getNumChannels(); ++c) {
+        CHECK(r.output.getMagnitude(c, 0, r.output.getNumSamples()) == 0.f);
+    }
+    CHECK(nullResidualDb(r, input) < -90.f);
+}
+
+TEST_CASE("the stem outputs are off or match the main output", "[engine][stems]") {
+    PluginProcessor p;
+    const auto mono = juce::AudioChannelSet::mono();
+    const auto stereo = juce::AudioChannelSet::stereo();
+    CHECK(p.checkBusesLayoutSupported(makeLayout(stereo, false)));
+    CHECK(p.checkBusesLayoutSupported(makeLayout(stereo, true)));
+    CHECK(p.checkBusesLayoutSupported(makeLayout(mono, true)));
+    auto voice_only = makeLayout(stereo, false);
+    voice_only.outputBuses.getReference(PluginProcessor::kFirstStemBus + dsp::kVoice) = stereo;
+    CHECK(p.checkBusesLayoutSupported(voice_only));
+    auto mismatched = makeLayout(stereo, true);
+    mismatched.outputBuses.getReference(PluginProcessor::kFirstStemBus + dsp::kReverb) = mono;
+    CHECK_FALSE(p.checkBusesLayoutSupported(mismatched));
+    // AU enables every bus at its default (stereo) and still needs a mono instance
+    auto mono_with_stereo_stems = makeLayout(stereo, true);
+    mono_with_stereo_stems.inputBuses.getReference(0) = mono;
+    mono_with_stereo_stems.outputBuses.getReference(0) = mono;
+    CHECK(p.checkBusesLayoutSupported(mono_with_stereo_stems));
+    // by default, the plug-in is a plain stereo effect
+    CHECK(p.getBusesLayout() == makeLayout(stereo, false));
+}
+
+TEST_CASE("a mono instance plays each stem on both channels of a stereo stem output", "[engine][stems]") {
+    PluginProcessor p;
+    setLevels(p, -6.f, -20.f, 3.f);
+    const auto input = makeSignal(1, 48000, 44100.0);
+    auto layout = makeLayout(juce::AudioChannelSet::stereo(), true);
+    layout.inputBuses.getReference(0) = juce::AudioChannelSet::mono();
+    layout.outputBuses.getReference(0) = juce::AudioChannelSet::mono();
+    REQUIRE(p.setBusesLayout(layout));
+    REQUIRE(p.getTotalNumOutputChannels() == 7);
+    p.setRateAndBufferSizeDetails(44100.0, 512);
+    p.setNonRealtime(true);
+    p.prepareToPlay(44100.0, 512);
+    const auto latency = p.getLatencySamples();
+    juce::AudioBuffer<float> out(7, input.getNumSamples() + latency);
+    juce::AudioBuffer<float> io(7, 512);
+    juce::MidiBuffer midi;
+    for (int pos = 0; pos < out.getNumSamples(); pos += 512) {
+        const auto n = std::min(512, out.getNumSamples() - pos);
+        io.setSize(7, n, false, false, true);
+        io.clear();
+        const auto available = std::clamp(input.getNumSamples() - pos, 0, n);
+        if (available > 0) {
+            io.copyFrom(0, 0, input, 0, pos, available);
+        }
+        p.processBlock(io, midi);
+        for (int c = 0; c < 7; ++c) {
+            out.copyFrom(c, pos, io, c, 0, n);
+        }
+    }
+    p.releaseResources();
+    juce::AudioBuffer<float> sum(1, out.getNumSamples());
+    sum.clear();
+    for (int s = 0; s < dsp::kNumStems; ++s) {
+        CAPTURE(s);
+        // the main output's channel, then two per stem
+        CHECK(differenceDb(out, 1 + 2 * s, out, 2 + 2 * s) < -200.f + 1.f);
+        CHECK(out.getMagnitude(1 + 2 * s, 0, out.getNumSamples()) > 0.f);
+        sum.addFrom(0, 0, out, 1 + 2 * s, 0, out.getNumSamples());
+    }
+    CHECK(differenceDb(out, 0, sum, 0) < -90.f);
+}
+
+TEST_CASE("with only some stem outputs on, those carry their stems", "[engine][stems]") {
+    PluginProcessor p;
+    setLevels(p, -6.f, -20.f, 3.f);
+    const auto input = makeSignal(2, 48000, 48000.0);
+    const auto all = run(p, input, 48000.0, {512}, false, true);
+
+    auto layout = makeLayout(juce::AudioChannelSet::stereo(), false);
+    layout.outputBuses.getReference(PluginProcessor::kFirstStemBus + dsp::kAmbience) = juce::AudioChannelSet::stereo();
+    REQUIRE(p.setBusesLayout(layout));
+    p.setNonRealtime(true);
+    p.prepareToPlay(48000.0, 512);
+    REQUIRE(p.getTotalNumOutputChannels() == 4);
+    const auto latency = p.getLatencySamples();
+    juce::AudioBuffer<float> out(4, input.getNumSamples() + latency);
+    juce::AudioBuffer<float> io(4, 512);
+    juce::MidiBuffer midi;
+    for (int pos = 0; pos < out.getNumSamples(); pos += 512) {
+        const auto n = std::min(512, out.getNumSamples() - pos);
+        io.setSize(4, n, false, false, true);
+        io.clear();
+        for (int c = 0; c < 2; ++c) {
+            const auto available = std::clamp(input.getNumSamples() - pos, 0, n);
+            if (available > 0) {
+                io.copyFrom(c, 0, input, c, pos, available);
+            }
+        }
+        p.processBlock(io, midi);
+        for (int c = 0; c < 4; ++c) {
+            out.copyFrom(c, pos, io, c, 0, n);
+        }
+    }
+    p.releaseResources();
+    for (int c = 0; c < 2; ++c) {
+        CHECK(differenceDb(out, 2 + c, all.output, 2 * (1 + dsp::kAmbience) + c) < -110.f);
+    }
+}
+
 TEST_CASE("the audio thread neither allocates nor locks", "[engine]") {
+    const auto stems = GENERATE(false, true);
+    CAPTURE(stems);
     PluginProcessor p;
     setLevels(p, 0.f, -20.f, -10.f);
-    p.setPlayConfigDetails(2, 2, 48000.0, 512);
-    p.setNonRealtime(false);
-    p.prepareToPlay(48000.0, 512);
-    juce::AudioBuffer<float> io(2, 512);
+    const auto buffer_channels = prepare(p, 2, 48000.0, 512, true, stems);
+    juce::AudioBuffer<float> io(buffer_channels, 512);
     juce::MidiBuffer midi;
     const auto input = makeSignal(2, 512, 48000.0);
     size_t allocations = 0;
     for (int block = 0; block < 400; ++block) {
-        io.makeCopyOf(input, true);
+        for (int c = 0; c < buffer_channels; ++c) {
+            io.copyFrom(c, 0, input, c % 2, 0, 512);
+        }
         const alloc_counter::Scope scope;
         p.processBlock(io, midi);
         allocations += scope.count();
     }
     p.releaseResources();
     CHECK(allocations == 0);
+}
+
+TEST_CASE("releasing does not wait for the worker's backlog", "[engine]") {
+    PluginProcessor p;
+    const auto buffer_channels = prepare(p, 2, 48000.0, 512, true, true);
+    juce::AudioBuffer<float> io(buffer_channels, 512);
+    juce::MidiBuffer midi;
+    const auto input = makeSignal(2, 512, 48000.0);
+    // far faster than real time: the worker falls seconds of hops behind
+    for (int block = 0; block < 400; ++block) {
+        for (int c = 0; c < buffer_channels; ++c) {
+            io.copyFrom(c, 0, input, c % 2, 0, 512);
+        }
+        p.processBlock(io, midi);
+    }
+    const auto start = juce::Time::getMillisecondCounterHiRes();
+    p.releaseResources();
+    // a hop or two, not the backlog (which, past four seconds, would get the worker killed by force)
+    CHECK(juce::Time::getMillisecondCounterHiRes() - start < 500.0);
 }
 
 TEST_CASE("parameter IDs never change", "[params]") {
