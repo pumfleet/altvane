@@ -1,0 +1,274 @@
+---
+import Control from "../Control.astro";
+import Neutral from "./Neutral.astro";
+import { formatDb, programme } from "../../lib/dsp";
+import { LIMIT_AXIS, LIMIT_VIEW, limitColumns, limitLevelY, limitMost } from "../../lib/figures";
+
+interface Props {
+  controls?: boolean;
+}
+const { controls = false } = Astro.props;
+const setting = { gain: 8, ceiling: -1, release: 100 };
+const peaks = programme();
+const cols = limitColumns(peaks, setting);
+// the limiter doing nothing: no gain into it, and a ceiling the programme never reaches
+const neutral = limitColumns(peaks, { ...setting, gain: 0, ceiling: 0 });
+const { centre } = LIMIT_AXIS;
+const ceiling = limitLevelY(setting.ceiling);
+const full = limitLevelY(0);
+const n = (o: Record<string, number>) => JSON.stringify(o);
+const readoutId = `limit-readout-${Math.random().toString(36).slice(2, 8)}`;
+const label = controls
+  ? "Three seconds of a programme through a lookahead peak limiter, as a waveform: the output's peaks stop at the ceiling lines, the outlines show what the gain would have added past them, and the gain reduction hangs from the top rule. Drag the waveform up or down, or use the arrow keys, to change the gain."
+  : "Three seconds of a programme through a lookahead peak limiter, as a waveform: the output's peaks stop at the ceiling lines, the outlines show what the gain would have added past them, and the gain reduction hangs from the top rule.";
+---
+<figure class="figure limit-figure" data-product="limiter" data-limit-figure data-setting={JSON.stringify(setting)} data-interactive={controls ? "" : undefined}>
+  <svg
+    viewBox={`0 0 ${LIMIT_VIEW.w} ${LIMIT_VIEW.h}`}
+    role={controls ? "application" : "img"}
+    aria-roledescription={controls ? "limiter" : undefined}
+    aria-label={label}
+    aria-describedby={controls ? readoutId : undefined}
+    tabindex={controls ? 0 : undefined}
+  >
+    <line class="limit-top" x1="0" x2={LIMIT_VIEW.w} y1="0" y2="0" />
+    <line class="limit-full" x1="0" x2={LIMIT_VIEW.w} y1={centre - full} y2={centre - full} />
+    <line class="limit-full" x1="0" x2={LIMIT_VIEW.w} y1={centre + full} y2={centre + full} />
+    {cols.map((c, i) => {
+      const z = neutral[i];
+      return (
+        <g class="limit-col">
+          <rect class="limit-gr" x={c.x} y="0" width={c.w} height={c.reduction} data-n={n({ height: z.reduction })} />
+          <rect class="limit-ghost" x={c.x} y={centre - c.ghost} width={c.w} height={c.ghost - c.out} data-n={n({ y: centre - z.ghost, height: z.ghost - z.out })} />
+          <rect class="limit-ghost" x={c.x} y={centre + c.out} width={c.w} height={c.ghost - c.out} data-n={n({ y: centre + z.out, height: z.ghost - z.out })} />
+          <rect class="limit-out" x={c.x} y={centre - c.out} width={c.w} height={2 * c.out} data-n={n({ y: centre - z.out, height: 2 * z.out })} />
+        </g>
+      );
+    })}
+    <line class="limit-ceiling" x1="0" x2={LIMIT_VIEW.w} y1={centre - ceiling} y2={centre - ceiling} data-n={n({ y1: centre - full, y2: centre - full })} />
+    <line class="limit-ceiling" x1="0" x2={LIMIT_VIEW.w} y1={centre + ceiling} y2={centre + ceiling} data-n={n({ y1: centre + full, y2: centre + full })} />
+  </svg>
+  <Neutral />
+  <figcaption class="limit-key t-small">
+    <span><i class="key key--out"></i>Output</span>
+    <span><i class="key key--ghost"></i>Held back</span>
+    <span><i class="key key--gr"></i>Gain reduction</span>
+    <span><i class="key key--ceiling"></i>Ceiling</span>
+    <span class="limit-key__note">Synthetic programme, for illustration.</span>
+  </figcaption>
+  {controls && (
+    <>
+      <p class="limit-readout t-small num" id={readoutId} aria-live="polite">
+        <span>Output peak <b data-readout="peak">{formatDb(setting.ceiling)}</b></span>
+        <span>Most reduction <b data-readout="most">{formatDb(limitMost(cols))}</b></span>
+      </p>
+      <div class="limit-controls">
+        <Control name="gain" label="Gain" min={0} max={18} step={0.1} value={setting.gain} display={formatDb(setting.gain)} />
+        <Control name="ceiling" label="Ceiling" min={-6} max={0} step={0.1} value={setting.ceiling} display={formatDb(setting.ceiling)} />
+        <Control name="release" label="Release" min={10} max={1000} step={10} value={setting.release} display={`${setting.release} ms`} />
+      </div>
+    </>
+  )}
+</figure>
+
+<style>
+  .limit-figure svg {
+    width: 100%;
+    height: auto;
+  }
+  .limit-figure[data-interactive] svg {
+    cursor: ns-resize;
+  }
+  .limit-top,
+  .limit-ceiling {
+    stroke: var(--ink);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .limit-full {
+    stroke: var(--rule-strong);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+    stroke-dasharray: 2 5;
+  }
+  .limit-out {
+    fill: var(--ink);
+  }
+  .limit-gr {
+    fill: var(--spot);
+  }
+  .limit-ghost {
+    fill: none;
+    stroke: var(--spot);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .limit-key {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2) var(--s5);
+    margin-top: var(--s5);
+    padding-top: var(--s3);
+    border-top: 1px solid var(--ink);
+    align-items: center;
+  }
+  .limit-key span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
+    color: var(--ink-2);
+  }
+  .limit-key__note {
+    margin-left: auto;
+  }
+  .key {
+    width: 18px;
+    height: 9px;
+    display: inline-block;
+  }
+  .key--out {
+    background: var(--ink);
+  }
+  .key--ghost {
+    border: 1px solid var(--spot);
+  }
+  .key--gr {
+    background: var(--spot);
+  }
+  .key--ceiling {
+    height: 1px;
+    background: var(--ink);
+  }
+  .limit-readout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2) var(--s6);
+    margin-top: var(--s4);
+    color: var(--ink-2);
+  }
+  .limit-readout b {
+    font-weight: 450;
+    color: var(--ink);
+  }
+  .limit-controls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s5) var(--gutter);
+    margin-top: var(--s6);
+  }
+  @media (max-width: 640px) {
+    .limit-controls {
+      grid-template-columns: 1fr;
+    }
+    .limit-key__note {
+      margin-left: 0;
+      width: 100%;
+    }
+  }
+</style>
+
+<script>
+  import { formatDb, programme, type Limit } from "../../lib/dsp";
+  import { LIMIT_AXIS, LIMIT_VIEW, limitColumns, limitLevelY, limitMost } from "../../lib/figures";
+  import { drawIn } from "../../lib/motion";
+
+  const peaks = programme();
+  const { centre } = LIMIT_AXIS;
+
+  for (const figure of document.querySelectorAll<HTMLElement>("[data-limit-figure]")) {
+    const setting: Limit = JSON.parse(figure.dataset.setting!);
+    const svg = figure.querySelector("svg")!;
+    const cols = [...figure.querySelectorAll<SVGGElement>(".limit-col")];
+    const ceilings = [...figure.querySelectorAll<SVGLineElement>(".limit-ceiling")];
+    const peakOut = figure.querySelector("[data-readout='peak']");
+    const mostOut = figure.querySelector("[data-readout='most']");
+
+    const render = (s: Limit) => {
+      const shown = limitColumns(peaks, s);
+      shown.forEach((c, i) => {
+        const [gr, above, below, out] = cols[i].children as unknown as SVGRectElement[];
+        gr.setAttribute("height", String(c.reduction));
+        above.setAttribute("y", String(centre - c.ghost));
+        above.setAttribute("height", String(c.ghost - c.out));
+        below.setAttribute("y", String(centre + c.out));
+        below.setAttribute("height", String(c.ghost - c.out));
+        out.setAttribute("y", String(centre - c.out));
+        out.setAttribute("height", String(2 * c.out));
+      });
+      const y = limitLevelY(s.ceiling);
+      ceilings[0].setAttribute("y1", String(centre - y));
+      ceilings[0].setAttribute("y2", String(centre - y));
+      ceilings[1].setAttribute("y1", String(centre + y));
+      ceilings[1].setAttribute("y2", String(centre + y));
+      return shown;
+    };
+
+    // the draw-in: the programme starts as it is, under a ceiling it never reaches, and then the gain pushes it into
+    // a lowered ceiling and the limiter holds it there
+    let touched = false;
+    drawIn(figure, (t) => {
+      if (!touched) render({ ...setting, gain: setting.gain * t, ceiling: setting.ceiling * t });
+    });
+
+    if (!figure.hasAttribute("data-interactive")) continue;
+
+    const format: Record<keyof Limit, (v: number) => string> = {
+      gain: (v) => formatDb(v),
+      ceiling: (v) => formatDb(v),
+      release: (v) => `${Math.round(v)} ms`,
+    };
+    const inputs = new Map<string, HTMLInputElement>();
+    const update = () => {
+      touched = true;
+      const shown = render(setting);
+      // the output's highest peak: the ceiling once the gain reaches it, the programme's own peak before
+      const top = Math.max(...shown.map((c) => c.out)) / LIMIT_AXIS.full;
+      if (peakOut) peakOut.textContent = formatDb(Math.min(setting.ceiling, 20 * Math.log10(top)));
+      if (mostOut) mostOut.textContent = formatDb(limitMost(shown));
+      for (const [key, input] of inputs) {
+        const value = setting[key as keyof Limit];
+        input.value = String(value);
+        const text = format[key as keyof Limit](value);
+        input.setAttribute("aria-valuetext", text);
+        const out = figure.querySelector(`[data-out='${key}']`);
+        if (out) out.textContent = text;
+      }
+    };
+
+    for (const input of figure.querySelectorAll<HTMLInputElement>("input[type=range]")) {
+      inputs.set(input.name, input);
+      input.addEventListener("input", () => {
+        setting[input.name as keyof Limit] = Number(input.value);
+        update();
+      });
+    }
+
+    // as in the editor: drag the waveform up or down to set the gain, and the arrow keys step it. A finger scrolls the
+    // page instead; the sliders are there for touch
+    const setGain = (db: number) => {
+      setting.gain = Math.round(Math.max(0, Math.min(18, db)) * 10) / 10;
+      update();
+    };
+    let drag: { y: number; gain: number } | null = null;
+    svg.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "touch") return;
+      drag = { y: e.clientY, gain: setting.gain };
+      svg.setPointerCapture(e.pointerId);
+    });
+    svg.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      // a full-scale peak's height is 20 dB of drag
+      const perPixel = 20 / ((svg.getBoundingClientRect().height * LIMIT_AXIS.full) / LIMIT_VIEW.h);
+      setGain(drag.gain + (drag.y - e.clientY) * perPixel * (e.shiftKey ? 0.15 : 1));
+    });
+    const release = () => (drag = null);
+    svg.addEventListener("pointerup", release);
+    svg.addEventListener("pointercancel", release);
+    svg.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+      e.preventDefault();
+      const step = e.shiftKey ? 0.1 : 0.5;
+      setGain(setting.gain + (e.key === "ArrowUp" ? step : -step));
+    });
+  }
+</script>

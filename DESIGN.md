@@ -11,6 +11,7 @@ colors:
   eq: "#2a3fd4"
   dialogue: "#e0502a"
   compressor: "#0f7a5c"
+  limiter: "#a8740a"
 typography:
   display:
     fontFamily: "Archivo Variable, Helvetica Neue, Helvetica, Arial, sans-serif"
@@ -165,7 +166,7 @@ Scope: this system governs the website (`website/`) and the Altvane wordmark. Th
 
 **Creative North Star: "The Musica Viva Sheet"**
 
-Every Altvane plug-in is announced the way a concert in a Swiss poster series is: one cool white sheet, lowercase grotesk set flush left on a strict twelve-column grid, and one large geometric figure. The figure is not illustration. It is computed from the product's real mechanism (EQ's filter response as concentric arcs, Dialogue's stems summing to the input, the Compressor's gain computer as columns under a knee), it draws in once from the product's neutral state, and it answers the pointer and the keyboard. The sheet carries the precision claim; the figure proves it.
+Every Altvane plug-in is announced the way a concert in a Swiss poster series is: one cool white sheet, lowercase grotesk set flush left on a strict twelve-column grid, and one large geometric figure. The figure is not illustration. It is computed from the product's real mechanism (EQ's filter response as concentric arcs, Dialogue's stems summing to the input, the Compressor's gain computer as columns under a knee, the Limiter's lookahead holding a waveform under its ceiling), it draws in once from the product's neutral state, and it answers the pointer and the keyboard. The sheet carries the precision claim; the figure proves it.
 
 The page is quiet and dense in the way a printed programme is dense: near-black ink, hairline rules, registration ticks on every column line, small tabular readings with the condition they were measured under. Hierarchy comes from Archivo's width axis and from scale, not from colour, boxes or weight. Each product owns exactly one printed spot ink, and that ink appears only in its figure, its own rules and the links that name it. Actions are set type standing on a rule with a drawn arrow; nothing on the sheet is a filled button.
 
@@ -181,7 +182,7 @@ The world rejects the plug-in category's defaults: a dark hero, a GUI screenshot
 
 ## Colors
 
-A paper-and-ink palette with three printed spot inks, one per product, that never meet on the same product sheet.
+A paper-and-ink palette with four printed spot inks, one per product, that never meet on the same product sheet.
 
 ### Primary
 - **Programme Ink** (#111213): headings, names, labels, the primary action and its rule, the 1.5px rules that head lists and tables, the format dots, the control thumb, the focus ring and the text selection. It is the system's real primary; the spot inks are secondary to it.
@@ -191,6 +192,7 @@ The spot inks. A page or section takes its product's ink through `data-product`,
 - **EQ Cobalt** (#2a3fd4): Altvane EQ's arcs, its section rule, its hover wipes.
 - **Dialogue Vermilion** (#e0502a): Altvane Dialogue's voice and reverb segments, its section rule, its hover wipes.
 - **Compressor Viridian** (#0f7a5c): Altvane Compressor's over-threshold columns and gain-reduction outlines, its section rule, its hover wipes.
+- **Limiter Ochre** (#a8740a): Altvane Limiter's gain reduction and held-back outlines, its section rule, its hover wipes. 3.72:1 on the stock: a graphic ink, never a text colour.
 
 ### Neutral
 - **Cool Stock** (#f4f5f4): the sheet. Every page background, the browser theme colour, and the knock-out fill behind captions that sit over a figure.
@@ -236,7 +238,7 @@ The spot inks. A page or section takes its product's ink through `data-product`,
 
 The page is a twelve-column sheet: columns between margins of clamp(20px, 3.4vw, 56px) with gutters of clamp(16px, 1.8vw, 28px). A row of 7px registration ticks under the header marks every column line, and every section places its content on those columns.
 
-Recurring placements: copy in columns 1 to 5 and the figure in 6 to 12 (the home hero, the EQ and Compressor series); the figure in 1 to 7 and copy in 9 to 12 (the Dialogue series, mirrored for rhythm); section heads in 1 to 4 and content in 5 to 12 (product page sections). Figures bleed past the right margin and are cropped by the sheet's edge rather than contained in a frame.
+Recurring placements: copy in columns 1 to 5 and the figure in 6 to 12 (the home hero, the EQ and Compressor series); the figure in 1 to 7 and copy in 9 to 12 (the Dialogue and Limiter series, mirrored for rhythm); section heads in 1 to 4 and content in 5 to 12 (product page sections). Figures bleed past the right margin and are cropped by the sheet's edge rather than contained in a frame.
 
 Spacing follows one ten-step rhythm: 4, 8, 12, 16, 24, 32, 48, 72px, then fluid clamp(80px, 9vw, 136px) between product page sections and clamp(112px, 13vw, 200px) between home series and before the footer. The home hero fills the first viewport (clamp(640px, 100svh minus 84px, 940px)).
 
@@ -283,7 +285,7 @@ Set type standing on a rule, with a drawn arrow. Never a box.
 
 ### Programme
 The download list, set like a concert programme.
-- **Structure:** a 1.5px Programme Ink rule on top, then one row per plug-in: its name (Name style), its version and platform note (Small, tabular), and a "Download" link with the down arrow; an unreleased product shows "Details" in Third Ink.
+- **Structure:** a 1.5px Programme Ink rule on top, then one row per plug-in: its name (Name style), its version and platform note (Small, tabular), and a "Download" link with the down arrow.
 - **Rows:** 12px vertical padding with 1px hairlines between.
 - **Hover:** the product's spot ink draws across the row's top edge over 0.6s.
 
@@ -307,6 +309,7 @@ The defining component. Each figure is an SVG computed at build time from the pr
 - **EQ:** 32 concentric arcs in EQ Cobalt, one per frequency from 20 Hz at the centre to 20 kHz at the edge; each arc's sweep is the response at that frequency. A dotted Strong Hairline ray marks 0 dB. The live band's node is a Cool Stock circle ringed in 1.5px ink with an ink dot.
 - **Dialogue:** one bar per spectrum band, split into voice (solid spot), reverb (spot hatching) and ambience (Programme Ink), inside a 1px ink outline of the input. At 0 dB on every stem the segments end exactly at the outline.
 - **Compressor:** 30 columns from -60 to 0 dB input, rising to the output level; columns over the knee fill with spot ink and show a 1px spot outline up to where the input would have been. A 1px ink threshold line and a dotted unity line.
+- **Limiter:** three seconds of a synthetic programme through a lookahead peak limiter, as 60 columns mirrored about a centre line. Each column reaches the output's peak in its slice of time in Programme Ink, with a 1px spot outline out to where the gained input would have gone; the gain reduction hangs from a 1px ink top rule as spot bars. Two 1px ink ceiling lines and dotted full-scale lines. The ramp and release only ever lower the gain below what each point needs, so no column passes the ceiling. On its product page, dragging the waveform up or down sets the gain, as in the editor.
 - **Motion:** one draw-in per figure, from the product's neutral state to its setting, with an exponential ease-out over 1.6s, staggered once, triggered when a third of the figure is in view. Under reduced motion, or without JavaScript, the figure shows its finished state and nothing moves.
 - **Interaction:** the pointer and arrow keys tune the figure; readouts update in tabular figures.
 

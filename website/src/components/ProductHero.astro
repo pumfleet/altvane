@@ -1,6 +1,6 @@
 ---
 import Arrow from "./Arrow.astro";
-import { type Product, releasesUrl, sourceUrl } from "../data/products";
+import { type Product, downloadLabel, releasesUrl, sourceUrl } from "../data/products";
 
 interface Props {
   product: Product;
@@ -12,19 +12,11 @@ const { product: p } = Astro.props;
     <span class="phero__brand">Altvane</span> {p.short}
   </h1>
   <div class="phero__copy">
-    <p class="t-label">{p.kind}{p.status === "in development" ? ". In development." : ""}</p>
+    <p class="t-label">{p.kind}</p>
     <p class="t-lead">{p.summary}</p>
     <div class="phero__actions">
-      {p.status === "released" ? (
-        <a class="action" href={releasesUrl(p.code)}>Download {p.version} <Arrow dir="down" /></a>
-      ) : (
-        <a class="action" href={sourceUrl(p.code)} data-external>Follow it on GitHub <Arrow dir="out" /></a>
-      )}
-      <p class="t-small">
-        {p.status === "released"
-          ? `Free, for ${p.platformNote ?? "macOS, Windows and Linux"}. From GitHub Releases.`
-          : "Not released yet. Build it from source today."}
-      </p>
+      <a class="action" href={releasesUrl(p.code)}>{downloadLabel(p)} <Arrow dir="down" /></a>
+      <p class="t-small">Free, for {p.platformNote ?? "macOS, Windows and Linux"}. From GitHub Releases.</p>
       <a class="action action--quiet" href={sourceUrl(p.code)} data-external>Source and README <Arrow dir="out" /></a>
     </div>
   </div>

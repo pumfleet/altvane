@@ -64,6 +64,21 @@
           "oklch(95.0% 0.019 167.5)"
         ]
       },
+      "limiter": {
+        "role": "secondary",
+        "displayName": "Limiter Ochre",
+        "canonical": "oklch(59.7% 0.123 76.8)",
+        "tonalRamp": [
+          "oklch(15.0% 0.046 76.8)",
+          "oklch(26.4% 0.092 76.8)",
+          "oklch(37.9% 0.123 76.8)",
+          "oklch(49.3% 0.123 76.8)",
+          "oklch(60.7% 0.123 76.8)",
+          "oklch(72.1% 0.112 76.8)",
+          "oklch(83.6% 0.073 76.8)",
+          "oklch(95.0% 0.023 76.8)"
+        ]
+      },
       "paper": {
         "role": "neutral",
         "displayName": "Cool Stock",
@@ -315,7 +330,7 @@
   ],
   "narrative": {
     "northStar": "The Musica Viva Sheet",
-    "overview": "Every Altvane plug-in is announced the way a concert in a Swiss poster series is: one cool white sheet, lowercase grotesk set flush left on a strict twelve-column grid, and one large geometric figure. The figure is not illustration. It is computed from the product's real mechanism (EQ's filter response as concentric arcs, Dialogue's stems summing to the input, the Compressor's gain computer as columns under a knee), it draws in once from the product's neutral state, and it answers the pointer and the keyboard. The sheet carries the precision claim; the figure proves it.\n\nThe page is quiet and dense in the way a printed programme is dense: near-black ink, hairline rules, registration ticks on every column line, small tabular readings with the condition they were measured under. Hierarchy comes from Archivo's width axis and from scale, not from colour, boxes or weight. Each product owns exactly one printed spot ink, and that ink appears only in its figure, its own rules and the links that name it. Actions are set type standing on a rule with a drawn arrow; nothing on the sheet is a filled button.\n\nThe world rejects the plug-in category's defaults: a dark hero, a GUI screenshot used as the hook, feature cards and format badges. Screenshots do appear, but only further down a product page, framed as a plate.",
+    "overview": "Every Altvane plug-in is announced the way a concert in a Swiss poster series is: one cool white sheet, lowercase grotesk set flush left on a strict twelve-column grid, and one large geometric figure. The figure is not illustration. It is computed from the product's real mechanism (EQ's filter response as concentric arcs, Dialogue's stems summing to the input, the Compressor's gain computer as columns under a knee, the Limiter's lookahead holding a waveform under its ceiling), it draws in once from the product's neutral state, and it answers the pointer and the keyboard. The sheet carries the precision claim; the figure proves it.\n\nThe page is quiet and dense in the way a printed programme is dense: near-black ink, hairline rules, registration ticks on every column line, small tabular readings with the condition they were measured under. Hierarchy comes from Archivo's width axis and from scale, not from colour, boxes or weight. Each product owns exactly one printed spot ink, and that ink appears only in its figure, its own rules and the links that name it. Actions are set type standing on a rule with a drawn arrow; nothing on the sheet is a filled button.\n\nThe world rejects the plug-in category's defaults: a dark hero, a GUI screenshot used as the hook, feature cards and format badges. Screenshots do appear, but only further down a product page, framed as a plate.",
     "keyCharacteristics": [
       "Cool white stock, near-black ink, one spot ink per product.",
       "Archivo Variable across its width axis: expanded and light for names, normal for text, tabular figures for readings.",

@@ -13,6 +13,7 @@
   --eq: #2a3fd4;
   --dialogue: #e0502a;
   --compressor: #0f7a5c;
+  --limiter: #a8740a;
   --spot: var(--ink);
 
   --font: "Archivo Variable", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -42,6 +43,7 @@
 [data-product="eq"] { --spot: var(--eq); }
 [data-product="dialogue"] { --spot: var(--dialogue); }
 [data-product="compressor"] { --spot: var(--compressor); }
+[data-product="limiter"] { --spot: var(--limiter); }
 
 *, *::before, *::after { box-sizing: border-box; }
 
