@@ -188,6 +188,25 @@ TEST_CASE("the real-time path is transparent even when the model falls behind", 
     CHECK(nullResidualDb(r, input) < -90.f);
 }
 
+TEST_CASE("releasing does not wait for a backlog of hops", "[engine]") {
+    // a host calling back far faster than real time (pluginval's "Open editor whilst processing") leaves the worker
+    // seconds of model work; waiting for it would time out and kill the thread by force
+    PluginProcessor p;
+    p.setPlayConfigDetails(2, 2, 48000.0, 64);
+    p.setNonRealtime(false);
+    p.prepareToPlay(48000.0, 64);
+    juce::AudioBuffer<float> io(2, 64);
+    juce::MidiBuffer midi;
+    const auto input = makeSignal(2, 64, 48000.0);
+    for (int block = 0; block < 48000 * 30 / 64; ++block) {
+        io.makeCopyOf(input, true);
+        p.processBlock(io, midi);
+    }
+    const auto start = juce::Time::getMillisecondCounterHiRes();
+    p.releaseResources();
+    CHECK(juce::Time::getMillisecondCounterHiRes() - start < 1000.0);
+}
+
 TEST_CASE("the reported latency is the delay of an impulse", "[engine]") {
     const auto rate = GENERATE(44100.0, 48000.0, 96000.0);
     CAPTURE(rate);
@@ -611,6 +630,15 @@ TEST_CASE("state round-trips", "[params]") {
     for (const auto& id : params::allIDs()) {
         CAPTURE(id);
         CHECK(std::abs(a.parameters_.getParameter(id)->getValue() - b.parameters_.getParameter(id)->getValue()) < 1e-6f);
+    }
+}
+
+TEST_CASE("every program has a name", "[params]") {
+    // the VST3 validator fails a plug-in whose program list has an unnamed program
+    PluginProcessor p;
+    REQUIRE(p.getNumPrograms() > 0);
+    for (int i = 0; i < p.getNumPrograms(); ++i) {
+        CHECK(p.getProgramName(i).isNotEmpty());
     }
 }
 

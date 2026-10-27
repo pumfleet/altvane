@@ -2,38 +2,20 @@
 
 altvane_product_version(dialogue 0.1.0 dialogue_version)
 
-# ---- ONNX Runtime: a static, CPU-only build with just the operators our models use ----
 file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/PLATFORMS" dialogue_platforms REGEX "^[^#]")
 if (NOT ALTVANE_PLATFORM IN_LIST dialogue_platforms)
     message(FATAL_ERROR "Altvane Dialogue does not build on ${ALTVANE_PLATFORM} yet (see PLATFORMS)")
 endif ()
-if (CMAKE_OSX_ARCHITECTURES)
-    set(dialogue_arch ${CMAKE_OSX_ARCHITECTURES})
-else ()
-    set(dialogue_arch ${CMAKE_SYSTEM_PROCESSOR})
+if (APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET AND CMAKE_OSX_DEPLOYMENT_TARGET VERSION_LESS 11)
+    # the worker thread waits with std::atomic::wait, which macOS has from 11
+    message(FATAL_ERROR "Altvane Dialogue needs macOS 11 or newer: configure with -DCMAKE_OSX_DEPLOYMENT_TARGET=11")
 endif ()
-set(dialogue_ops_config "${CMAKE_CURRENT_SOURCE_DIR}/models/required_operators.config")
-set(ALTVANE_ONNXRUNTIME_DIR "${CMAKE_SOURCE_DIR}/build/deps/onnxruntime-1.28.0-${dialogue_arch}"
-        CACHE PATH "Static ONNX Runtime built by scripts/build_onnxruntime.sh")
-find_package(Python3 3.10 COMPONENTS Interpreter)
-set(dialogue_ort_env "MACOSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-if (Python3_FOUND)
-    list(APPEND dialogue_ort_env "PYTHON=${Python3_EXECUTABLE}")
+
+# the network's large matrix products go to the platform BLAS where there is one (dsp/kernels.cpp)
+set(dialogue_blas "")
+if (APPLE)
+    set(dialogue_blas "-framework Accelerate")
 endif ()
-# a no-op when the library is up to date
-execute_process(
-        COMMAND ${CMAKE_COMMAND} -E env ${dialogue_ort_env}
-        "${CMAKE_SOURCE_DIR}/scripts/build_onnxruntime.sh" ${dialogue_arch} "${dialogue_ops_config}"
-        "${ALTVANE_ONNXRUNTIME_DIR}"
-        RESULT_VARIABLE dialogue_ort_result)
-if (NOT dialogue_ort_result EQUAL 0)
-    message(FATAL_ERROR "Building ONNX Runtime failed; run scripts/build_onnxruntime.sh by hand (it needs Python >= 3.10)")
-endif ()
-add_library(altvane_onnxruntime STATIC IMPORTED GLOBAL)
-set_target_properties(altvane_onnxruntime PROPERTIES
-        IMPORTED_LOCATION "${ALTVANE_ONNXRUNTIME_DIR}/lib/libonnxruntime.a"
-        INTERFACE_INCLUDE_DIRECTORIES "${ALTVANE_ONNXRUNTIME_DIR}/include"
-        INTERFACE_LINK_LIBRARIES "-framework Foundation")
 
 # ---- the models, downloaded at a pinned revision, checked, and embedded in the plug-in ----
 include(models/models.cmake)
@@ -47,7 +29,7 @@ altvane_add_plugin(AltvaneDialogue
         VST3_CATEGORIES Fx Restoration
         AAX_CATEGORY AAX_ePlugInCategory_NoiseReduction
         LV2_TAGS util
-        LINK_LIBRARIES altvane_onnxruntime altvane_dialogue_models pffft
+        LINK_LIBRARIES altvane_dialogue_models pffft ${dialogue_blas}
 )
 
 if (ALTVANE_BUILD_TESTS)

@@ -26,7 +26,12 @@ dialogue_fetch_model(dpdfnet8_48khz_hr 7b3afbb260a08fe9af3d16e3bda992971be1e7e95
 
 add_library(altvane_dialogue_models STATIC "${CMAKE_CURRENT_LIST_DIR}/embed/model_data.cpp")
 target_include_directories(altvane_dialogue_models PUBLIC "${CMAKE_CURRENT_LIST_DIR}/embed")
-target_compile_options(altvane_dialogue_models PRIVATE "--embed-dir=${dialogue_models_dir}")
+if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    # clang-cl passes clang's own options through with /clang:
+    target_compile_options(altvane_dialogue_models PRIVATE "/clang:--embed-dir=${dialogue_models_dir}")
+else ()
+    target_compile_options(altvane_dialogue_models PRIVATE "--embed-dir=${dialogue_models_dir}")
+endif ()
 set_source_files_properties("${CMAKE_CURRENT_LIST_DIR}/embed/model_data.cpp" PROPERTIES OBJECT_DEPENDS
         "${dialogue_models_dir}/dpdfnet2_48khz_hr.onnx;${dialogue_models_dir}/dpdfnet8_48khz_hr.onnx")
 set_target_properties(altvane_dialogue_models PROPERTIES POSITION_INDEPENDENT_CODE TRUE FOLDER "Targets")

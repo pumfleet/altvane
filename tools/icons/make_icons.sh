@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Regenerates a product's icons and installer artwork in products/<product>/packaging/
-# (macOS: needs iconutil and sips).
+# (uses iconutil and sips on macOS; elsewhere the .icns is assembled here and the .bmp files come from the tool).
 #   cmake --preset mac-arm64-debug -DALTVANE_BUILD_TOOLS=ON && cmake --build --preset mac-arm64-debug --target AltvaneIcons
 #   tools/icons/make_icons.sh build/mac-arm64-debug/tools/icons/AltvaneIcons_artefacts/Debug/AltvaneIcons eq EQ
-#   tools/icons/make_icons.sh <tool> compressor COMPRESSOR knee    (optional motif behind the mark: grid, knee or ess)
+#   tools/icons/make_icons.sh <tool> compressor COMPRESSOR knee    (optional motif behind the mark: grid, knee, ride or ess)
 set -euo pipefail
 
 tool="${1:?path to the AltvaneIcons executable}"
@@ -28,7 +28,22 @@ for size in 16 32 128 256 512; do
     cp "$work/png/icon_${size}.png" "$iconset/icon_${size}x${size}.png"
     cp "$work/png/icon_$((size * 2)).png" "$iconset/icon_${size}x${size}@2x.png"
 done
-iconutil -c icns "$iconset" -o "$out/installer.icns"
+if command -v iconutil > /dev/null; then
+    iconutil -c icns "$iconset" -o "$out/installer.icns"
+else
+    # the same PNG-compressed entries iconutil writes
+    python3 - "$work/png" "$out/installer.icns" <<'PY'
+import struct, sys, pathlib
+src = pathlib.Path(sys.argv[1])
+types = [("icp4", 16), ("icp5", 32), ("ic07", 128), ("ic08", 256), ("ic09", 512),
+         ("ic11", 32), ("ic12", 64), ("ic13", 256), ("ic14", 512), ("ic10", 1024)]
+body = b""
+for ostype, size in types:
+    blob = (src / f"icon_{size}.png").read_bytes()
+    body += ostype.encode() + struct.pack(">I", 8 + len(blob)) + blob
+pathlib.Path(sys.argv[2]).write_bytes(b"icns" + struct.pack(">I", 8 + len(body)) + body)
+PY
+fi
 
 # Windows icons: PNG-compressed .ico entries
 python3 - "$work/png" "$out/icon.ico" "$out/installer.ico" <<'PY'
@@ -49,7 +64,11 @@ shutil.copy(out, sys.argv[3])
 PY
 
 # WiX installer artwork
-sips -s format bmp "$work/png/banner.png" --out "$out/banner.bmp" > /dev/null
-sips -s format bmp "$work/png/dialog.png" --out "$out/dialog.bmp" > /dev/null
+if command -v sips > /dev/null; then
+    sips -s format bmp "$work/png/banner.png" --out "$out/banner.bmp" > /dev/null
+    sips -s format bmp "$work/png/dialog.png" --out "$out/dialog.bmp" > /dev/null
+else
+    cp "$work/png/banner.bmp" "$work/png/dialog.bmp" "$out/"
+fi
 
 echo "icons written to products/$product/packaging/"

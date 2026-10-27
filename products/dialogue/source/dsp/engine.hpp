@@ -140,6 +140,9 @@ namespace altvane::dialogue::dsp {
 
         static constexpr int kHistory = 8; // analysed frames kept, more than kModelLag
         static constexpr int kFadeFrames = 8;
+        // the least wall-clock time the worker gets for a frame (in samples): one hop, 10 ms, which also covers a
+        // quality or stereo-mode change running two pipelines at once
+        static constexpr int kWorkerBudget = kHop;
 
         EngineControls controls_;
         int num_channels_{0}, max_block_{0}, latency_{0};
@@ -162,6 +165,7 @@ namespace altvane::dialogue::dsp {
         std::array<std::array<std::array<float, kFftSize>, 2>, kNumStems> stem_ola_{};
         // one per quality and stereo mode: quality * kNumStereoModes + mode
         std::array<std::unique_ptr<Pipeline>, 2 * kNumStereoModes> pipelines_;
+        std::unique_ptr<SeparatorScratch> scratch_;
         int active_{-1}, fading_{-1}, fade_pos_{0};
         std::array<std::array<float, kSensitivityNodes>, kNumStems> sensitivity_cache_{};
         std::array<BinWeights, kNumStems> weights_{};

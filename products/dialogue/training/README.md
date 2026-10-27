@@ -3,7 +3,12 @@
 v0.1 runs DPDFNet, which estimates speech only; the voice-reverb stem is split off with DSP and scores about half of
 what an ideal mask reaches (`docs/BENCHMARK.md`). The next step is our own model with three outputs (dry voice,
 voice reverb, ambience), trained only on data we may use commercially, exported with the same streaming interface
-(one STFT frame and a flat state in, three complex masks out) so it drops in behind `dsp::SeparatorModel`.
+(one STFT frame and a flat state in, three complex masks out) so it drops in behind `dsp::SeparatorModel`. The
+plug-in runs networks with its own C++ (`source/dsp/dpdfnet`), so a new architecture also needs its forward pass
+written there (`models/README.md`).
+
+Train it without look-ahead (`conv_lookahead` and `df_lookahead` at 0), so it can be monitored live. DPDFNet's 40 ms
+look-ahead is two-thirds of today's 60 ms latency floor; without it the floor is the 20 ms analysis frame.
 
 Nothing here is built yet. This page is what the training machine needs, so it can be set up in the meantime.
 
