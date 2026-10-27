@@ -19,6 +19,14 @@
 
 namespace altvane::dialogue::dsp {
     /**
+     * how a stereo input is separated: one analysis of the mid applied to both channels, one per channel,
+     * or one of the mid and one of the side; a mono input is always linked
+     */
+    enum class StereoMode { kLinked, kStereo, kMidSide };
+
+    inline constexpr int kNumStereoModes = 3;
+
+    /**
      * the controls the engine reads, written by the processor from its parameters
      */
     struct EngineControls {
@@ -26,7 +34,7 @@ namespace altvane::dialogue::dsp {
         std::array<std::array<std::atomic<float>, kSensitivityNodes>, kNumStems> sensitivity{}; // -1 .. 1
         std::atomic<int> listen{0}; // Listen
         std::atomic<int> quality{0}; // Quality
-        std::atomic<bool> linked{true}; // stereo: one analysis of the mid, or one per channel
+        std::atomic<int> stereo{0}; // StereoMode
 
         EngineControls() {
             for (auto& g : gains) {
@@ -152,16 +160,16 @@ namespace altvane::dialogue::dsp {
         std::array<std::array<Spectrum, kHistory>, 2> history_{};
         std::array<std::array<float, kFftSize>, 2> ola_{};
         std::array<std::array<std::array<float, kFftSize>, 2>, kNumStems> stem_ola_{};
-        std::array<std::unique_ptr<Pipeline>, 4> pipelines_;
+        // one per quality and stereo mode: quality * kNumStereoModes + mode
+        std::array<std::unique_ptr<Pipeline>, 2 * kNumStereoModes> pipelines_;
         int active_{-1}, fading_{-1}, fade_pos_{0};
         std::array<std::array<float, kSensitivityNodes>, kNumStems> sensitivity_cache_{};
         std::array<BinWeights, kNumStems> weights_{};
         std::array<float, kNumStems> gains_{1.f, 1.f, 1.f};
-        std::array<Spectrum, 2> transfer_{}, transfer_fading_{};
-        // per channel, each stem's transfer at its level
-        std::array<StemShares, 2> stem_transfer_{}, stem_transfer_fading_{};
-        StemShares meter_shares_{}, meter_shares_fading_{};
-        Spectrum output_spec_{};
+        // per channel, the mix and each stem at its level (stem_spec_[stem][channel]), of the active and fading pipelines
+        std::array<Spectrum, 2> output_spec_{}, output_fading_{};
+        std::array<std::array<Spectrum, 2>, kNumStems> stem_spec_{}, stem_spec_fading_{};
+        std::array<Spectrum, kNumStems> meter_stems_{}; // the first channel's stems, for the analysis
         std::array<float, kFftSize> synth_{};
         ui::TriBuffer<AnalysisFrame> analysis_;
         uint64_t analysis_index_{0};
@@ -183,10 +191,10 @@ namespace altvane::dialogue::dsp {
          */
         void processAvailable(const juce::Thread* worker = nullptr);
         void processFrame(int64_t frame);
-        void synthesise(const Spectrum& x, const Spectrum& transfer, std::array<float, kFftSize>& ola,
-                        std::vector<float>& ring, int64_t out_begin);
+        void synthesise(const Spectrum& y, std::array<float, kFftSize>& ola, std::vector<float>& ring, int64_t out_begin);
         int selectPipeline() const;
         void updateControls();
-        void publishAnalysis(const Spectrum& input, const StemShares& shares, const Spectrum& transfer);
+        void publishAnalysis(const Spectrum& input, const std::array<Spectrum, kNumStems>& stems,
+                             const Spectrum& output);
     };
 }

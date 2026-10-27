@@ -15,8 +15,9 @@ Pull a voice out of a noisy location recording, dry out a reverberant room, or k
   to the main output. Solo and Removed change only the main output; bypassed, the stem outputs fall silent.
 - **Sensitivity across the spectrum.** Each stem has a six-point curve (120 Hz to 11 kHz): raise the voice's curve
   at the top to keep consonants, raise the ambience's at the bottom to clear rumble and wind.
-- **Eco or High** quality, **Linked** (one analysis of the mid, applied to both channels) or **Stereo** (each
-  channel on its own), 44.1–192 kHz, mono or stereo.
+- **Eco or High** quality; **Linked** (one analysis of the mid, applied to both channels), **Stereo** (each
+  channel on its own) or **Mid/Side** (the mid and the side each on their own, for centred dialogue in a wide
+  ambience); 44.1–192 kHz, mono or stereo.
 - A fixed, reported latency (about 80 ms at 512-sample buffers), so hosts compensate it exactly. Offline bounces
   wait for the model; in real time, a frame that would arrive late plays unprocessed rather than dropping out.
 - Presets with a factory set, A/B compare, undo/redo, adjustable interface size and accent colour, keyboard control,
@@ -46,7 +47,8 @@ predicted from the voice's energy 50 ms earlier and taken from both in proportio
 following the ambience level. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and
 [models/README.md](models/README.md).
 
-CPU on an M5 Max, per instance, as a share of one core: Eco 8%, High 22% (Linked; twice that in Stereo mode).
+CPU on an M5 Max, per instance, as a share of one core: Eco 8%, High 22% (Linked; Stereo and Mid/Side run two
+analyses, about twice that).
 
 ## Build from source
 
@@ -63,7 +65,8 @@ ctest --test-dir build/mac-arm64-debug
 Tools, with `ALTVANE_BUILD_TOOLS`:
 
 - `AltvaneDialogueRender <in.wav> <out-dir>` writes the mix and each stem of a file, latency-compensated, and
-  reports the CPU it took (`--quality`, `--stereo`, `--voice/--ambience/--reverb` in dB, `--block`, `--realtime`).
+  reports the CPU it took (`--quality`, `--stereo linked|stereo|midside`, `--voice/--ambience/--reverb` in dB,
+  `--block`, `--realtime`).
 - `AltvaneDialogueSnapshot <out-dir> [scale] [speech.wav]` renders the editor's states to PNGs.
 
 ## License
