@@ -41,16 +41,31 @@ engine's gain computers (`source/dsp/compressor/computer`), so the curve is the 
 
 ## The editor
 
-The designed editor is specified by the approved interactive mock, [docs/design/mock.html](design/mock.html). Open
-it in a browser to see it; its curve maths is ported from the engine.
+The editor is specified by the approved interactive mock, [docs/design/mock.html](design/mock.html). It is built on
+the shared editor shell in `libs/ui` (header, presets, A/B, undo, settings, interface scale), and everything below
+runs on the message thread, once per frame:
 
-It will be built on the editor shell, header, presets, A/B, settings and meters shared with the other Altvane
-products in `libs/ui`. Until then, `source/ui/editor.*` is a placeholder: the Altvane header over JUCE's generic
-parameter list.
+- `ui/model/comp_bridge.*`: parameter access. Edits go through the shell's `ParamEditor`, so each gesture is one
+  host gesture and one undo step. Display settings (time, scale, peak / RMS, which panels are open) live in the
+  non-automatable tree.
+- `ui/analysis/level_history.*`: drains the magnitude analyzer into one column per pixel of the level display, plus
+  the meter peaks and the detector level.
+- `ui/analysis/transfer_model.*`: the static curve, from the engine's own gain computers and the engine's rules for
+  direction, range, wet and makeup (`CompressController::appleSideBuffer`). `editor_tests.cpp` checks it against the
+  processor's measured output in all four directions.
+- `ui/analysis/side_spectrum.*`: the side-chain spectrum after its EQ, at one FFT resolution.
+- `ui/graph/`: the level display, the knee display and the side-chain EQ view.
+- `ui/panels/`: the control card, the advanced popover, the meter rail, the side-chain drawer and the footer.
+
+`AltvaneCompressorSnapshot <dir> [scale]` renders the editor's states headlessly, with the processor running on a
+synthetic drum loop.
 
 ## Verification
 
 - `AltvaneCompressorTests` (Catch2) covers:
+  - the knee display's curve against the processor's measured output, for every direction;
+  - the level history's input, output and gain-reduction readings;
+  - every control mapping to its host parameter, and the editor running with audio flowing;
   - the state round trip and ZL Compressor's state tags;
   - a steady tone settling on the compression curve;
   - range and makeup;

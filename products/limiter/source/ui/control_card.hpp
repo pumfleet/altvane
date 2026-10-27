@@ -10,7 +10,6 @@
 #pragma once
 
 #include <altvane_ui/session/param_editor.hpp>
-#include <altvane_ui/widgets/slider.hpp>
 #include <altvane_ui/widgets/widgets.hpp>
 
 #include "common.hpp"

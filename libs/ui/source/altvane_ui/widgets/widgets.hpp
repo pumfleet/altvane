@@ -21,6 +21,7 @@ namespace altvane::ui {
      * vertical drag (shift = fine), wheel, double-click / cmd-click to reset, inline text entry
      */
     class ValueControl : public juce::Component,
+                         public juce::SettableTooltipClient,
                          private juce::Timer,
                          private juce::TextEditor::Listener {
     public:
@@ -66,8 +67,8 @@ namespace altvane::ui {
         juce::String label_;
         bool hovered_{false}, dragging_{false}, enabled_look_{true}, focus_ring_{false};
         float drag_pixels_{220.f};
-        // sliders drag sideways, everything else up and down
-        bool drag_horizontal_{false};
+        // horizontal controls follow the mouse sideways as well as up and down
+        bool horizontal_drag_{false};
 
         /**
          * area where a double-click opens the text editor
@@ -89,7 +90,7 @@ namespace altvane::ui {
 
     private:
         float drag_start_norm_{0.f};
-        float last_drag_y_{0.f};
+        float last_drag_y_{0.f}, last_drag_x_{0.f};
         float drag_norm_{0.f};
         bool wheel_active_{false};
         std::unique_ptr<juce::TextEditor> editor_;
@@ -154,9 +155,42 @@ namespace altvane::ui {
     };
 
     /**
+     * a compact horizontal slider: caption and value on one line, a thin track below
+     * for secondary values next to knobs; can carry an optional toggle chip (e.g. "∞") before the value
+     */
+    class Slider final : public ValueControl {
+    public:
+        // clicks on the chip; the owner flips its state and calls setChipOn()
+        std::function<void()> on_chip;
+
+        Slider();
+
+        void setBipolar(const bool bipolar) { bipolar_ = bipolar; repaint(); }
+
+        /**
+         * a small toggle drawn before the value; when on, the value text is replaced by the chip text
+         */
+        void setChip(const juce::String& text);
+
+        void setChipOn(bool on);
+
+        void paint(juce::Graphics& g) override;
+
+        void mouseDown(const juce::MouseEvent& e) override;
+
+    protected:
+        juce::Rectangle<int> getTextArea() const override;
+
+    private:
+        bool bipolar_{false}, chip_on_{false};
+        juce::String chip_;
+        juce::Rectangle<float> getChipArea() const;
+    };
+
+    /**
      * a button that opens a popup menu; shows an optional icon, the current text and a chevron
      */
-    class Selector final : public juce::Component {
+    class Selector final : public juce::Component, public juce::SettableTooltipClient {
     public:
         std::function<juce::PopupMenu()> build_menu;
         std::function<void(int)> on_result;
