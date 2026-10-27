@@ -62,13 +62,13 @@ namespace altvane::dialogue::dsp {
         bool isWarm() const { return frames_ > kModelLag; }
 
         /**
-         * computes each stream's transfer
+         * computes each stream's transfer and stems
          * @param current each channel's newest frame
          * @param delayed each channel's frame kModelLag hops earlier, which the transfer applies to
          */
         void process(const std::array<const Spectrum*, 2>& current, const std::array<const Spectrum*, 2>& delayed,
                      const std::array<BinWeights, kNumStems>& weights, const std::array<float, kNumStems>& gains,
-                     const Listen listen, StemShares& meter_shares) {
+                     const Listen listen) {
             ++frames_;
             // what each stream analyses: a channel, or the mid (and the side) of both
             auto in = current;
@@ -91,7 +91,30 @@ namespace altvane::dialogue::dsp {
                     continue;
                 }
                 splitters_[g].split(*in_delayed[g], speech_, shares_);
-                computeTransfer(shares_, weights, gains, listen, t, g == 0 ? meter_shares : weighted_);
+                computeTransfer(shares_, weights, gains, listen, t, weighted_[g]);
+            }
+        }
+
+        /**
+         * each stem (after sensitivity) of the first channel's delayed frame, for the meters; in mid/side decoded from
+         * both streams, L_stem = M·share_mid + S·share_side
+         */
+        void meterStems(const std::array<const Spectrum*, 2>& x, std::array<Spectrum, kNumStems>& stems) const {
+            const auto& l = *x[0];
+            const auto& r = *x[1];
+            for (size_t s = 0; s < kNumStems; ++s) {
+                auto& out = stems[s];
+                const auto& share = weighted_[0].share[s];
+                if (mode_ == StereoMode::kMidSide) {
+                    const auto& share_side = weighted_[1].share[s];
+                    for (size_t k = 0; k < kBins; ++k) {
+                        out[k] = .5f * (l[k] + r[k]) * share[k] + .5f * (l[k] - r[k]) * share_side[k];
+                    }
+                } else {
+                    for (size_t k = 0; k < kBins; ++k) {
+                        out[k] = l[k] * share[k];
+                    }
+                }
             }
         }
 
@@ -127,7 +150,8 @@ namespace altvane::dialogue::dsp {
         std::array<StemSplitter, 2> splitters_;
         std::array<Spectrum, 2> transfer_{};
         Spectrum mid_{}, mid_delayed_{}, side_{}, side_delayed_{}, speech_{};
-        StemShares shares_{}, weighted_{};
+        StemShares shares_{};
+        std::array<StemShares, 2> weighted_{};
         int64_t frames_{0};
     };
 
@@ -400,13 +424,18 @@ namespace altvane::dialogue::dsp {
             for (size_t c = 0; c < static_cast<size_t>(num_channels_); ++c) {
                 output_spec_[c] = *delayed[c];
             }
+            for (auto& s : meter_stems_) {
+                s.fill({});
+            }
         } else {
             auto& active = *pipelines_[static_cast<size_t>(active_)];
-            active.process(current, delayed, weights_, gains_, listen, meter_shares_);
+            active.process(current, delayed, weights_, gains_, listen);
             active.apply(delayed, output_spec_);
+            // the meters follow the old pipeline until the fade completes
+            const Pipeline* metered = &active;
             if (fading_ >= 0) {
                 auto& old = *pipelines_[static_cast<size_t>(fading_)];
-                old.process(current, delayed, weights_, gains_, listen, meter_shares_fading_);
+                old.process(current, delayed, weights_, gains_, listen);
                 old.apply(delayed, output_fading_);
                 const auto mix = active.isWarm() ? static_cast<float>(++fade_pos_) / static_cast<float>(kFadeFrames) : 0.f;
                 // the outputs fade, not the transfers: the two pipelines may not work on the same signals (L/R, M/S)
@@ -418,11 +447,12 @@ namespace altvane::dialogue::dsp {
                     }
                 }
                 if (mix < 1.f) {
-                    meter_shares_ = meter_shares_fading_;
+                    metered = &old;
                 } else {
                     fading_ = -1;
                 }
             }
+            metered->meterStems(delayed, meter_stems_);
         }
 
         if (delayed_frame < 0) {
@@ -449,10 +479,11 @@ namespace altvane::dialogue::dsp {
         }
         produced_.store(std::max<int64_t>(out_begin + kHop, 0), std::memory_order::release);
 
-        publishAnalysis(*delayed[0], meter_shares_, output_spec_[0]);
+        publishAnalysis(*delayed[0], meter_stems_, output_spec_[0]);
     }
 
-    void Engine::publishAnalysis(const Spectrum& input, const StemShares& shares, const Spectrum& output) {
+    void Engine::publishAnalysis(const Spectrum& input, const std::array<Spectrum, kNumStems>& stems,
+                                 const Spectrum& output) {
         auto& frame = analysis_.getWriter();
         frame.input.fill(0.f);
         frame.output.fill(0.f);
@@ -463,11 +494,11 @@ namespace altvane::dialogue::dsp {
         for (const auto& w : band_weights_) {
             const auto band = static_cast<size_t>(w.band);
             const auto k = static_cast<size_t>(w.bin);
-            const auto energy = std::norm(input[k]) * kNorm * w.weight;
-            frame.input[band] += energy;
-            frame.output[band] += std::norm(output[k]) * kNorm * w.weight;
+            const auto weight = kNorm * w.weight;
+            frame.input[band] += std::norm(input[k]) * weight;
+            frame.output[band] += std::norm(output[k]) * weight;
             for (size_t s = 0; s < kNumStems; ++s) {
-                frame.stems[s][band] += energy * std::norm(shares.share[s][k]);
+                frame.stems[s][band] += std::norm(stems[s][k]) * weight;
             }
         }
         frame.index = ++analysis_index_;

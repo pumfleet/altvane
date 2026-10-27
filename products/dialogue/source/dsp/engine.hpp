@@ -151,8 +151,8 @@ namespace altvane::dialogue::dsp {
         std::array<std::array<float, kSensitivityNodes>, kNumStems> sensitivity_cache_{};
         std::array<BinWeights, kNumStems> weights_{};
         std::array<float, kNumStems> gains_{1.f, 1.f, 1.f};
-        StemShares meter_shares_{}, meter_shares_fading_{};
         std::array<Spectrum, 2> output_spec_{}, output_fading_{};
+        std::array<Spectrum, kNumStems> meter_stems_{}; // the first channel's stems, for the analysis
         std::array<float, kFftSize> synth_{};
         ui::TriBuffer<AnalysisFrame> analysis_;
         uint64_t analysis_index_{0};
@@ -172,6 +172,7 @@ namespace altvane::dialogue::dsp {
         void processFrame(int64_t frame);
         int selectPipeline() const;
         void updateControls();
-        void publishAnalysis(const Spectrum& input, const StemShares& shares, const Spectrum& output);
+        void publishAnalysis(const Spectrum& input, const std::array<Spectrum, kNumStems>& stems,
+                             const Spectrum& output);
     };
 }

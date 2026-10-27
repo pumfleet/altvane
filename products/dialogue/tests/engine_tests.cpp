@@ -224,6 +224,41 @@ TEST_CASE("Mid/Side is transparent at unity, and its solo stems add up to the in
     CHECK(nullResidualDb(sum, input) < -90.f);
 }
 
+TEST_CASE("Mid/Side meters the stems of both streams", "[engine]") {
+    // an anti-phase input has a silent mid, and its side is the left channel: Mid/Side's side stream hears exactly
+    // what Stereo's left stream hears, so the stems the editor draws must agree
+    auto input = makeSignal(2, 48000, 48000.0);
+    for (int i = 0; i < input.getNumSamples(); ++i) {
+        input.setSample(1, i, -input.getSample(0, i));
+    }
+    auto meter = [&input](const float mode) {
+        PluginProcessor p;
+        setLevels(p, 0.f, -20.f, -10.f);
+        setParam(p, params::kStereo, mode);
+        dsp::AnalysisFrame frame;
+        bool pulled = false;
+        run(p, input, 48000.0, {512}, false, [&](const int pos) {
+            if (!pulled && pos >= 24000) {
+                pulled = p.getEngine().pullAnalysis(frame);
+            }
+        });
+        REQUIRE(pulled);
+        return frame;
+    };
+    const auto stereo = meter(1.f);
+    const auto mid_side = meter(2.f);
+    double total = 0.0, worst = 0.0;
+    for (size_t s = 0; s < dsp::kNumStems; ++s) {
+        for (size_t b = 0; b < dsp::AnalysisFrame::kBands; ++b) {
+            total += stereo.stems[s][b];
+            worst = std::max(worst, static_cast<double>(std::abs(stereo.stems[s][b] - mid_side.stems[s][b])
+                                                        / (stereo.input[b] + 1e-12f)));
+        }
+    }
+    CHECK(total > 0.0);
+    CHECK(worst < 1e-4);
+}
+
 TEST_CASE("changing the stereo mode while playing stays transparent", "[engine]") {
     PluginProcessor p;
     setLevels(p, 0.f, 0.f, 0.f);
