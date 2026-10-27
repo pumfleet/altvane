@@ -34,6 +34,8 @@ namespace altvane::leveler::dsp {
         // a hand on the rider fader overrides everything
         std::atomic<bool> manual{false};
         std::atomic<float> manual_gain{0.f};
+        // a ride that ended before the engine saw it (typed, reset): applied once, then riding continues from it
+        std::atomic<bool> manual_pending{false};
     };
 
     /**

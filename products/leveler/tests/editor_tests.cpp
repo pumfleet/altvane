@@ -88,6 +88,37 @@ TEST_CASE("the rider fader rides by hand without an undo step, and edits the aut
     CHECK(!f.p.session_.undo_manager.canUndo());
 }
 
+TEST_CASE("a typed fader value is applied, and riding carries on from it", "[editor]") {
+    Fixture f;
+    auto& fader = f.editor->getRiderForTesting().getFader();
+    // begin, change and end all happen before the next audio block
+    fader.createAccessibilityHandler()->getValueInterface()->setValueAsString("-5");
+    juce::AudioBuffer<float> io(2, 480);
+    io.clear();
+    juce::MidiBuffer midi;
+    f.p.processBlock(io, midi);
+    // the gain jumped there; in this long silence it has since begun its slow glide back to idle (one hop's worth)
+    CHECK(std::abs(f.p.getEngine().getGainDb() + 5.f) < .2f);
+    CHECK(!f.p.isManualRide());
+}
+
+TEST_CASE("in Read mode the fader covers the whole Rider range", "[editor]") {
+    Fixture f;
+    f.p.setMode(dsp::Mode::kRead);
+    *f.p.getRide() = 18.f;
+    juce::AudioBuffer<float> io(2, 480);
+    io.clear();
+    juce::MidiBuffer midi;
+    f.p.processBlock(io, midi);
+    f.editor->runFrameForTesting(1.1);
+    auto& fader = f.editor->getRiderForTesting().getFader();
+    CHECK(fader.getRange().end >= params::kRideLimit);
+    CHECK(std::abs(fader.getValue() - 18.f) < .01f);
+    // an edit near the top is not clamped to the riding range
+    fader.createAccessibilityHandler()->getValueInterface()->setValueAsString("20");
+    CHECK(std::abs(f.p.getRide()->get() - 20.f) < .02f);
+}
+
 TEST_CASE("closing the editor in the middle of a ride hands the fader back", "[editor]") {
     for (const auto mode : {dsp::Mode::kOff, dsp::Mode::kRead}) {
         CAPTURE(static_cast<int>(mode));

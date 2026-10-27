@@ -83,8 +83,10 @@ namespace altvane::leveler {
     }
 
     void RiderFader::tick() {
-        const auto extent = std::max(std::abs(param(params::kRangeMin)), std::abs(param(params::kRangeMax)));
-        const auto scale = extent > 12.f ? 24.f : 12.f;
+        // automation can ask for anything the parameter allows, so Read mode always shows (and edits) all of it
+        const auto extent = std::max({std::abs(param(params::kRangeMin)), std::abs(param(params::kRangeMax)),
+                                      std::abs(p_ref_.getEngine().getGainDb())});
+        const auto scale = extent > 12.f || p_ref_.getMode() == dsp::Mode::kRead ? params::kRideLimit : 12.f;
         if (std::abs(scale - scale_) > .5f) {
             scale_ = scale;
             setRange({-scale_, scale_, .01f}, 0.f);

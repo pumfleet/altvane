@@ -208,7 +208,7 @@ namespace altvane::leveler::dsp {
         settings.idle_db = c.idle.load(std::memory_order::relaxed);
 
         float gain_db;
-        if (c.manual.load(std::memory_order::relaxed)) {
+        if (c.manual.load(std::memory_order::relaxed) || controls_.manual_pending.exchange(false)) {
             gain_db = c.manual_gain.load(std::memory_order::relaxed);
             rider_.setGain(gain_db);
         } else if (static_cast<Mode>(c.mode.load(std::memory_order::relaxed)) == Mode::kRead) {

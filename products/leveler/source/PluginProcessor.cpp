@@ -222,7 +222,10 @@ namespace altvane::leveler {
     }
 
     void PluginProcessor::endManualRide() {
-        engine_.getControls().manual.store(false);
+        auto& c = engine_.getControls();
+        // the last value is applied even if the whole ride happened between two hops
+        c.manual_pending.store(true);
+        c.manual.store(false);
     }
 
     bool PluginProcessor::isManualRide() const {
