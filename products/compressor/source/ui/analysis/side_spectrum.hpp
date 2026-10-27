@@ -36,7 +36,7 @@ namespace altvane::compressor {
         /**
          * dB per FFT bin; bin i is at i * getBinWidth() Hz
          */
-        const std::vector<float>& getSpectrum() const { return spectrum_; }
+        const zldsp::vector::aligned_vector<float>& getSpectrum() const { return spectrum_; }
 
         double getBinWidth() const { return bin_width_; }
 
@@ -47,7 +47,8 @@ namespace altvane::compressor {
         zldsp::analyzer::SpectrumSmoother smoother_;
         zldsp::analyzer::SpectrumTilter tilter_;
         zldsp::analyzer::SpectrumDecayer decayer_;
-        std::vector<float> spectrum_;
+        // the decayer stores to it with aligned SIMD writes, so it must be an aligned vector
+        zldsp::vector::aligned_vector<float> spectrum_;
         double sample_rate_{0.0}, bin_width_{1.0};
         float refresh_rate_{0.f};
         int history_size_{0};
