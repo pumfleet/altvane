@@ -18,12 +18,14 @@ namespace {
     const juce::Colour kAccent{0xFF47D2E8};
     const juce::Colour kBackgroundTop{0xFF1B2027};
     const juce::Colour kBackgroundBottom{0xFF0A0B0D};
+    const juce::Colour kSibilance{0xFFFFB27A};
 
     /**
      * the quiet drawing behind the mark that tells the products apart: a frequency grid (EQ), a compressor's
-     * transfer curve over a level grid (Compressor) or a level riding onto a target line (Leveler)
+     * transfer curve over a level grid (Compressor), a level riding onto a target line (Leveler) or a voice's
+     * waveform with an ess held under a line (De-Esser)
      */
-    enum class Motif { kGrid, kKnee, kRide };
+    enum class Motif { kGrid, kKnee, kRide, kEss };
 
     /**
      * the Altvane mark, the same as the editor header's, with a soft glow
@@ -89,6 +91,40 @@ namespace {
             g.strokePath(raw, stroke);
             g.setColour(juce::Colours::white.withAlpha(.11f));
             g.strokePath(ridden, stroke);
+        }
+        if (motif == Motif::kEss) {
+            // a voice along the bottom: a slow wave, then a dense burst whose peaks stop flat at a threshold
+            const auto at = [&](const float u, const float v) {
+                return juce::Point<float>(tile.getX() + tile.getWidth() * u, tile.getBottom() - tile.getHeight() * v);
+            };
+            const auto stroke = juce::PathStrokeType(std::max(1.f, s / 200.f), juce::PathStrokeType::curved,
+                                                     juce::PathStrokeType::rounded);
+            constexpr float kBase = .2f, kCeiling = .075f, kBurstStart = .48f, kBurstEnd = .82f;
+            const auto trace = [&](juce::Path& path, const float from, const float to, auto&& height) {
+                constexpr int kSteps = 160;
+                for (int i = 0; i <= kSteps; ++i) {
+                    const auto u = from + (to - from) * static_cast<float>(i) / kSteps;
+                    const auto p = at(u, kBase + height(u));
+                    i == 0 ? path.startNewSubPath(p) : path.lineTo(p);
+                }
+            };
+            const auto calm = [](const float u) { return .045f * std::sin(u * 26.f) * std::sin(u * 5.f + .6f); };
+            const auto burst = [=](const float u) {
+                const auto env = std::sin((u - kBurstStart) / (kBurstEnd - kBurstStart) * juce::MathConstants<float>::pi);
+                return std::clamp(.13f * env * std::sin(u * 260.f), -kCeiling, kCeiling);
+            };
+            juce::Path voice, ess;
+            trace(voice, 0.f, kBurstStart, calm);
+            trace(voice, kBurstEnd, 1.f, calm);
+            trace(ess, kBurstStart, kBurstEnd, burst);
+            g.setColour(juce::Colours::white.withAlpha(.1f));
+            g.strokePath(voice, stroke);
+            g.setColour(kSibilance.withAlpha(.32f));
+            g.strokePath(ess, stroke);
+            // the threshold the ess is held under
+            g.setColour(juce::Colours::white.withAlpha(.07f));
+            g.fillRect(juce::Rectangle<float>(tile.getX(), at(0.f, kBase + kCeiling + .015f).y, tile.getWidth(),
+                                              std::max(1.f, s / 512.f)));
         }
         g.restoreState();
         g.setColour(juce::Colours::white.withAlpha(.08f));
@@ -170,13 +206,16 @@ namespace {
 int main(const int argc, char* argv[]) {
     juce::ScopedJuceInitialiser_GUI gui;
     if (argc < 3) {
-        std::cerr << "usage: AltvaneIcons <output-dir> <product-label> [grid|knee|ride]" << std::endl;
+        std::cerr << "usage: AltvaneIcons <output-dir> <product-label> [grid|knee|ride|ess]" << std::endl;
         return 1;
     }
     const auto dir = juce::File::getCurrentWorkingDirectory().getChildFile(argv[1]);
     const auto product = juce::String(argv[2]);
     const auto motif_name = argc > 3 ? juce::String(argv[3]) : juce::String("grid");
-    const auto motif = motif_name == "knee" ? Motif::kKnee : motif_name == "ride" ? Motif::kRide : Motif::kGrid;
+    const auto motif = motif_name == "knee"   ? Motif::kKnee
+                       : motif_name == "ride" ? Motif::kRide
+                       : motif_name == "ess"  ? Motif::kEss
+                                              : Motif::kGrid;
     dir.createDirectory();
     for (const auto size : {16, 24, 32, 48, 64, 128, 256, 512, 1024}) {
         write(renderIcon(size, motif), dir.getChildFile("icon_" + juce::String(size) + ".png"));

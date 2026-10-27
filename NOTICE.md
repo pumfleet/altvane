@@ -40,6 +40,11 @@ zsliu98 / ZL Audio, used under the GNU Affero General Public License v3 (see `LI
 Altvane Leveler (`products/leveler`) is new code, licensed under AGPL-3.0. It uses no third-party code beyond what every
 Altvane product shares.
 
+## Altvane De-Esser
+
+Altvane De-Esser (`products/deesser`) is new code, licensed under AGPL-3.0. Its spectrum uses the PFFFT bundled with
+r8brain-free-src, by Julien Pommier (FFTPACK licence, `licenses/pffft_LICENSE.txt`).
+
 ## Third-party components
 
 Third-party components and their licenses are listed in `licenses/`, including the Inter typeface (SIL OFL 1.1).

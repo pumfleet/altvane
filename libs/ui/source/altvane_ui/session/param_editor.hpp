@@ -42,6 +42,14 @@ namespace altvane::ui {
         bool isEditing() const { return !edit_.entries.empty(); }
 
         /**
+         * which edit is open: changes with every beginEdit, so a control whose edit outlives the gesture (a wheel,
+         * ended by a timer) can tell whether the open edit is still its own before ending it
+         */
+        uint64_t getEditId() const { return edit_id_; }
+
+        bool isEditing(const uint64_t id) const { return isEditing() && edit_id_ == id; }
+
+        /**
          * set several parameters at once as one undoable step
          */
         void setNow(std::initializer_list<std::pair<juce::RangedAudioParameter*, float>> values,
@@ -79,6 +87,7 @@ namespace altvane::ui {
 
         juce::UndoManager& undo_manager_;
         Edit edit_;
+        uint64_t edit_id_{0};
     };
 
     /**
