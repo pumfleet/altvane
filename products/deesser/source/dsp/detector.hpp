@@ -91,6 +91,11 @@ namespace altvane::deesser::dsp {
                 follow(body_env_, std::abs(body_.process(x, f.body).lp), body_attack_, body_release_);
                 d.band_slow = band_slow_env_;
                 d.body = body_env_;
+            } else {
+                // rests in Allround, so Vocal starts afresh rather than from levels heard before the switch
+                body_.reset();
+                band_slow_env_ = 0.f;
+                body_env_ = 0.f;
             }
             return d;
         }

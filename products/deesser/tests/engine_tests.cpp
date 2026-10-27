@@ -349,6 +349,31 @@ TEST_CASE("closing the band again does not bring back what it heard before", "[e
     CHECK(run(.5, false) < 1e-6f);
 }
 
+TEST_CASE("back in Vocal, the detector does not weigh esses against a body heard before", "[engine]") {
+    dsp::Detector detector;
+    detector.prepare(kRate);
+    dsp::Detector::Filters f;
+    f.hp1 = dsp::SVFCoeffs::make(5500.0, dsp::kButterworth4Q1, kRate);
+    f.hp2 = dsp::SVFCoeffs::make(5500.0, dsp::kButterworth4Q2, kRate);
+    f.body = dsp::SVFCoeffs::make(5500.0, dsp::kButterworth2Q, kRate);
+    const auto sine = [](const int i, const double hz, const float a) {
+        return a * static_cast<float>(std::sin(2.0 * juce::MathConstants<double>::pi * hz * i / kRate));
+    };
+    // a loud low tone in Vocal, five seconds of silence in Allround, then an ess-like tone in Vocal
+    for (int i = 0; i < static_cast<int>(kRate); ++i) {
+        detector.process(sine(i, 200.0, .9f), f, dsp::Mode::kVocal);
+    }
+    for (int i = 0; i < static_cast<int>(kRate * 5); ++i) {
+        detector.process(0.f, f, dsp::Mode::kAllround);
+    }
+    float confidence = 0.f;
+    const auto n = static_cast<int>(kRate * .1);
+    for (int i = 0; i < n; ++i) {
+        confidence += detector.process(sine(i, 8000.0, .2f), f, dsp::Mode::kVocal).sibilance() / static_cast<float>(n);
+    }
+    CHECK(confidence > .9f);
+}
+
 TEST_CASE("stereo link shares the reduction between the channels", "[engine]") {
     const auto len = static_cast<int>(kRate * .5);
     juce::AudioBuffer<float> input(2, len);
