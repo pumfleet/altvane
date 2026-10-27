@@ -8,6 +8,7 @@ shared third-party dependencies and a shared design system.
 | [Altvane EQ](products/eq/README.md) | `products/eq` | Parametric and dynamic equalizer, on the ZL Equalizer 2 engine |
 | [Altvane Dialogue](products/dialogue/README.md) | `products/dialogue` | Neural dialogue isolation: voice, ambience and voice reverb levels (macOS on Apple silicon for now) |
 | [Altvane Compressor](products/compressor/README.md) | `products/compressor` | Compressor, upward compressor and expander, on the ZL Compressor engine (in development) |
+| [Altvane De-Esser](products/deesser/README.md) | `products/deesser` | De-esser with vocal-aware detection, a dynamic shelf or bell, a sibilance finder and Learn |
 
 ## Layout
 
@@ -93,7 +94,7 @@ default version in its `CMakeLists.txt`.
 
    `altvane_add_plugin` fills in the company, manufacturer code (`Altv`), bundle id (`com.altvane.<code>`), LV2 URI,
    formats and code signing settings, and creates `Altvane<Name>_Core` for tests and tools to link.
-2. Generate icons and installer art: `tools/icons/make_icons.sh <AltvaneIcons> <code> <LABEL> [grid|knee]` (the
+2. Generate icons and installer art: `tools/icons/make_icons.sh <AltvaneIcons> <code> <LABEL> [grid|knee|ess]` (the
    last argument picks the drawing behind the mark).
 3. Add the product to the table above.
 

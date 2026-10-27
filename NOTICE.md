@@ -35,6 +35,11 @@ zsliu98 / ZL Audio, used under the GNU Affero General Public License v3 (see `LI
 - The original ZL Compressor interface has been removed; Altvane Compressor reads and writes the same preset and
   session format, so ZL Compressor presets and sessions load unchanged.
 
+## Altvane De-Esser
+
+Altvane De-Esser (`products/deesser`) is new code, licensed under AGPL-3.0. Its spectrum uses the PFFFT bundled with
+r8brain-free-src, by Julien Pommier (FFTPACK licence, `licenses/pffft_LICENSE.txt`).
+
 ## Third-party components
 
 Third-party components and their licenses are listed in `licenses/`, including the Inter typeface (SIL OFL 1.1).
