@@ -12,3 +12,6 @@
 [submodule "zldsp_fft"]
 	path = products/eq/zldsp_fft
 	url = https://github.com/ZL-Audio/zldsp_fft
+[submodule "products/compressor/zldsp_fft"]
+	path = products/compressor/zldsp_fft
+	url = https://github.com/ZL-Audio/zldsp_fft.git
