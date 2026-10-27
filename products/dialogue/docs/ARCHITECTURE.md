@@ -1,7 +1,7 @@
 # Altvane Dialogue architecture
 
-Paths are relative to `products/dialogue/`. Everything here is Altvane code except the models (`models/README.md`),
-ONNX Runtime and PFFFT.
+Paths are relative to `products/dialogue/`. Everything here is Altvane code except the models (`models/README.md`)
+and PFFFT.
 
 ## Signal path
 
@@ -14,9 +14,13 @@ host rate ─► RateBridge: down to 48 kHz ─► Engine ─► up to the host 
 ```
 
 - `dsp/spectral` — the STFT constants, the Vorbis window and a 960-point real FFT (PFFFT: 960 = 2⁶·3·5).
-- `dsp/separator` — `SeparatorModel`, one ONNX Runtime session per model shared by every instance (`Run` is
-  thread-safe), and `SeparatorStream`, one stream's recurrent state in preallocated, ping-ponged buffers. The model
-  returns the speech estimate of the frame `kModelLag` (4) hops before the one it was given.
+- `dsp/separator` — `SeparatorModel`, one network per quality shared by every instance, and `SeparatorStreams`,
+  the recurrent state of one or two streams (the mid in Linked mode, each channel in Stereo), preallocated and run
+  together. The model returns the speech estimate of the frame `kModelLag` (4) hops before the one it was given.
+- `dsp/dpdfnet`, `dsp/onnx_file`, `dsp/kernels` — DPDFNet's streaming network, written out in C++, with its weights
+  read from the embedded ONNX file. Every stream of a frame shares each matrix product, and the large products run
+  on Accelerate (`models/README.md`). `run` is thread-safe given its own state and scratch, and never allocates;
+  each engine owns one scratch for its worker.
 - `dsp/stems` — `StemSplitter` turns an input frame and its speech estimate into complex per-bin shares of the input
   for voice, ambience and reverb that always sum to one. `computeSensitivity` turns six nodes into per-bin weights;
   `computeTransfer` reweights the shares (renormalised, so they still sum to one) and applies the levels and the
@@ -39,13 +43,23 @@ an input ring indexed by absolute sample time, wakes the worker (an atomic count
 `latency` samples back from an output ring. If the worker has not produced a sample yet, it reads the input ring
 instead, so a late frame plays unprocessed, aligned, rather than dropping out, and is counted (Settings shows it).
 
-The worker (`juce::Thread`, real-time options, joined to the host's audio workgroup) analyses every hop as soon as its
+The worker (`juce::Thread`, real-time options, joined to the host's audio workgroup; a high-priority ordinary thread
+where real-time scheduling is not allowed) analyses every hop as soon as its
 input exists, runs the model and overlap-adds. Frame `f` covers input `[(f − 1)·hop, (f + 1)·hop)`; processing frame
 `k` finishes output up to `(k − 4)·hop`. So:
 
-- algorithmic latency: 960 + 4 × 480 = 2880 samples (60 ms),
-- plus one hop for the worker to compute in, plus one block for the input to arrive in:
-  `latency = 2880 + 480 + max block` at 48 kHz (3872 = 80.7 ms at 512).
+- algorithmic latency: frame `k` ends at sample `(k + 1)·hop − 1` and completes the output hop starting at
+  `(k − 5)·hop`, so `kAlgorithmicLatency` = 960 + 4 × 480 − 1 = 2879 samples (60 ms), with each hop processed the
+  moment its last sample exists (as offline);
+- plus the worker's time. In real time the worker starts a frame once the block holding its last sample has been
+  written, and with `latency = 2879 + D` that frame is first read `D` samples of input later, at the earliest
+  `floor(D / block)` blocks later. So `D` is a whole number of blocks: one block, or as many as make up
+  `kWorkerBudget` (one hop, 10 ms) when blocks are shorter. At 48 kHz that is 3391 samples (70.6 ms) at 512, 256,
+  128 or 64-sample blocks, and 2879 + block above 480.
+
+The worker's guarantee is the one the engine has always had: 10 ms or one block, whichever is longer, enough for High
+in Stereo mode while a quality change runs a second pipeline. The older `2880 + 480 + block` added a hop on top of a
+block that already covered it. The rest of the latency is the model's (`models/README.md`).
 
 Offline (`isNonRealtime`), the audio thread runs the pending hops itself under the worker's mutex, so a bounce never
 contains unprocessed frames and does not depend on the block size (tested to 1e-6).
@@ -67,7 +81,9 @@ into `Presets/Factory`.
 - `AltvaneDialogueTests` (Catch2): null tests at 44.1–192 kHz with irregular blocks, the real-time path while the model
   falls behind, impulse latency, the 48 kHz round trip's alignment, solo stems summing to the input, block-size
   independence, Removed being the input minus the mix, no allocation on the audio thread, frozen parameter IDs, state,
-  text round-trips, editor accessibility and parameter mapping, factory presets.
+  text round-trips, editor accessibility and parameter mapping, factory presets; the network against values from
+  ONNX Runtime, Stereo's batched streams against separate runs, the Accelerate path against the portable one, and
+  the worker's latency budget.
 - `AltvaneDialogueRender` for listening, CPU and real-time soak tests (`--realtime`), `AltvaneDialogueSnapshot` for
   visual review, `auval -v aufx AvDl Altv`, pluginval at strictness 10.
 - `docs/BENCHMARK.md` records separation quality and CPU.

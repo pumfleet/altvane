@@ -31,16 +31,12 @@ namespace altvane::dialogue::dsp {
     public:
         Pipeline(const std::shared_ptr<SeparatorModel>& model, const bool linked, const int num_channels) :
             linked_(linked || num_channels == 1),
-            groups_(linked_ ? 1 : num_channels) {
-            for (int g = 0; g < groups_; ++g) {
-                streams_.emplace_back(model);
-            }
+            groups_(linked_ ? 1 : num_channels),
+            streams_(model, groups_) {
         }
 
         void reset() {
-            for (auto& s : streams_) {
-                s.reset();
-            }
+            streams_.reset();
             for (auto& s : splitters_) {
                 s.reset();
             }
@@ -59,25 +55,23 @@ namespace altvane::dialogue::dsp {
         void process(const std::array<const Spectrum*, 2>& current, const std::array<const Spectrum*, 2>& delayed,
                      const int num_channels, const std::array<BinWeights, kNumStems>& weights,
                      const std::array<float, kNumStems>& gains, const Listen listen,
-                     std::array<Spectrum, 2>& transfer, StemShares& meter_shares) {
+                     std::array<Spectrum, 2>& transfer, StemShares& meter_shares, SeparatorScratch& scratch) {
             ++frames_;
-            for (int g = 0; g < groups_; ++g) {
-                const Spectrum* in = current[static_cast<size_t>(g)];
-                const Spectrum* in_delayed = delayed[static_cast<size_t>(g)];
-                if (linked_ && num_channels == 2) {
-                    mid(*current[0], *current[1], mid_);
-                    mid(*delayed[0], *delayed[1], mid_delayed_);
-                    in = &mid_;
-                    in_delayed = &mid_delayed_;
-                }
-                auto& t = transfer[static_cast<size_t>(g)];
-                if (!streams_[static_cast<size_t>(g)].process(*in, speech_)) {
-                    // the model failed: pass this frame through
-                    t.fill(Complex{1.f, 0.f});
-                    continue;
-                }
-                splitters_[static_cast<size_t>(g)].split(*in_delayed, speech_, shares_);
-                computeTransfer(shares_, weights, gains, listen, t, g == 0 ? meter_shares : weighted_);
+            auto in = current;
+            auto in_delayed = delayed;
+            if (linked_ && num_channels == 2) {
+                mid(*current[0], *current[1], mid_);
+                mid(*delayed[0], *delayed[1], mid_delayed_);
+                in[0] = &mid_;
+                in_delayed[0] = &mid_delayed_;
+            }
+            // every stream in one run, so Stereo reads each weight once for both channels
+            const std::array<Spectrum*, 2> speech{&speech_[0], &speech_[1]};
+            const auto groups = static_cast<size_t>(groups_);
+            streams_.process(std::span(in.data(), groups), std::span(speech.data(), groups), scratch);
+            for (size_t g = 0; g < groups; ++g) {
+                splitters_[g].split(*in_delayed[g], speech_[g], shares_);
+                computeTransfer(shares_, weights, gains, listen, transfer[g], g == 0 ? meter_shares : weighted_);
             }
             if (linked_ && num_channels == 2) {
                 transfer[1] = transfer[0];
@@ -87,9 +81,10 @@ namespace altvane::dialogue::dsp {
     private:
         bool linked_;
         int groups_;
-        std::vector<SeparatorStream> streams_;
+        SeparatorStreams streams_;
         std::array<StemSplitter, 2> splitters_;
-        Spectrum mid_{}, mid_delayed_{}, speech_{};
+        Spectrum mid_{}, mid_delayed_{};
+        std::array<Spectrum, 2> speech_{};
         StemShares shares_{}, weighted_{};
         int64_t frames_{0};
     };
@@ -99,8 +94,11 @@ namespace altvane::dialogue::dsp {
     class Engine::Worker final : public juce::Thread {
     public:
         explicit Worker(Engine& engine) : Thread("Altvane Dialogue"), engine_(engine) {
-            startRealtimeThread(RealtimeOptions{}.withPriority(8).withPeriodMs(10.0)
-                                                 .withProcessingTimeMs(2.0).withMaximumProcessingTimeMs(8.0));
+            // without permission to run in real time (Linux without rtprio), a high-priority thread rather than none
+            if (!startRealtimeThread(RealtimeOptions{}.withPriority(8).withPeriodMs(10.0)
+                                                      .withProcessingTimeMs(2.0).withMaximumProcessingTimeMs(8.0))) {
+                startThread(Priority::highest);
+            }
         }
 
         ~Worker() override {
@@ -153,8 +151,11 @@ namespace altvane::dialogue::dsp {
 
         num_channels_ = std::clamp(num_channels, 1, 2);
         max_block_ = std::max(max_block, 1);
-        // the algorithm's own delay, one hop for the worker to compute in, and a block for it to arrive in
-        latency_ = kAlgorithmicLatency + kHop + max_block_;
+        // the algorithm's own delay, then the worker's time: it starts a frame when the block holding the frame's
+        // last sample arrives, and the frame is first read budget_blocks blocks later, so it gets kWorkerBudget of
+        // wall-clock time and never less than one block (see ARCHITECTURE.md)
+        const auto budget_blocks = (std::max(kWorkerBudget, max_block_) + max_block_ - 1) / max_block_;
+        latency_ = kAlgorithmicLatency + budget_blocks * max_block_;
         const auto multiple = std::max(latency_multiple, 1);
         latency_ = (latency_ + multiple - 1) / multiple * multiple;
 
@@ -180,6 +181,9 @@ namespace altvane::dialogue::dsp {
             }
         }
 
+        if (scratch_ == nullptr) {
+            scratch_ = std::make_unique<SeparatorScratch>();
+        }
         const std::array models{SeparatorModel::get(Quality::kEco), SeparatorModel::get(Quality::kHigh)};
         for (size_t q = 0; q < 2; ++q) {
             for (size_t mode = 0; mode < 2; ++mode) {
@@ -362,10 +366,11 @@ namespace altvane::dialogue::dsp {
             }
         } else {
             auto& active = *pipelines_[static_cast<size_t>(active_)];
-            active.process(current, delayed, num_channels_, weights_, gains_, listen, transfer_, meter_shares_);
+            active.process(current, delayed, num_channels_, weights_, gains_, listen, transfer_, meter_shares_, *scratch_);
             if (fading_ >= 0) {
                 pipelines_[static_cast<size_t>(fading_)]->process(current, delayed, num_channels_, weights_, gains_,
-                                                                  listen, transfer_fading_, meter_shares_fading_);
+                                                                  listen, transfer_fading_, meter_shares_fading_,
+                                                                  *scratch_);
                 const auto mix = active.isWarm() ? static_cast<float>(++fade_pos_) / static_cast<float>(kFadeFrames) : 0.f;
                 for (int c = 0; c < num_channels_; ++c) {
                     auto& t = transfer_[static_cast<size_t>(c)];

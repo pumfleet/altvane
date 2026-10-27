@@ -21,7 +21,6 @@ namespace altvane::dialogue::dsp {
     inline constexpr int kSensitivityNodes = 6;
     inline constexpr std::array<float, kSensitivityNodes> kSensitivityFrequencies{120.f, 300.f, 750.f, 1800.f, 4500.f, 11000.f};
 
-    using Spectrum = std::array<Complex, kBins>;
     using BinWeights = std::array<float, kBins>;
 
     /**

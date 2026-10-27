@@ -14,8 +14,9 @@ Pull a voice out of a noisy location recording, dry out a reverberant room, or k
   at the top to keep consonants, raise the ambience's at the bottom to clear rumble and wind.
 - **Eco or High** quality, **Linked** (one analysis of the mid, applied to both channels) or **Stereo** (each
   channel on its own), 44.1–192 kHz, mono or stereo.
-- A fixed, reported latency (about 80 ms at 512-sample buffers), so hosts compensate it exactly. Offline bounces
-  wait for the model; in real time, a frame that would arrive late plays unprocessed rather than dropping out.
+- A fixed, reported latency (about 71 ms at 48 kHz, 60 ms of which is the model's frame and look-ahead), so hosts
+  compensate it exactly. Offline bounces wait for the model; in real time, a frame that would arrive late plays
+  unprocessed rather than dropping out.
 - Presets with a factory set, A/B compare, undo/redo, adjustable interface size and accent colour, keyboard control,
   screen-reader support and host parameter menus.
 
@@ -43,13 +44,14 @@ predicted from the voice's energy 50 ms earlier and taken from both in proportio
 following the ambience level. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and
 [models/README.md](models/README.md).
 
-CPU on an M5 Max, per instance, as a share of one core: Eco 8%, High 22% (Linked; twice that in Stereo mode).
+The network is our own C++ implementation of DPDFNet (its weights are read from the embedded ONNX files), with the
+large matrix products on Apple's Accelerate and both channels of Stereo mode computed together. CPU per instance:
+[docs/BENCHMARK.md](docs/BENCHMARK.md).
 
 ## Build from source
 
-Altvane Dialogue builds on macOS on Apple silicon for now (`PLATFORMS`). Configuring builds a small, static
-ONNX Runtime once (`scripts/build_onnxruntime.sh`, a few minutes, needs Python 3.10 or newer) and downloads the
-models at a pinned revision; both land in `build/deps/`.
+Altvane Dialogue builds on macOS on Apple silicon for now (`PLATFORMS`). Configuring downloads the models at a
+pinned revision to `build/deps/models/`.
 
 ```console
 cmake --preset mac-arm64-debug -DALTVANE_PRODUCTS=dialogue -DALTVANE_BUILD_TESTS=ON -DALTVANE_BUILD_TOOLS=ON
@@ -60,10 +62,12 @@ ctest --test-dir build/mac-arm64-debug
 Tools, with `ALTVANE_BUILD_TOOLS`:
 
 - `AltvaneDialogueRender <in.wav> <out-dir>` writes the mix and each stem of a file, latency-compensated, and
-  reports the CPU it took (`--quality`, `--stereo`, `--voice/--ambience/--reverb` in dB, `--block`, `--realtime`).
+  reports the CPU it took (`--quality`, `--stereo`, `--voice/--ambience/--reverb` in dB, `--block`, `--realtime`,
+  `--no-blas` to time the network without Accelerate).
 - `AltvaneDialogueSnapshot <out-dir> [scale] [speech.wav]` renders the editor's states to PNGs.
 
 ## License
 
-Altvane Dialogue is licensed under the GNU AGPL v3 (`LICENSE.md` at the root). The DPDFNet models are Apache-2.0,
-ONNX Runtime and r8brain's PFFFT are permissively licensed; see `NOTICE.md` and `licenses/`.
+Altvane Dialogue is licensed under the GNU AGPL v3 (`LICENSE.md` at the root). The DPDFNet models and the reference
+code our implementation follows are Apache-2.0, r8brain's PFFFT is permissively licensed; see `NOTICE.md` and
+`licenses/`.
