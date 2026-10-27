@@ -17,8 +17,8 @@ ZL Audio, used under the GNU Affero General Public License v3 (see `LICENSE.md`)
 Altvane Dialogue (`products/dialogue`) is new code, licensed under AGPL-3.0. It runs these components:
 
 - the DPDFNet speech enhancement models by Ceva (Apache-2.0, `licenses/DPDFNet_LICENSE.txt`), embedded unmodified
-  from the revision recorded in `products/dialogue/models/README.md`,
-- ONNX Runtime by Microsoft (MIT, `licenses/onnxruntime_LICENSE.txt`), statically linked,
+  from the revision recorded in `products/dialogue/models/README.md`, and run by `source/dsp/dpdfnet.cpp`, which
+  reimplements their streaming network after Ceva's reference code (`onnx_model/dpdfnet_48khz_hr.py`, Apache-2.0),
 - r8brain-free-src by Aleksey Vaneev (MIT, `licenses/r8brain_LICENSE.txt`) and the PFFFT it bundles, by Julien
   Pommier (FFTPACK licence, `licenses/pffft_LICENSE.txt`).
 
