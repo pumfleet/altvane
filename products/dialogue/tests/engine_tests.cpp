@@ -8,6 +8,7 @@
 // You should have received a copy of the GNU Affero General Public License along with Altvane Dialogue. If not, see <https://www.gnu.org/licenses/>.
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+#include <functional>
 
 #include "PluginProcessor.hpp"
 #include "alloc_counter.hpp"
@@ -57,9 +58,11 @@ namespace {
 
     /**
      * run a buffer through the processor in blocks (sizes from `blocks`, cycled), flushing the latency
+     * @param before_block called with the position of each block before it is processed
      */
     Run run(PluginProcessor& p, const juce::AudioBuffer<float>& input, const double rate,
-            const std::vector<int>& blocks, const bool realtime) {
+            const std::vector<int>& blocks, const bool realtime,
+            const std::function<void(int)>& before_block = nullptr) {
         const auto channels = input.getNumChannels();
         const auto max_block = *std::max_element(blocks.begin(), blocks.end());
         p.setPlayConfigDetails(channels, channels, rate, max_block);
@@ -81,6 +84,9 @@ namespace {
                 if (available > 0) {
                     io.copyFrom(c, 0, input, c, pos, available);
                 }
+            }
+            if (before_block) {
+                before_block(pos);
             }
             p.processBlock(io, midi);
             for (int c = 0; c < channels; ++c) {
@@ -191,6 +197,49 @@ TEST_CASE("the solo stems add up to the input", "[engine]") {
     CHECK(nullResidualDb(combined, input) < -90.f);
 }
 
+TEST_CASE("Mid/Side is transparent at unity, and its solo stems add up to the input", "[engine]") {
+    const auto rate = GENERATE(44100.0, 48000.0);
+    CAPTURE(rate);
+    PluginProcessor p;
+    setParam(p, params::kStereo, 2.f);
+    // a centred voice over noise that differs between the channels, so the side is not silent
+    const auto input = makeSignal(2, static_cast<int>(rate * 1.5), rate);
+    setLevels(p, 0.f, 0.f, 0.f);
+    CHECK(nullResidualDb(run(p, input, rate, {512, 7, 300}, false), input) < -90.f);
+
+    setLevels(p, -6.f, -20.f, -10.f);
+    Run sum;
+    for (const auto listen : {dsp::Listen::kVoice, dsp::Listen::kAmbience, dsp::Listen::kReverb}) {
+        p.setListen(listen);
+        const auto r = run(p, input, rate, {512}, false);
+        if (sum.output.getNumSamples() == 0) {
+            sum.output.setSize(2, r.output.getNumSamples());
+            sum.output.clear();
+            sum.latency = r.latency;
+        }
+        for (int c = 0; c < 2; ++c) {
+            sum.output.addFrom(c, 0, r.output, c, 0, r.output.getNumSamples());
+        }
+    }
+    CHECK(nullResidualDb(sum, input) < -90.f);
+}
+
+TEST_CASE("changing the stereo mode while playing stays transparent", "[engine]") {
+    PluginProcessor p;
+    setLevels(p, 0.f, 0.f, 0.f);
+    const auto input = makeSignal(2, 48000 * 2, 48000.0);
+    // Linked, Mid/Side, Stereo, Mid/Side, Linked: the fades cross between left/right and mid/side
+    const auto r = run(p, input, 48000.0, {512}, false, [&p](const int pos) {
+        constexpr std::array<std::pair<int, float>, 4> kChanges{{{20, 2.f}, {40, 1.f}, {60, 2.f}, {80, 0.f}}};
+        for (const auto& [block, mode] : kChanges) {
+            if (pos == block * 512) {
+                setParam(p, params::kStereo, mode);
+            }
+        }
+    });
+    CHECK(nullResidualDb(r, input) < -90.f);
+}
+
 TEST_CASE("offline output does not depend on the block size", "[engine]") {
     PluginProcessor p;
     setLevels(p, 0.f, -30.f, -12.f);
@@ -268,6 +317,7 @@ TEST_CASE("state round-trips", "[params]") {
     setLevels(a, -3.f, -18.f, -40.f);
     setParam(a, params::sensitivityID(dsp::kAmbience, 2), .5f);
     setParam(a, params::kQuality, 0.f);
+    setParam(a, params::kStereo, 2.f);
     juce::MemoryBlock state;
     a.getStateInformation(state);
     PluginProcessor b;

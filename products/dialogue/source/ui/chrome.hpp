@@ -31,7 +31,8 @@ namespace altvane::dialogue {
     private:
         PluginProcessor& p_ref_;
         ui::ParamEditor& editor_;
-        ui::Chip eco_{"Eco"}, high_{"High"}, linked_{"Linked"}, stereo_{"Stereo"}, removed_{"Removed"};
+        ui::Chip eco_{"Eco"}, high_{"High"}, linked_{"Linked"}, stereo_{"Stereo"}, mid_side_{"M/S"};
+        ui::Chip removed_{"Removed"};
         ui::ValueField output_;
         ui::IconButton bypass_{ui::icons::Icon::kPower};
         juce::Rectangle<float> quality_label_, stereo_label_, latency_area_;

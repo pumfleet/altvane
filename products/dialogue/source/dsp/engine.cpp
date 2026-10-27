@@ -15,9 +15,16 @@ namespace altvane::dialogue::dsp {
         // per-hop smoothing of the stem levels (about 20 ms)
         constexpr float kGainSmoothing = .4f;
 
-        void mid(const Spectrum& a, const Spectrum& b, Spectrum& out) {
+        // mid and side as halves, so that L = M + S and R = M - S
+        void mid(const Spectrum& l, const Spectrum& r, Spectrum& out) {
             for (size_t k = 0; k < kBins; ++k) {
-                out[k] = .5f * (a[k] + b[k]);
+                out[k] = .5f * (l[k] + r[k]);
+            }
+        }
+
+        void side(const Spectrum& l, const Spectrum& r, Spectrum& out) {
+            for (size_t k = 0; k < kBins; ++k) {
+                out[k] = .5f * (l[k] - r[k]);
             }
         }
     }
@@ -26,12 +33,14 @@ namespace altvane::dialogue::dsp {
 
     /**
      * one way of separating: a model and a stereo mode, with the recurrent state of each analysis stream
+     * (one for linked or mono, one per channel for stereo, the mid and the side for mid/side)
      */
     class Engine::Pipeline {
     public:
-        Pipeline(const std::shared_ptr<SeparatorModel>& model, const bool linked, const int num_channels) :
-            linked_(linked || num_channels == 1),
-            groups_(linked_ ? 1 : num_channels) {
+        Pipeline(const std::shared_ptr<SeparatorModel>& model, const StereoMode mode, const int num_channels) :
+            mode_(num_channels == 1 ? StereoMode::kLinked : mode),
+            num_channels_(num_channels),
+            groups_(mode_ == StereoMode::kLinked ? 1 : 2) {
             for (int g = 0; g < groups_; ++g) {
                 streams_.emplace_back(model);
             }
@@ -53,43 +62,71 @@ namespace altvane::dialogue::dsp {
         bool isWarm() const { return frames_ > kModelLag; }
 
         /**
+         * computes each stream's transfer
          * @param current each channel's newest frame
          * @param delayed each channel's frame kModelLag hops earlier, which the transfer applies to
          */
         void process(const std::array<const Spectrum*, 2>& current, const std::array<const Spectrum*, 2>& delayed,
-                     const int num_channels, const std::array<BinWeights, kNumStems>& weights,
-                     const std::array<float, kNumStems>& gains, const Listen listen,
-                     std::array<Spectrum, 2>& transfer, StemShares& meter_shares) {
+                     const std::array<BinWeights, kNumStems>& weights, const std::array<float, kNumStems>& gains,
+                     const Listen listen, StemShares& meter_shares) {
             ++frames_;
-            for (int g = 0; g < groups_; ++g) {
-                const Spectrum* in = current[static_cast<size_t>(g)];
-                const Spectrum* in_delayed = delayed[static_cast<size_t>(g)];
-                if (linked_ && num_channels == 2) {
-                    mid(*current[0], *current[1], mid_);
-                    mid(*delayed[0], *delayed[1], mid_delayed_);
-                    in = &mid_;
-                    in_delayed = &mid_delayed_;
+            // what each stream analyses: a channel, or the mid (and the side) of both
+            auto in = current;
+            auto in_delayed = delayed;
+            if (num_channels_ == 2 && mode_ != StereoMode::kStereo) {
+                mid(*current[0], *current[1], mid_);
+                mid(*delayed[0], *delayed[1], mid_delayed_);
+                if (mode_ == StereoMode::kMidSide) {
+                    side(*current[0], *current[1], side_);
+                    side(*delayed[0], *delayed[1], side_delayed_);
                 }
-                auto& t = transfer[static_cast<size_t>(g)];
-                if (!streams_[static_cast<size_t>(g)].process(*in, speech_)) {
+                in = {&mid_, &side_};
+                in_delayed = {&mid_delayed_, &side_delayed_};
+            }
+            for (size_t g = 0; g < static_cast<size_t>(groups_); ++g) {
+                auto& t = transfer_[g];
+                if (!streams_[g].process(*in[g], speech_)) {
                     // the model failed: pass this frame through
                     t.fill(Complex{1.f, 0.f});
                     continue;
                 }
-                splitters_[static_cast<size_t>(g)].split(*in_delayed, speech_, shares_);
+                splitters_[g].split(*in_delayed[g], speech_, shares_);
                 computeTransfer(shares_, weights, gains, listen, t, g == 0 ? meter_shares : weighted_);
             }
-            if (linked_ && num_channels == 2) {
-                transfer[1] = transfer[0];
+        }
+
+        /**
+         * the delayed frames through the transfers of the last process(): each channel times its own (or the
+         * linked) transfer, or, in mid/side, L = M·T_mid + S·T_side and R = M·T_mid − S·T_side
+         */
+        void apply(const std::array<const Spectrum*, 2>& x, std::array<Spectrum, 2>& y) const {
+            if (mode_ == StereoMode::kMidSide) {
+                const auto& l = *x[0];
+                const auto& r = *x[1];
+                for (size_t k = 0; k < kBins; ++k) {
+                    const auto m = .5f * (l[k] + r[k]) * transfer_[0][k];
+                    const auto s = .5f * (l[k] - r[k]) * transfer_[1][k];
+                    y[0][k] = m + s;
+                    y[1][k] = m - s;
+                }
+                return;
+            }
+            for (size_t c = 0; c < static_cast<size_t>(num_channels_); ++c) {
+                const auto& in = *x[c];
+                const auto& t = transfer_[groups_ == 1 ? 0 : c];
+                for (size_t k = 0; k < kBins; ++k) {
+                    y[c][k] = in[k] * t[k];
+                }
             }
         }
 
     private:
-        bool linked_;
-        int groups_;
+        StereoMode mode_;
+        int num_channels_, groups_;
         std::vector<SeparatorStream> streams_;
         std::array<StemSplitter, 2> splitters_;
-        Spectrum mid_{}, mid_delayed_{}, speech_{};
+        std::array<Spectrum, 2> transfer_{};
+        Spectrum mid_{}, mid_delayed_{}, side_{}, side_delayed_{}, speech_{};
         StemShares shares_{}, weighted_{};
         int64_t frames_{0};
     };
@@ -181,10 +218,13 @@ namespace altvane::dialogue::dsp {
         }
 
         const std::array models{SeparatorModel::get(Quality::kEco), SeparatorModel::get(Quality::kHigh)};
-        for (size_t q = 0; q < 2; ++q) {
-            for (size_t mode = 0; mode < 2; ++mode) {
-                auto& p = pipelines_[q * 2 + mode];
-                p = models[q] != nullptr ? std::make_unique<Pipeline>(models[q], mode == 0, num_channels_) : nullptr;
+        for (int q = 0; q < 2; ++q) {
+            for (int mode = 0; mode < kNumStereoModes; ++mode) {
+                auto& p = pipelines_[static_cast<size_t>(q * kNumStereoModes + mode)];
+                const auto& model = models[static_cast<size_t>(q)];
+                // a mono input is always linked
+                const auto usable = model != nullptr && (mode == 0 || num_channels_ == 2);
+                p = usable ? std::make_unique<Pipeline>(model, static_cast<StereoMode>(mode), num_channels_) : nullptr;
             }
         }
         model_ready_.store(models[0] != nullptr || models[1] != nullptr);
@@ -239,12 +279,12 @@ namespace altvane::dialogue::dsp {
 
     int Engine::selectPipeline() const {
         const auto quality = std::clamp(controls_.quality.load(std::memory_order::relaxed), 0, 1);
-        const auto mode = controls_.linked.load(std::memory_order::relaxed) || num_channels_ == 1 ? 0 : 1;
-        if (pipelines_[static_cast<size_t>(quality * 2 + mode)] != nullptr) {
-            return quality * 2 + mode;
-        }
-        if (pipelines_[static_cast<size_t>((1 - quality) * 2 + mode)] != nullptr) {
-            return (1 - quality) * 2 + mode;
+        const auto stereo = std::clamp(controls_.stereo.load(std::memory_order::relaxed), 0, kNumStereoModes - 1);
+        const auto mode = num_channels_ == 1 ? 0 : stereo;
+        for (const auto q : {quality, 1 - quality}) {
+            if (pipelines_[static_cast<size_t>(q * kNumStereoModes + mode)] != nullptr) {
+                return q * kNumStereoModes + mode;
+            }
         }
         return -1;
     }
@@ -357,21 +397,24 @@ namespace altvane::dialogue::dsp {
         };
 
         if (active_ < 0) {
-            for (auto& t : transfer_) {
-                t.fill(Complex{1.f, 0.f});
+            for (size_t c = 0; c < static_cast<size_t>(num_channels_); ++c) {
+                output_spec_[c] = *delayed[c];
             }
         } else {
             auto& active = *pipelines_[static_cast<size_t>(active_)];
-            active.process(current, delayed, num_channels_, weights_, gains_, listen, transfer_, meter_shares_);
+            active.process(current, delayed, weights_, gains_, listen, meter_shares_);
+            active.apply(delayed, output_spec_);
             if (fading_ >= 0) {
-                pipelines_[static_cast<size_t>(fading_)]->process(current, delayed, num_channels_, weights_, gains_,
-                                                                  listen, transfer_fading_, meter_shares_fading_);
+                auto& old = *pipelines_[static_cast<size_t>(fading_)];
+                old.process(current, delayed, weights_, gains_, listen, meter_shares_fading_);
+                old.apply(delayed, output_fading_);
                 const auto mix = active.isWarm() ? static_cast<float>(++fade_pos_) / static_cast<float>(kFadeFrames) : 0.f;
-                for (int c = 0; c < num_channels_; ++c) {
-                    auto& t = transfer_[static_cast<size_t>(c)];
-                    const auto& old = transfer_fading_[static_cast<size_t>(c)];
+                // the outputs fade, not the transfers: the two pipelines may not work on the same signals (L/R, M/S)
+                for (size_t c = 0; c < static_cast<size_t>(num_channels_); ++c) {
+                    auto& y = output_spec_[c];
+                    const auto& y_old = output_fading_[c];
                     for (size_t k = 0; k < kBins; ++k) {
-                        t[k] = old[k] + mix * (t[k] - old[k]);
+                        y[k] = y_old[k] + mix * (y[k] - y_old[k]);
                     }
                 }
                 if (mix < 1.f) {
@@ -386,16 +429,10 @@ namespace altvane::dialogue::dsp {
             return;
         }
 
-        // apply, synthesise and overlap-add: frame (frame - lag) completes output [(frame - lag - 1) * hop, (frame - lag) * hop)
+        // synthesise and overlap-add: frame (frame - lag) completes output [(frame - lag - 1) * hop, (frame - lag) * hop)
         const auto out_begin = (delayed_frame - 1) * kHop;
         for (int c = 0; c < num_channels_; ++c) {
-            const auto& x = history_[static_cast<size_t>(c)][delayed_slot];
-            const auto& t = transfer_[static_cast<size_t>(c)];
-            auto& y = output_spec_[static_cast<size_t>(c)];
-            for (size_t k = 0; k < kBins; ++k) {
-                y[k] = x[k] * t[k];
-            }
-            fft_.inverse(y, synth_);
+            fft_.inverse(output_spec_[static_cast<size_t>(c)], synth_);
             auto& ola = ola_[static_cast<size_t>(c)];
             for (size_t n = 0; n < kFftSize; ++n) {
                 ola[n] += synth_[n] * window[n];
@@ -412,10 +449,10 @@ namespace altvane::dialogue::dsp {
         }
         produced_.store(std::max<int64_t>(out_begin + kHop, 0), std::memory_order::release);
 
-        publishAnalysis(*delayed[0], meter_shares_, transfer_[0]);
+        publishAnalysis(*delayed[0], meter_shares_, output_spec_[0]);
     }
 
-    void Engine::publishAnalysis(const Spectrum& input, const StemShares& shares, const Spectrum& transfer) {
+    void Engine::publishAnalysis(const Spectrum& input, const StemShares& shares, const Spectrum& output) {
         auto& frame = analysis_.getWriter();
         frame.input.fill(0.f);
         frame.output.fill(0.f);
@@ -428,7 +465,7 @@ namespace altvane::dialogue::dsp {
             const auto k = static_cast<size_t>(w.bin);
             const auto energy = std::norm(input[k]) * kNorm * w.weight;
             frame.input[band] += energy;
-            frame.output[band] += energy * std::norm(transfer[k]);
+            frame.output[band] += std::norm(output[k]) * kNorm * w.weight;
             for (size_t s = 0; s < kNumStems; ++s) {
                 frame.stems[s][band] += energy * std::norm(shares.share[s][k]);
             }

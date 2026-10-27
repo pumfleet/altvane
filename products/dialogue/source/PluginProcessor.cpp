@@ -80,7 +80,7 @@ namespace altvane::dialogue {
             }
         }
         controls.quality.store(juce::roundToInt(quality_->load(std::memory_order::relaxed)), std::memory_order::relaxed);
-        controls.linked.store(stereo_->load(std::memory_order::relaxed) < .5f, std::memory_order::relaxed);
+        controls.stereo.store(juce::roundToInt(stereo_->load(std::memory_order::relaxed)), std::memory_order::relaxed);
         controls.listen.store(listen_.load(std::memory_order::relaxed), std::memory_order::relaxed);
     }
 
