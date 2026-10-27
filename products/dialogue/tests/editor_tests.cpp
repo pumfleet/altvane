@@ -7,6 +7,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License along with Altvane Dialogue. If not, see <https://www.gnu.org/licenses/>.
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include "PluginProcessor.hpp"
 #include "ui/editor.hpp"
@@ -66,6 +67,40 @@ TEST_CASE("focusing a stem shows its sensitivity, and the host menu follows the 
     CHECK(visualiser.getFocus() == dsp::kAmbience);
     // nothing hovered: the visualiser has no parameter of its own
     CHECK(f.editor->getControlParameterIndex(visualiser) == -1);
+}
+
+TEST_CASE("the stereo mode shows for a stereo main output, whatever the stem outputs", "[editor]") {
+    const auto mono = GENERATE(false, true);
+    CAPTURE(mono);
+    PluginProcessor p;
+    const auto main = mono ? juce::AudioChannelSet::mono() : juce::AudioChannelSet::stereo();
+    juce::AudioProcessor::BusesLayout layout;
+    layout.inputBuses.add(main);
+    for (int bus = 0; bus <= dsp::kNumStems; ++bus) {
+        layout.outputBuses.add(main);
+    }
+    REQUIRE(p.setBusesLayout(layout));
+    // a mono instance with its stem outputs on has more than one output channel, but is still mono
+    CHECK(p.getTotalNumOutputChannels() == (mono ? 4 : 8));
+    p.prepareToPlay(48000.0, 512);
+    std::unique_ptr<juce::AudioProcessorEditor> editor(p.createEditor());
+    dynamic_cast<Editor&>(*editor).runFrameForTesting(1.0);
+    std::function<juce::Component*(juce::Component&)> find = [&](juce::Component& c) -> juce::Component* {
+        if (c.getTitle() == "Linked") {
+            return &c;
+        }
+        for (auto* child : c.getChildren()) {
+            if (auto* found = find(*child)) {
+                return found;
+            }
+        }
+        return nullptr;
+    };
+    auto* linked = find(*editor);
+    REQUIRE(linked != nullptr);
+    CHECK(linked->isVisible() == !mono);
+    editor.reset();
+    p.releaseResources();
 }
 
 TEST_CASE("solo and removed auditions are exclusive and never saved", "[editor]") {

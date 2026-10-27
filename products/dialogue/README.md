@@ -10,6 +10,9 @@ Pull a voice out of a noisy location recording, dry out a reverberant room, or k
 - **See what you keep.** The spectrum stacks what each stem keeps at its level, under a faint outline of the input:
   turn the ambience down and its layer shrinks. Solo a stem, or press **Removed** to hear exactly what is being
   taken away.
+- **Stems on their own outputs.** Turn on the plug-in's Voice, Ambience and Reverb outputs in the host and each
+  stem arrives on its own channels, at its level and the output gain, to mix on its own track. Together they add up
+  to the main output. Solo and Removed change only the main output; bypassed, the stem outputs fall silent.
 - **Sensitivity across the spectrum.** Each stem has a six-point curve (120 Hz to 11 kHz): raise the voice's curve
   at the top to keep consonants, raise the ambience's at the bottom to clear rumble and wind.
 - **Eco or High** quality, **Linked** (one analysis of the mid, applied to both channels) or **Stereo** (each
