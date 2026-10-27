@@ -75,6 +75,10 @@ namespace altvane::deesser::dsp {
             auto band = hp2_.process(hp1_.process(x, f.hp1).hp, f.hp2).hp;
             if (!f.open) {
                 band = lp2_.process(lp1_.process(band, f.lp1).lp, f.lp2).lp;
+            } else {
+                // idle while open, so closing the band starts it from silence, not from what it held back then
+                lp1_.reset();
+                lp2_.reset();
             }
             follow(band_env_, std::abs(band), band_attack_, band_release_);
             Detection d;

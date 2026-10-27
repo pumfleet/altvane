@@ -314,6 +314,41 @@ TEST_CASE("Trigger plays the detection band", "[engine]") {
     CHECK(std::abs(toneDb(out, 0, start, length, kRate, 9000.0) - toneDb(input, 0, start, length, kRate, 9000.0)) < 1.f);
 }
 
+TEST_CASE("closing the band again does not bring back what it heard before", "[engine]") {
+    dsp::Controls c;
+    c.mode = dsp::Mode::kAllround;
+    c.listen = dsp::Listen::kTrigger;
+    c.band_high = 10000.f;
+    c.band_open = false;
+    dsp::Engine engine;
+    engine.setControls(c);
+    engine.prepare(kRate, 1);
+    std::vector<float> block(256);
+    float* io[] = {block.data()};
+    const auto run = [&](const double seconds, const bool tone) {
+        float peak = 0.f;
+        for (int pos = 0; pos < static_cast<int>(kRate * seconds); pos += 256) {
+            for (int i = 0; i < 256; ++i) {
+                const auto t = static_cast<double>(pos + i) / kRate;
+                block[static_cast<size_t>(i)] = tone ? .5f * static_cast<float>(std::sin(2.0 * juce::MathConstants<double>::pi * 7000.0 * t)) : 0.f;
+            }
+            engine.process(io, 1, nullptr, 0, 256);
+            for (const auto x : block) {
+                peak = std::max(peak, std::abs(x));
+            }
+        }
+        return peak;
+    };
+    CHECK(run(.5, true) > .1f);
+    // a second of silence with the band open, then closed again
+    c.band_open = true;
+    engine.setControls(c);
+    run(1.0, false);
+    c.band_open = false;
+    engine.setControls(c);
+    CHECK(run(.5, false) < 1e-6f);
+}
+
 TEST_CASE("stereo link shares the reduction between the channels", "[engine]") {
     const auto len = static_cast<int>(kRate * .5);
     juce::AudioBuffer<float> input(2, len);
