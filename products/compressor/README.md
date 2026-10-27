@@ -3,9 +3,15 @@
 A compressor, upward compressor and expander built on the audio engine of
 [ZL Compressor](https://github.com/ZL-Audio/ZLCompressor).
 
-**Status: in development.** The engine, build, tests and packaging are in place. The editor is currently a placeholder
-(the Altvane header over a list of every parameter). The designed editor follows the approved mock in
-[docs/design/mock.html](docs/design/mock.html).
+**Status: in development.** The engine, editor, build, tests and packaging are in place. The editor follows the
+approved mock in [docs/design/mock.html](docs/design/mock.html):
+
+- a scrolling level display (input, output and gain change) with a threshold line you can drag;
+- a knee display with the engine's exact transfer curve, lit up to the detector level, with handles for threshold,
+  ratio and knee width;
+- a floating control card, with the detection, envelope and clipper controls behind More;
+- input, gain-change and output meters;
+- a side-chain drawer with its own 8-band EQ over the spectrum the detector hears.
 
 - **Four directions:** compress, inflate (upward compression), expand and shape (upward expansion), with a soft knee,
   a curve control above the threshold and a floor for expansion.
