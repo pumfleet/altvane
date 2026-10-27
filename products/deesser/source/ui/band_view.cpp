@@ -8,8 +8,6 @@
 // You should have received a copy of the GNU Affero General Public License along with Altvane De-Esser. If not, see <https://www.gnu.org/licenses/>.
 #include "band_view.hpp"
 
-#include <complex>
-
 #include <altvane_ui/theme/fonts.hpp>
 
 #include "theme/deesser_tokens.hpp"
@@ -29,7 +27,6 @@ namespace altvane::deesser {
         constexpr float kResponseTop = .26f;
         constexpr float kResponseBottom = .92f;
         constexpr float kResponseScaleDb = 24.f;
-        constexpr double kOpenBellTop = 16000.0;
 
         juce::String shortHz(const float hz) {
             return hz >= 1000.f ? juce::String(juce::roundToInt(hz / 1000.f)) + "k" : juce::String(juce::roundToInt(hz));
@@ -104,29 +101,13 @@ namespace altvane::deesser {
     }
 
     float BandView::responseDb(const float hz, const float reduction_db) const {
-        if (reduction_db <= 0.f) {
-            return 0.f;
-        }
-        if (wide_) {
-            return -reduction_db;
-        }
-        // the analog prototypes of the engine's shelf and bell
-        using C = std::complex<double>;
-        const auto g = std::pow(10.0, -reduction_db / 20.0);
-        const C s{0.0, static_cast<double>(hz)};
-        const auto top = .45 * p_ref_.getEngine().getSampleRate();
-        const auto lo = std::min(static_cast<double>(low_), top / 1.3);
-        if (!bell_) {
-            const auto k = std::sqrt(2.0);
-            const auto wp = lo * std::pow(g, .25);
-            const auto h = (wp * wp + k * std::sqrt(g) * wp * s + g * s * s) / (s * s + k * wp * s + wp * wp);
-            return static_cast<float>(20.0 * std::log10(std::abs(h)));
-        }
-        const auto hi = std::max(open_ ? std::min(kOpenBellTop, top) : static_cast<double>(high_), lo * 1.26);
-        const auto w0 = std::sqrt(lo * hi);
-        const auto k = (hi - lo) / w0;
-        const auto h = (s * s + g * k * w0 * s + w0 * w0) / (s * s + k * w0 * s + w0 * w0);
-        return static_cast<float>(20.0 * std::log10(std::abs(h)));
+        dsp::Controls c;
+        c.processing = wide_ ? dsp::Processing::kWide : dsp::Processing::kSplit;
+        c.shape = bell_ ? dsp::Shape::kBell : dsp::Shape::kShelf;
+        c.band_low = low_;
+        c.band_high = high_;
+        c.band_open = open_;
+        return dsp::Engine::responseDb(c, p_ref_.getEngine().getSampleRate(), hz, reduction_db);
     }
 
     juce::RangedAudioParameter* BandView::param(const char* id) const {

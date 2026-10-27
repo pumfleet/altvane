@@ -9,6 +9,7 @@
 #include "engine.hpp"
 
 #include <bit>
+#include <complex>
 #include <numbers>
 
 namespace altvane::deesser::dsp {
@@ -49,6 +50,40 @@ namespace altvane::deesser::dsp {
 
     int Engine::lookaheadSamples(const float ms, const double sample_rate) {
         return static_cast<int>(std::lround(std::clamp(ms, 0.f, kMaxLookaheadMs) * .001 * sample_rate));
+    }
+
+    float Engine::responseDb(const Controls& c, const double sample_rate, const float hz, const float reduction_db) {
+        if (reduction_db <= 0.f) {
+            return 0.f;
+        }
+        if (c.processing == Processing::kWide) {
+            return -reduction_db;
+        }
+        // the band as updateControlPeriod settles on it
+        const auto top = .45 * sample_rate;
+        const auto lo = std::clamp(static_cast<double>(c.band_low), 20.0, top / 1.3);
+        const auto hi = std::clamp(static_cast<double>(c.band_high), lo * 1.26, top);
+        const auto warp = [sample_rate](const double f) {
+            return std::tan(std::numbers::pi * std::clamp(f, 1.0, .4999 * sample_rate) / sample_rate);
+        };
+        // a TPT state-variable filter is its analog prototype through the bilinear transform: evaluate the
+        // prototype at the prewarped frequency, with the prewarped g of each filter
+        using C = std::complex<double>;
+        const C s{0.0, warp(hz)};
+        const auto g = std::pow(10.0, -reduction_db / 20.0);
+        C h;
+        if (c.shape == Shape::kShelf) {
+            const auto k = static_cast<double>(kShelfK);
+            const auto wp = warp(std::min(lo, top)) * std::pow(g, .25);
+            h = (wp * wp + k * std::sqrt(g) * wp * s + g * s * s) / (s * s + k * wp * s + wp * wp);
+        } else {
+            const auto bell_hi = std::max(c.band_open ? std::min(kOpenBellTop, top) : hi, lo * 1.26);
+            const auto centre = std::sqrt(lo * bell_hi);
+            const auto w0 = warp(std::min(centre, top));
+            const auto k = (bell_hi - lo) / centre;
+            h = (s * s + g * k * w0 * s + w0 * w0) / (s * s + k * w0 * s + w0 * w0);
+        }
+        return static_cast<float>(20.0 * std::log10(std::abs(h)));
     }
 
     void Engine::prepare(const double sample_rate, int) {

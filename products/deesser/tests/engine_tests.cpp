@@ -590,3 +590,52 @@ TEST_CASE("a band keeps its edges apart, the edge being set winning", "[params]"
     CHECK(std::abs(low - params::kBandHighMin / params::kMinBandRatio) < .5f);
     CHECK(high >= low * params::kMinBandRatio - .5f);
 }
+
+TEST_CASE("the drawn response is what the engine does", "[engine]") {
+    struct Case {
+        double rate;
+        dsp::Shape shape;
+        float low, high;
+        bool open;
+    };
+    const auto c_ = GENERATE(Case{48000.0, dsp::Shape::kShelf, 5500.f, 20000.f, true},
+                             Case{48000.0, dsp::Shape::kBell, 10000.f, 16000.f, false},
+                             Case{44100.0, dsp::Shape::kBell, 5000.f, 8000.f, false},
+                             Case{96000.0, dsp::Shape::kShelf, 12000.f, 20000.f, true});
+    CAPTURE(c_.rate, static_cast<int>(c_.shape), c_.low, c_.high);
+    // a loud side chain holds the reduction at the range
+    dsp::Controls c;
+    c.mode = dsp::Mode::kAllround;
+    c.threshold_db = -60.f;
+    c.range_db = 12.f;
+    c.shape = c_.shape;
+    c.band_low = c_.low;
+    c.band_high = c_.high;
+    c.band_open = c_.open;
+    const auto len = static_cast<int>(c_.rate * .4);
+    juce::AudioBuffer<float> side(1, len);
+    side.clear();
+    addEss(side, 0, 0, len, c_.rate, .3f, 9000.0);
+    addSine(side, 0, 0, len, c_.rate, 11000.0, .2f);
+    const auto latency = dsp::Engine::lookaheadSamples(c.lookahead_ms, c_.rate);
+    const auto start = len / 3, length = len / 2;
+    for (const auto hz : {1000.0, 4000.0, 7000.0, 9000.0, 12000.0, 15000.0, 18000.0}) {
+        if (hz > .45 * c_.rate) {
+            continue;
+        }
+        CAPTURE(hz);
+        juce::AudioBuffer<float> input(1, len);
+        input.clear();
+        addSine(input, 0, 0, len, c_.rate, hz, .1f);
+        dsp::Engine engine;
+        const auto out = runEngine(engine, c, input, c_.rate, &side);
+        const auto measured = toneDb(out, 0, start + latency, length, c_.rate, hz) - toneDb(input, 0, start, length, c_.rate, hz);
+        CHECK(std::abs(measured - dsp::Engine::responseDb(c, c_.rate, static_cast<float>(hz), 12.f)) < .25f);
+    }
+}
+
+TEST_CASE("the one program has a name", "[params]") {
+    PluginProcessor p;
+    CHECK(p.getNumPrograms() == 1);
+    CHECK(p.getProgramName(0).isNotEmpty());
+}

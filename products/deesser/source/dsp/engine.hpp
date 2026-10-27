@@ -74,6 +74,12 @@ namespace altvane::deesser::dsp {
 
         static int lookaheadSamples(float ms, double sample_rate);
 
+        /**
+         * the gain (dB) the processing applies at a frequency for a given reduction: the exact response of the
+         * engine's (bilinear) filters with their coefficients and limits, for the editor to draw
+         */
+        static float responseDb(const Controls& c, double sample_rate, float hz, float reduction_db);
+
         double getSampleRate() const { return sample_rate_; }
 
         // ---- feeds for the editor (the audio thread writes only while active)

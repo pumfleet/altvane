@@ -59,7 +59,8 @@ namespace altvane::deesser {
         void setCurrentProgram(int) override {
         }
 
-        const juce::String getProgramName(int) override { return {}; }
+        // hosts list it (a VST3 program list needs a name for its one program)
+        const juce::String getProgramName(int) override { return "Default"; }
 
         void changeProgramName(int, const juce::String&) override {
         }
