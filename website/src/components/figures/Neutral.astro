@@ -1,0 +1,16 @@
+---
+// Runs inline, before the figure paints: when motion is allowed, put every element marked data-n into its neutral
+// state (the product doing nothing), so the draw-in starts from what is already on screen. Without JavaScript, or
+// with reduced motion, the figure keeps its finished state.
+---
+<script is:inline>
+  (function (s) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || !("IntersectionObserver" in window)) return;
+    var host = s.parentElement;
+    host.closest("figure").setAttribute("data-neutral", "");
+    host.querySelectorAll("[data-n]").forEach(function (el) {
+      var a = JSON.parse(el.getAttribute("data-n"));
+      for (var k in a) el.setAttribute(k, a[k]);
+    });
+  })(document.currentScript);
+</script>

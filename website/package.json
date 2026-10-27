@@ -1,0 +1,14 @@
+{
+  "name": "altvane-website",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@fontsource-variable/archivo": "^5.3.0",
+    "astro": "^7.4.2"
+  }
+}

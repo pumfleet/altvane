@@ -1,0 +1,63 @@
+---
+import Base from "../layouts/Base.astro";
+import ProductHero from "../components/ProductHero.astro";
+import Section from "../components/Section.astro";
+import Features from "../components/Features.astro";
+import Readings from "../components/Readings.astro";
+import Close from "../components/Close.astro";
+import CompressorFigure from "../components/figures/CompressorFigure.astro";
+import { product } from "../data/products";
+
+const p = product("compressor");
+---
+<Base title="Altvane Compressor: compressor, upward compressor and expander" description={p.summary} product="compressor">
+  <ProductHero product={p}>
+    <div class="comp-hero">
+      <CompressorFigure controls />
+      <p class="t-small comp-caption">
+        The static gain computer with a soft knee. Input level runs from −60 to 0&nbsp;dB across; each column rises to
+        the output level, and the outline above it is the gain taken away.
+      </p>
+    </div>
+  </ProductHero>
+
+  <Section id="features" title="What it does">
+    <Features
+      items={[
+        { lead: "Four directions", text: "Compress, inflate (upward compression), expand and shape (upward expansion), with a soft knee, a curve control above the threshold and a floor for expansion." },
+        { lead: "Four styles", text: "Clean (feed-forward), Classic (feedback), Optical and Vocal." },
+        { lead: "Peak and RMS detection", text: "Blended, with their own speed. Envelope controls are attack, release, hold, pump and smooth. Range limits the gain change, and makeup gain can be learned from loudness." },
+        { lead: "Side chain", text: "Internal or external, mid/side or left/right, with link and per-channel amounts, and an 8-band EQ with band solo." },
+        { lead: "Lookahead and oversampling", text: "Lookahead of up to 20 ms, or negative to delay the side chain instead. Oversampling up to 8×, plus a soft clipper, wet mix and a delta listen." },
+      ]}
+    />
+  </Section>
+
+  <Section id="editor" title="The editor" note="In development: the engine, editor, build, tests and packaging are in place.">
+    <Features
+      items={[
+        { lead: "Level display", text: "A scrolling display of input, output and gain change, with a threshold line you can drag." },
+        { lead: "Knee display", text: "The engine's exact transfer curve, lit up to the detector level, with handles for threshold, ratio and knee width." },
+        { lead: "Control card", text: "A floating card, with the detection, envelope and clipper controls behind More." },
+        { lead: "Meters and side chain", text: "Input, gain-change and output meters, and a side-chain drawer with its own 8-band EQ over the spectrum the detector hears." },
+      ]}
+    />
+  </Section>
+
+  <Section id="specs" title="Specifications">
+    <Readings items={p.readings} size="large" />
+  </Section>
+
+
+  <Close product={p} />
+</Base>
+
+<style>
+  .comp-hero {
+    max-width: 640px;
+  }
+  .comp-caption {
+    margin-top: var(--s5);
+    max-width: 52ch;
+  }
+</style>

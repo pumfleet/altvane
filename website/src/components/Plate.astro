@@ -1,0 +1,50 @@
+---
+// A screenshot set on the sheet like a plate: registration corners, and its caption flush left beneath.
+interface Props {
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+  caption: string;
+}
+const { src, alt, width, height, caption } = Astro.props;
+---
+<figure class="plate">
+  <div class="plate__frame">
+    <img src={src} alt={alt} width={width} height={height} loading="lazy" decoding="async" />
+    <span class="corner corner--tl" aria-hidden="true"></span>
+    <span class="corner corner--tr" aria-hidden="true"></span>
+    <span class="corner corner--bl" aria-hidden="true"></span>
+    <span class="corner corner--br" aria-hidden="true"></span>
+  </div>
+  <figcaption class="t-small">{caption}</figcaption>
+</figure>
+
+<style>
+  .plate__frame {
+    position: relative;
+    padding: clamp(12px, 1.6vw, 24px);
+  }
+  .plate img {
+    width: 100%;
+    height: auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgb(17 18 19 / 0.08), 0 18px 48px -20px rgb(17 18 19 / 0.35);
+  }
+  .corner {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-color: var(--ink);
+    border-style: solid;
+    border-width: 0;
+  }
+  .corner--tl { left: 0; top: 0; border-left-width: 1px; border-top-width: 1px; }
+  .corner--tr { right: 0; top: 0; border-right-width: 1px; border-top-width: 1px; }
+  .corner--bl { left: 0; bottom: 0; border-left-width: 1px; border-bottom-width: 1px; }
+  .corner--br { right: 0; bottom: 0; border-right-width: 1px; border-bottom-width: 1px; }
+  figcaption {
+    margin-top: var(--s3);
+    max-width: 60ch;
+  }
+</style>
