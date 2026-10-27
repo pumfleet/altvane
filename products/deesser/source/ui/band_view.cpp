@@ -581,8 +581,14 @@ namespace altvane::deesser {
 
     void BandView::mouseDoubleClick(const juce::MouseEvent& e) {
         switch (hit(e.position)) {
-            case Target::kLow: editor_.setNow({{param(params::kBandLow), params::kBandLowDefault}}, "Reset Band Low");
+            case Target::kLow: {
+                // the default low edge pushes a high edge it would overlap up, as dragging it there would
+                const auto current_high = p_ref_.parameters_.getRawParameterValue(params::kBandHigh)->load();
+                const auto [low, high] = params::constrainBand(params::kBandLowDefault, current_high, true);
+                editor_.setNow({{param(params::kBandLow), std::round(low)}, {param(params::kBandHigh), std::round(high)}},
+                               "Reset Band Low");
                 break;
+            }
             case Target::kHigh:
                 // toggles: open it, or close it at an octave and a half above the low edge
                 editor_.setNow({{param(params::kBandHigh), open_ ? std::min(low_ * 2.8f, params::kBandOpen - 1.f)

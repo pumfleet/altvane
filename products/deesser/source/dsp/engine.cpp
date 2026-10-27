@@ -263,6 +263,7 @@ namespace altvane::deesser::dsp {
             const auto in0 = io[0][i];
             const auto in1 = stereo ? io[1][i] : in0;
             auto d0 = in0, d1 = in1;
+            const auto mono_key = side != nullptr && side_channels == 1;
             if (side != nullptr && side_channels > 0) {
                 d0 = side[0][i];
                 d1 = side_channels > 1 ? side[1][i] : d0;
@@ -272,7 +273,8 @@ namespace altvane::deesser::dsp {
                 }
             }
             std::array<float, 2> det{d0, d1};
-            if (ms) {
+            if (ms && !mono_key) {
+                // a mono key has no sides to take apart: it keys mid and side alike
                 det[0] = c.stereo == StereoMode::kMid ? .5f * (d0 + d1) : .5f * (d0 - d1);
             }
 

@@ -332,6 +332,25 @@ TEST_CASE("typing an edge past the other moves both, as one undo step", "[editor
     CHECK(params::isOpen(f.value(params::kBandHigh)));
 }
 
+TEST_CASE("resetting the low edge past the high one moves both, as one undo step", "[editor]") {
+    Fixture f;
+    auto* low = f.p.parameters_.getParameter(params::kBandLow);
+    auto* high = f.p.parameters_.getParameter(params::kBandHigh);
+    low->setValueNotifyingHost(low->convertTo0to1(1000.f));
+    high->setValueNotifyingHost(high->convertTo0to1(2000.f));
+    f.editor->runFrameForTesting(f.time += .02);
+    f.p.session_.undo_manager.clearUndoHistory();
+
+    auto& band = f.editor->getBandViewForTesting();
+    const juce::Point edge{band.freqX(1000.f), band.getPlot().getCentreY()};
+    band.mouseDoubleClick(mouse(band, edge, edge, false));
+    CHECK(std::abs(f.value(params::kBandLow) - params::kBandLowDefault) < 1.f);
+    CHECK(f.value(params::kBandLow) * params::kMinBandRatio <= f.value(params::kBandHigh) + 1.f);
+    f.p.session_.undo_manager.undo();
+    CHECK(std::abs(f.value(params::kBandLow) - 1000.f) < 1.f);
+    CHECK(std::abs(f.value(params::kBandHigh) - 2000.f) < 1.f);
+}
+
 TEST_CASE("one band field's edit survives the other's wheel ending", "[editor]") {
     Fixture f;
     auto& band = f.editor->getBandViewForTesting();

@@ -439,6 +439,46 @@ TEST_CASE("an external side chain drives the reduction", "[engine]") {
     p.releaseResources();
 }
 
+TEST_CASE("a mono external key drives mid and side processing", "[engine]") {
+    for (const auto mode : {dsp::StereoMode::kSide, dsp::StereoMode::kMid}) {
+        const auto side = mode == dsp::StereoMode::kSide;
+        DYNAMIC_SECTION((side ? "side" : "mid")) {
+            PluginProcessor p;
+            auto layout = p.getBusesLayout();
+            layout.inputBuses.getReference(1) = juce::AudioChannelSet::mono();
+            REQUIRE(p.setBusesLayout(layout));
+            setParam(p, params::kSideChain, 1.f);
+            setParam(p, params::kStereoMode, static_cast<float>(mode));
+            setParam(p, params::kProcessing, 0.f);
+            setParam(p, params::kMode, 1.f);
+            setParam(p, params::kThreshold, -40.f);
+            p.prepareToPlay(kRate, 512);
+            const auto latency = p.getLatencySamples();
+            juce::AudioBuffer<float> io(3, 512);
+            // only side (left against right) or only mid in the main signal, so the processed part is all of it
+            juce::AudioBuffer<float> main(2, 512 * 40), out(2, 512 * 40);
+            main.clear();
+            addSine(main, 0, 0, main.getNumSamples(), kRate, 300.0, .2f);
+            addSine(main, 1, 0, main.getNumSamples(), kRate, 300.0, side ? -.2f : .2f);
+            juce::AudioBuffer<float> ess(1, main.getNumSamples());
+            ess.clear();
+            addEss(ess, 0, 0, ess.getNumSamples(), kRate, .3f);
+            juce::MidiBuffer midi;
+            for (int b = 0; b < 40; ++b) {
+                io.copyFrom(0, 0, main, 0, b * 512, 512);
+                io.copyFrom(1, 0, main, 1, b * 512, 512);
+                io.copyFrom(2, 0, ess, 0, b * 512, 512);
+                p.processBlock(io, midi);
+                out.copyFrom(0, b * 512, io, 0, 0, 512);
+                out.copyFrom(1, b * 512, io, 1, 0, 512);
+            }
+            const auto start = 512 * 10, length = 512 * 20;
+            CHECK(toneDb(out, 0, start + latency, length, kRate, 300.0) < toneDb(main, 0, start, length, kRate, 300.0) - 6.f);
+            p.releaseResources();
+        }
+    }
+}
+
 TEST_CASE("the output does not depend on the block size", "[engine]") {
     const auto input = makePhrase(2, kRate);
     PluginProcessor a, b;
