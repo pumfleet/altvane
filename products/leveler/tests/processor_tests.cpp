@@ -261,13 +261,16 @@ TEST_CASE("the lookahead's latency reaches the host from the message thread", "[
     p.setRateAndBufferSizeDetails(48000.0, 480);
     p.prepareToPlay(48000.0, 480);
     CHECK(p.getLatencySamples() == dsp::kLookaheadHops * 240);
+    // a host that has suspended processing (no blocks) still hears about it
     setParam(p, params::kLookahead, 0.f);
+    p.runTimerForTesting();
+    CHECK(p.getLatencySamples() == 0);
+    // and the audio follows once blocks arrive
     juce::AudioBuffer<float> io(2, 480);
     io.clear();
     juce::MidiBuffer midi;
     p.processBlock(io, midi);
-    p.runTimerForTesting();
-    CHECK(p.getLatencySamples() == 0);
+    CHECK(p.getEngine().getLatency() == 0);
     p.releaseResources();
 }
 

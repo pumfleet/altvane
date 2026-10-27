@@ -167,9 +167,13 @@ namespace altvane::leveler {
     }
 
     void PluginProcessor::timerCallback() {
-        // the lookahead changes the latency; the host hears about it from the message thread
-        if (prepared_.load() && engine_.getLatency() != getLatencySamples()) {
-            setLatencySamples(engine_.getLatency());
+        // the lookahead changes the latency; the host hears about it from the message thread, straight from the
+        // parameter, so a change made while the host has suspended processing is reported before playback resumes
+        if (prepared_.load()) {
+            const auto latency = lookahead_->load() > .5f ? dsp::kLookaheadHops * engine_.getHopSamples() : 0;
+            if (latency != getLatencySamples()) {
+                setLatencySamples(latency);
+            }
         }
 
         // a Write pass: the rider fader moves as if a hand moved it, inside one gesture while the transport plays,
