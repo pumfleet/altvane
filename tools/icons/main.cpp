@@ -7,7 +7,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License along with Altvane. If not, see <https://www.gnu.org/licenses/>.
 // Renders an Altvane product's application icon and installer artwork as PNGs.
-// usage: AltvaneIcons <output-dir> <product-label>   (see make_icons.sh, which assembles .icns / .ico / .bmp)
+// usage: AltvaneIcons <output-dir> <product-label> [grid|knee]   (see make_icons.sh, which assembles .icns / .ico / .bmp)
 
 #include <juce_gui_basics/juce_gui_basics.h>
 
@@ -20,6 +20,12 @@ namespace {
     const juce::Colour kBackgroundBottom{0xFF0A0B0D};
 
     /**
+     * the quiet drawing behind the mark that tells the products apart: a frequency grid (EQ) or a compressor's
+     * transfer curve over a level grid (Compressor)
+     */
+    enum class Motif { kGrid, kKnee };
+
+    /**
      * the Altvane mark, the same as the editor header's, with a soft glow
      */
     void drawMark(juce::Graphics& g, const juce::Rectangle<float> area, const float stroke) {
@@ -27,7 +33,7 @@ namespace {
         altvane::ui::brand::drawMark(g, area, kAccent, stroke);
     }
 
-    juce::Image renderIcon(const int size) {
+    juce::Image renderIcon(const int size, const Motif motif) {
         juce::Image image(juce::Image::ARGB, size, size, true);
         juce::Graphics g(image);
         const auto s = static_cast<float>(size);
@@ -38,7 +44,7 @@ namespace {
         g.fillRoundedRectangle(tile.translated(0.f, s * .012f), radius);
         g.setGradientFill(juce::ColourGradient(kBackgroundTop, 0.f, tile.getY(), kBackgroundBottom, 0.f, tile.getBottom(), false));
         g.fillRoundedRectangle(tile, radius);
-        // a quiet frequency grid
+        // a quiet grid
         g.saveState();
         g.reduceClipRegion(tile.toNearestInt());
         g.setColour(juce::Colours::white.withAlpha(.045f));
@@ -47,6 +53,21 @@ namespace {
             g.fillRect(juce::Rectangle<float>(tile.getX(), y, tile.getWidth(), std::max(1.f, s / 512.f)));
             const auto x = tile.getX() + tile.getWidth() * static_cast<float>(i) / 4.f;
             g.fillRect(juce::Rectangle<float>(x, tile.getY(), std::max(1.f, s / 512.f), tile.getHeight()));
+        }
+        if (motif == Motif::kKnee) {
+            // input level against output level: 1:1 up to a soft knee, then a flatter slope
+            const auto at = [&](const float u, const float v) {
+                return juce::Point<float>(tile.getX() + tile.getWidth() * u, tile.getBottom() - tile.getHeight() * v);
+            };
+            juce::Path curve;
+            // offset below the mark's diagonal so the two never overlap
+            curve.startNewSubPath(at(.2f, 0.f));
+            curve.lineTo(at(.6f, .4f));
+            curve.quadraticTo(at(.7f, .5f), at(.8f, .53f));
+            curve.lineTo(at(1.f, .59f));
+            g.setColour(juce::Colours::white.withAlpha(.1f));
+            g.strokePath(curve, juce::PathStrokeType(std::max(1.f, s / 160.f), juce::PathStrokeType::curved,
+                                                     juce::PathStrokeType::rounded));
         }
         g.restoreState();
         g.setColour(juce::Colours::white.withAlpha(.08f));
@@ -89,14 +110,15 @@ namespace {
 int main(const int argc, char* argv[]) {
     juce::ScopedJuceInitialiser_GUI gui;
     if (argc < 3) {
-        std::cerr << "usage: AltvaneIcons <output-dir> <product-label>" << std::endl;
+        std::cerr << "usage: AltvaneIcons <output-dir> <product-label> [grid|knee]" << std::endl;
         return 1;
     }
     const auto dir = juce::File::getCurrentWorkingDirectory().getChildFile(argv[1]);
     const auto product = juce::String(argv[2]);
+    const auto motif = argc > 3 && juce::String(argv[3]) == "knee" ? Motif::kKnee : Motif::kGrid;
     dir.createDirectory();
     for (const auto size : {16, 24, 32, 48, 64, 128, 256, 512, 1024}) {
-        write(renderIcon(size), dir.getChildFile("icon_" + juce::String(size) + ".png"));
+        write(renderIcon(size, motif), dir.getChildFile("icon_" + juce::String(size) + ".png"));
     }
     write(renderInstallerArt(493, 58, true, product), dir.getChildFile("banner.png"));
     write(renderInstallerArt(493, 312, false, product), dir.getChildFile("dialog.png"));

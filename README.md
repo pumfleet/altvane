@@ -6,6 +6,7 @@ shared third-party dependencies and a shared design system.
 | Product | Directory | What it is |
 |---|---|---|
 | [Altvane EQ](products/eq/README.md) | `products/eq` | Parametric and dynamic equalizer, on the ZL Equalizer 2 engine |
+| [Altvane Compressor](products/compressor/README.md) | `products/compressor` | Compressor, upward compressor and expander, on the ZL Compressor engine (in development) |
 
 ## Layout
 
@@ -86,7 +87,8 @@ default version in its `CMakeLists.txt`.
 
    `altvane_add_plugin` fills in the company, manufacturer code (`Altv`), bundle id (`com.altvane.<code>`), LV2 URI,
    formats and code signing settings, and creates `Altvane<Name>_Core` for tests and tools to link.
-2. Generate icons and installer art: `tools/icons/make_icons.sh <AltvaneIcons> <code> <LABEL>`.
+2. Generate icons and installer art: `tools/icons/make_icons.sh <AltvaneIcons> <code> <LABEL> [grid|knee]` (the
+   last argument picks the drawing behind the mark).
 3. Add the product to the table above.
 
 Code style follows the existing sources (`.clang-format`): snake_case files, trailing-underscore members, camelCase
@@ -112,5 +114,5 @@ submodules, lists the upstream files to adapt (processor, state, CMake), and war
 
 ## License
 
-Altvane EQ is licensed under the GNU Affero General Public License v3, as is ZL Equalizer, which it is based on; see
-[LICENSE.md](LICENSE.md) and [NOTICE.md](NOTICE.md). Third-party licenses are in [licenses/](licenses).
+Altvane EQ and Altvane Compressor are licensed under the GNU Affero General Public License v3, as are ZL Equalizer
+and ZL Compressor, which they are based on; see [LICENSE.md](LICENSE.md) and [NOTICE.md](NOTICE.md). Third-party licenses are in [licenses/](licenses).
