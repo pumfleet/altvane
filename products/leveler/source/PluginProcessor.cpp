@@ -73,6 +73,8 @@ namespace altvane::leveler {
 
     void PluginProcessor::releaseResources() {
         prepared_ = false;
+        // a Write pass ends with the processing, even if no stopped transport is ever seen
+        playing_.store(false);
     }
 
     bool PluginProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
@@ -134,6 +136,7 @@ namespace altvane::leveler {
             }
         }
         playing_.store(playing, std::memory_order::relaxed);
+        blocks_.fetch_add(1, std::memory_order::relaxed);
 
         bypass_mix_.setTargetValue(force_bypass || bypass_->get() ? 1.f : 0.f);
         output_gain_.setTargetValue(juce::Decibels::decibelsToGain(output_->load(std::memory_order::relaxed)));
@@ -169,7 +172,15 @@ namespace altvane::leveler {
 
         // a Write pass: the rider fader moves as if a hand moved it, inside one gesture while the transport plays,
         // so the host records it in write, touch and latch modes alike
-        const auto writing = getMode() == dsp::Mode::kWrite && playing_.load(std::memory_order::relaxed);
+        // a host that stops calling back has stopped playing, whatever the last block said
+        if (const auto blocks = blocks_.load(std::memory_order::relaxed); blocks != blocks_seen_) {
+            blocks_seen_ = blocks;
+            idle_ticks_ = 0;
+        } else if (idle_ticks_ < kIdleTicks) {
+            ++idle_ticks_;
+        }
+        const auto writing = getMode() == dsp::Mode::kWrite && prepared_.load() && idle_ticks_ < kIdleTicks
+                             && playing_.load(std::memory_order::relaxed);
         if (writing) {
             const auto gain = engine_.getGainDb();
             if (!gesture_open_) {
@@ -188,7 +199,12 @@ namespace altvane::leveler {
     }
 
     void PluginProcessor::setMode(const dsp::Mode mode) {
+        if (mode == getMode()) {
+            return;
+        }
         engine_.getControls().mode.store(static_cast<int>(mode));
+        // the mode is session state but no parameter: tell the host the session changed
+        updateHostDisplay(ChangeDetails().withNonParameterStateChanged(true));
     }
 
     dsp::Mode PluginProcessor::getMode() const {
@@ -239,7 +255,7 @@ namespace altvane::leveler {
         }
         // presets carry no session part: a preset never switches a track into Write or moves the fader
         if (const auto* session = xml->getChildByName(kSessionTag)) {
-            setMode(static_cast<dsp::Mode>(std::clamp(session->getIntAttribute(kModeProperty), 0, 2)));
+            engine_.getControls().mode.store(std::clamp(session->getIntAttribute(kModeProperty), 0, 2));
             *ride_ = static_cast<float>(session->getDoubleAttribute(kRideProperty));
             xml->removeChildElement(xml->getChildByName(kSessionTag), true);
         }

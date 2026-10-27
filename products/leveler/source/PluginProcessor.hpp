@@ -75,7 +75,7 @@ namespace altvane::leveler {
         dsp::Engine& getEngine() { return engine_; }
 
         /**
-         * automation mode; part of the session, not of presets
+         * automation mode; part of the session, not of presets (a change tells the host the session changed)
          */
         void setMode(dsp::Mode mode);
 
@@ -134,9 +134,14 @@ namespace altvane::leveler {
         std::atomic<int> key_channels_{0};
         std::atomic<bool> playing_{false};
 
+        std::atomic<uint64_t> blocks_{0};
+
         // message thread: the Write pass
+        static constexpr int kIdleTicks = 15; // 250 ms without an audio block
         bool gesture_open_{false};
         float last_written_{0.f};
+        uint64_t blocks_seen_{0};
+        int idle_ticks_{0};
 
         void updateControls();
         void process(juce::AudioBuffer<float>& buffer, bool force_bypass);

@@ -177,6 +177,66 @@ TEST_CASE("a Write pass sends the rider fader to the host while the transport pl
     p.releaseResources();
 }
 
+TEST_CASE("a Write pass ends when the host releases the processor or stops calling it", "[processor]") {
+    for (const auto release : {true, false}) {
+        CAPTURE(release);
+        PluginProcessor p;
+        constexpr double rate = 48000.0;
+        p.setRateAndBufferSizeDetails(rate, 480);
+        p.prepareToPlay(rate, 480);
+        TestPlayHead head;
+        head.playing = true;
+        p.setPlayHead(&head);
+        GestureCounter counter;
+        p.getRide()->addListener(&counter);
+        p.setMode(dsp::Mode::kWrite);
+        juce::AudioBuffer<float> input(2, samples(rate, .5));
+        input.clear();
+        addVoice(input, rate, 0, input.getNumSamples(), -30.f, false);
+        process(p, input, rate, 480, [&](int) { p.runTimerForTesting(); });
+        REQUIRE(p.isWritingAutomation());
+        // the transport never reports stopping
+        if (release) {
+            p.releaseResources();
+            p.runTimerForTesting();
+        } else {
+            for (int i = 0; i < 20; ++i) {
+                p.runTimerForTesting();
+            }
+        }
+        CHECK(!p.isWritingAutomation());
+        CHECK(counter.begins == 1);
+        CHECK(counter.ends == 1);
+        p.getRide()->removeListener(&counter);
+        p.setPlayHead(nullptr);
+        p.releaseResources();
+    }
+}
+
+TEST_CASE("changing the automation mode tells the host the session changed; restoring it does not", "[processor]") {
+    struct Listener final : juce::AudioProcessorListener {
+        int changes{0};
+        void audioProcessorParameterChanged(juce::AudioProcessor*, int, float) override {}
+        void audioProcessorChanged(juce::AudioProcessor*, const ChangeDetails& details) override {
+            changes += details.nonParameterStateChanged ? 1 : 0;
+        }
+    } listener;
+    PluginProcessor p;
+    juce::MemoryBlock state;
+    p.setMode(dsp::Mode::kRead);
+    p.getStateInformation(state);
+    p.setMode(dsp::Mode::kOff);
+    p.addListener(&listener);
+    p.setMode(dsp::Mode::kWrite);
+    CHECK(listener.changes == 1);
+    p.setMode(dsp::Mode::kWrite);
+    CHECK(listener.changes == 1);
+    p.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+    CHECK(p.getMode() == dsp::Mode::kRead);
+    CHECK(listener.changes == 1);
+    p.removeListener(&listener);
+}
+
 TEST_CASE("a hand on the rider fader overrides the engine until it lets go", "[processor]") {
     PluginProcessor p;
     constexpr double rate = 48000.0;
