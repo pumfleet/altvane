@@ -1,0 +1,39 @@
+---
+interface Props {
+  items: { lead: string; text: string }[];
+}
+const { items } = Astro.props;
+---
+<ul class="features">
+  {items.map((f) => (
+    <li>
+      <h3 class="features__lead">{f.lead}</h3>
+      <p class="t-body" set:html={f.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/×/g, '<span class="times">×</span>')} />
+    </li>
+  ))}
+</ul>
+
+<style>
+  .features li {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 5fr);
+    gap: var(--s2) var(--gutter);
+    padding-block: var(--s5);
+    border-bottom: 1px solid var(--rule);
+  }
+  .features li:first-child {
+    border-top: 1.5px solid var(--ink);
+  }
+  .features__lead {
+    font-stretch: 112%;
+    font-weight: 450;
+    font-size: 1.1875rem;
+    line-height: 1.3;
+    letter-spacing: -0.012em;
+  }
+  @media (max-width: 640px) {
+    .features li {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -1,0 +1,168 @@
+---
+import Control from "../Control.astro";
+import Neutral from "./Neutral.astro";
+import { dialogueRows, formatDb, gainOf } from "../../lib/dsp";
+import { dialogueBars, dialogueView, DIALOGUE_BAR } from "../../lib/figures";
+
+interface Props {
+  controls?: boolean;
+  rows?: number;
+}
+const { controls = false, rows: count = 26 } = Astro.props;
+const levels = { voice: 0, ambience: -20, reverb: -10 };
+const rows = dialogueRows(count);
+const bars = dialogueBars(rows, { voice: gainOf(levels.voice), ambience: gainOf(levels.ambience), reverb: gainOf(levels.reverb) });
+const neutral = dialogueBars(rows, { voice: 1, ambience: 1, reverb: 1 });
+const view = dialogueView(count);
+const n = (o: Record<string, number>) => JSON.stringify(o);
+const hatch = `dlg-hatch-${Math.random().toString(36).slice(2, 7)}`;
+---
+<figure class="figure dialogue-figure" data-product="dialogue" data-dialogue-figure data-rows={count} data-levels={JSON.stringify(levels)}>
+  <svg viewBox={`0 0 ${view.w} ${view.h}`} role="img" aria-label="A spectrum of speech in a room, one bar per frequency band, low at the bottom. Each bar is split into the voice, the reverb of the voice and the ambience at their levels; the outline is the input. At 0 dB on every stem the bars end exactly at the outline.">
+    <defs>
+      <pattern id={hatch} width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <rect width="2.2" height="7" data-fill="spot" />
+      </pattern>
+    </defs>
+    {bars.map((b, i) => {
+      const z = neutral[i];
+      return (
+        <g class="dlg-row" transform={`translate(0 ${b.y})`}>
+          <rect class="dlg-input" x="0" y="0" width={b.input} height={DIALOGUE_BAR} />
+          <rect class="dlg-voice" x="0" y="0" width={b.voice} height={DIALOGUE_BAR} data-fill="spot" data-n={n({ width: z.voice })} />
+          <rect class="dlg-reverb" x={b.voice} y="0" width={b.reverb} height={DIALOGUE_BAR} fill={`url(#${hatch})`} data-n={n({ x: z.voice, width: z.reverb })} />
+          <rect class="dlg-ambience" x={b.voice + b.reverb} y="0" width={b.ambience} height={DIALOGUE_BAR} data-n={n({ x: z.voice + z.reverb, width: z.ambience })} />
+        </g>
+      );
+    })}
+  </svg>
+  <Neutral />
+  <figcaption class="dialogue-key t-small">
+    <span><i class="key key--voice"></i>Voice</span>
+    <span><i class="key key--reverb"></i>Reverb</span>
+    <span><i class="key key--ambience"></i>Ambience</span>
+    <span><i class="key key--input"></i>Input</span>
+    <span class="dialogue-key__note">Synthetic spectrum, for illustration.</span>
+  </figcaption>
+  {controls && (
+    <div class="dialogue-controls">
+      <Control name="voice" label="Voice" min={-60} max={12} step={0.5} value={levels.voice} display={formatDb(levels.voice)} />
+      <Control name="ambience" label="Ambience" min={-60} max={12} step={0.5} value={levels.ambience} display={formatDb(levels.ambience)} />
+      <Control name="reverb" label="Reverb" min={-60} max={12} step={0.5} value={levels.reverb} display={formatDb(levels.reverb)} />
+    </div>
+  )}
+</figure>
+
+<style>
+  .dialogue-figure svg {
+    width: 100%;
+    height: auto;
+  }
+  .dlg-input {
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .dlg-ambience {
+    fill: var(--ink);
+  }
+  .dialogue-key {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2) var(--s5);
+    margin-top: var(--s5);
+    align-items: center;
+  }
+  .dialogue-key span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
+    color: var(--ink-2);
+  }
+  .dialogue-key__note {
+    margin-left: auto;
+  }
+  .key {
+    width: 18px;
+    height: 9px;
+    display: inline-block;
+  }
+  .key--voice {
+    background: var(--spot);
+  }
+  .key--reverb {
+    background: repeating-linear-gradient(135deg, var(--spot) 0 2px, transparent 2px 5px);
+  }
+  .key--ambience {
+    background: var(--ink);
+  }
+  .key--input {
+    border: 1px solid var(--ink);
+  }
+  .dialogue-controls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s5) var(--gutter);
+    margin-top: var(--s6);
+  }
+  @media (max-width: 640px) {
+    .dialogue-controls {
+      grid-template-columns: 1fr;
+    }
+    .dialogue-key__note {
+      margin-left: 0;
+      width: 100%;
+    }
+  }
+</style>
+
+<script>
+  import { dialogueRows, formatDb, gainOf } from "../../lib/dsp";
+  import { dialogueBars, type StemGains } from "../../lib/figures";
+  import { drawIn } from "../../lib/motion";
+
+  type Stem = keyof StemGains;
+
+  for (const figure of document.querySelectorAll<HTMLElement>("[data-dialogue-figure]")) {
+    const rows = dialogueRows(Number(figure.dataset.rows));
+    const levels: Record<Stem, number> = JSON.parse(figure.dataset.levels!);
+    const groups = [...figure.querySelectorAll<SVGGElement>(".dlg-row")];
+
+    const render = (db: Record<Stem, number>) => {
+      const bars = dialogueBars(rows, { voice: gainOf(db.voice), ambience: gainOf(db.ambience), reverb: gainOf(db.reverb) });
+      bars.forEach((b, i) => {
+        const [input, voice, reverb, ambience] = groups[i].children as unknown as SVGRectElement[];
+        input.setAttribute("width", String(b.input));
+        voice.setAttribute("width", String(b.voice));
+        reverb.setAttribute("x", String(b.voice));
+        reverb.setAttribute("width", String(b.reverb));
+        ambience.setAttribute("x", String(b.voice + b.reverb));
+        ambience.setAttribute("width", String(b.ambience));
+      });
+    };
+
+    // the draw-in: every stem starts at 0 dB, where the stems are the input, and then the levels take hold
+    let touched = false;
+    drawIn(figure, (t) => {
+      if (touched) return;
+      render({
+        voice: levels.voice * t,
+        ambience: levels.ambience * t,
+        reverb: levels.reverb * t,
+      });
+    });
+
+    for (const input of figure.querySelectorAll<HTMLInputElement>("input[type=range]")) {
+      const stem = input.name as Stem;
+      const out = figure.querySelector(`[data-out='${stem}']`);
+      input.addEventListener("input", () => {
+        touched = true;
+        levels[stem] = Number(input.value);
+        if (out) out.textContent = formatDb(levels[stem]);
+        input.setAttribute("aria-valuetext", formatDb(levels[stem]));
+        render(levels);
+      });
+    }
+  }
+</script>
