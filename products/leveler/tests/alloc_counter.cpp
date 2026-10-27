@@ -10,6 +10,9 @@
 
 #include <cstdlib>
 #include <new>
+#if defined(_WIN32)
+#include <malloc.h>
+#endif
 
 namespace {
     thread_local bool counting = false;
@@ -30,10 +33,24 @@ namespace {
             ++allocations;
         }
         const auto a = static_cast<std::size_t>(alignment);
-        if (void* p = std::aligned_alloc(a, (size + a - 1) / a * a)) {
+#if defined(_WIN32)
+        // the MSVC runtime has no aligned_alloc; its aligned blocks must be freed with _aligned_free
+        void* p = _aligned_malloc(size == 0 ? 1 : size, a);
+#else
+        void* p = std::aligned_alloc(a, (size + a - 1) / a * a);
+#endif
+        if (p != nullptr) {
             return p;
         }
         throw std::bad_alloc();
+    }
+
+    void freeAligned(void* p) {
+#if defined(_WIN32)
+        _aligned_free(p);
+#else
+        std::free(p);
+#endif
     }
 }
 
@@ -61,7 +78,7 @@ void operator delete(void* p) noexcept { std::free(p); }
 void operator delete[](void* p) noexcept { std::free(p); }
 void operator delete(void* p, std::size_t) noexcept { std::free(p); }
 void operator delete[](void* p, std::size_t) noexcept { std::free(p); }
-void operator delete(void* p, std::align_val_t) noexcept { std::free(p); }
-void operator delete[](void* p, std::align_val_t) noexcept { std::free(p); }
-void operator delete(void* p, std::size_t, std::align_val_t) noexcept { std::free(p); }
-void operator delete[](void* p, std::size_t, std::align_val_t) noexcept { std::free(p); }
+void operator delete(void* p, std::align_val_t) noexcept { freeAligned(p); }
+void operator delete[](void* p, std::align_val_t) noexcept { freeAligned(p); }
+void operator delete(void* p, std::size_t, std::align_val_t) noexcept { freeAligned(p); }
+void operator delete[](void* p, std::size_t, std::align_val_t) noexcept { freeAligned(p); }
