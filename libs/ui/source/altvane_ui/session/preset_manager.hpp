@@ -21,6 +21,13 @@ namespace altvane::ui {
     struct PresetCodec {
         std::function<juce::Result(const juce::File&, juce::MemoryBlock&)> read;
         std::function<juce::Result(const juce::File&, const juce::MemoryBlock&)> write;
+        /**
+         * whether a parameter belongs to presets (initialise resets it, changing it marks the preset modified);
+         * every parameter unless a product says otherwise, e.g. a fader the engine moves
+         */
+        std::function<bool(const juce::AudioProcessorParameter&)> includes = [](const juce::AudioProcessorParameter&) {
+            return true;
+        };
 
         /**
          * the processor state as an XML document, written as JSON
