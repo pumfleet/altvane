@@ -149,6 +149,25 @@ TEST_CASE("the processor measures the output and starts over when playback start
     p.setPlayHead(nullptr);
 }
 
+TEST_CASE("a host reset between runs starts the measurement over", "[loudness]") {
+    for (const auto auto_reset : {true, false}) {
+        PluginProcessor p;
+        FakePlayHead playhead;
+        p.setPlayHead(&playhead);
+        set(p.na_parameters_, zlstate::PLoudnessAutoReset::kID, auto_reset ? 1.f : 0.f);
+        prepare(p);
+        playhead.playing = true;
+        run(p, sine(1000.0, -23.f), 2.0);
+        const auto generation = p.pullLoudness().generation;
+        // some hosts reset the plug-in between runs without sending stopped blocks
+        p.reset();
+        run(p, sine(1000.0, -23.f), .5);
+        INFO("auto reset " << auto_reset);
+        CHECK((p.pullLoudness().generation > generation) == auto_reset);
+        p.setPlayHead(nullptr);
+    }
+}
+
 TEST_CASE("audio heard while stopped never reaches the integrated loudness", "[loudness]") {
     PluginProcessor p;
     FakePlayHead playhead;

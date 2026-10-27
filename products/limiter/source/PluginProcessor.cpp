@@ -84,7 +84,7 @@ void PluginProcessor::changeProgramName(int, const juce::String&) {
 
 void PluginProcessor::prepareToPlay(const double sample_rate, const int samples_per_block) {
     sample_rate_.store(sample_rate, std::memory_order::relaxed);
-    was_playing_.reset();
+    was_playing_ = false;
 
     const juce::PluginHostType host_type;
     update_channel_layout_per_call_ = host_type.isMaschine();
@@ -101,14 +101,14 @@ void PluginProcessor::prepareToPlay(const double sample_rate, const int samples_
 }
 
 void PluginProcessor::releaseResources() {
-    was_playing_.reset();
+    was_playing_ = false;
 }
 
 void PluginProcessor::reset() {
     controller_.reset();
     dc_filter_.reset();
     dither_.reset();
-    was_playing_.reset();
+    was_playing_ = false;
 }
 
 bool PluginProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
@@ -193,7 +193,7 @@ void PluginProcessor::updateLoudnessTransport() {
         return;
     }
     const auto playing = position->getIsPlaying();
-    if (playing && was_playing_.has_value() && !*was_playing_ &&
+    if (playing && !was_playing_ &&
         loudness_auto_reset_.load(std::memory_order::relaxed) > .5f) {
         loudness_meter_.requestReset();
     }
@@ -243,7 +243,23 @@ void PluginProcessor::processPiece(const std::span<float*> main, const size_t nu
         dc_filter_.process(main, num_samples);
     }
 
+    // when Audition turns on while the engine's delayed copy of the gained input is idle (editor closed), the engine
+    // plays the limited signal until that delay has filled, one latency; keep the output silent until the
+    // subtraction lines up instead of letting that through
+    const auto delta_on = !bypassed && !processing;
+    if (delta_on && !delta_was_on_) {
+        audition_warmup_ = static_cast<size_t>(std::max(0, getLatencySamples()));
+    }
+    delta_was_on_ = delta_on;
+
     controller_.process(main, num_samples, bypass);
+
+    if (delta_on && audition_warmup_ > 0) {
+        for (auto* channel : main) {
+            std::fill(channel, channel + num_samples, 0.f);
+        }
+        audition_warmup_ -= std::min(audition_warmup_, num_samples);
+    }
 
     const auto bits_index = std::clamp(static_cast<int>(std::lround(dither_bits_.load(std::memory_order::relaxed))),
                                        0, static_cast<int>(altvane::limiter::params::PDitherBits::kBits.size()) - 1);

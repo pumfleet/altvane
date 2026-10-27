@@ -146,6 +146,19 @@ TEST_CASE("delta plays only what the limiter removes", "[limiter]") {
     CHECK(peakDB(loud[0], 24000) > -20.f);
 }
 
+TEST_CASE("turning audition on never lets the limited signal through", "[limiter]") {
+    // with the editor closed the engine's delayed copy of the gained input is idle; switching Audition on while
+    // a signal plays must not leak the processed output while that copy fills
+    PluginProcessor p;
+    prepare(p);
+    const auto signal = sine(1000.0, -30.f);
+    run(p, signal, .5);
+    set(p, zlp::PDelta::kID, 1.f);
+    const auto out = run(p, [&](const int64_t n) { return signal(n + 24000); }, .3);
+    CHECK(peakDB(out[0]) < -80.f);
+    CHECK(peakDB(out[1]) < -80.f);
+}
+
 TEST_CASE("bypass passes the input, delayed by the latency", "[limiter]") {
     for (const auto host : {false, true}) {
         PluginProcessor p;

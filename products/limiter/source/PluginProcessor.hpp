@@ -127,7 +127,11 @@ private:
     altvane::limiter::LoudnessMeter loudness_meter_;
     std::atomic<float> &bypass_, &delta_, &dc_filter_on_, &dither_bits_, &dither_shape_, &loudness_auto_reset_;
     bool dc_filter_was_on_{false};
-    std::optional<bool> was_playing_;
+    // a host reset or prepare counts as a stop: the next playing block is a playback start
+    bool was_playing_{false};
+    // Audition: samples left before the engine's delta signal is aligned (see processPiece)
+    bool delta_was_on_{false};
+    size_t audition_warmup_{0};
 
     void updateChannelLayout();
 
