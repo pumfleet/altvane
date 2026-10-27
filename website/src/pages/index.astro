@@ -4,25 +4,27 @@ import EqFigure from "../components/figures/EqFigure.astro";
 import Programme from "../components/Programme.astro";
 import DialogueFigure from "../components/figures/DialogueFigure.astro";
 import CompressorFigure from "../components/figures/CompressorFigure.astro";
+import LimiterFigure from "../components/figures/LimiterFigure.astro";
 import Readings from "../components/Readings.astro";
 import Builds from "../components/Builds.astro";
 import Arrow from "../components/Arrow.astro";
-import { REPO, product, releasesUrl } from "../data/products";
+import { REPO, downloadLabel, product, releasesUrl } from "../data/products";
 
 const eq = product("eq");
 const dialogue = product("dialogue");
 const compressor = product("compressor");
+const limiter = product("limiter");
 ---
 <Base
   title="Altvane: audio plug-ins, nothing approximate"
-  description="Altvane makes an equalizer, a dialogue isolator and a compressor. Free and open source, for macOS, Windows and Linux."
+  description="Altvane makes an equalizer, a dialogue isolator, a compressor and a limiter. Free and open source, for macOS, Windows and Linux."
 >
   <section class="sheet hero" aria-labelledby="hero-title">
     <div class="hero__copy">
       <h1 id="hero-title" class="hero__title">Nothing approximate.</h1>
       <p class="t-lead">
-        Altvane makes an equalizer, a dialogue isolator and a compressor. What the screen shows is exactly what the
-        audio gets. Free and open source, for macOS, Windows and Linux.
+        Altvane makes an equalizer, a dialogue isolator, a compressor and a limiter. What the screen shows is exactly
+        what the audio gets. Free and open source, for macOS, Windows and Linux.
       </p>
       <div class="hero__programme">
         <Programme />
@@ -51,7 +53,7 @@ const compressor = product("compressor");
       <Readings items={eq.readings} />
       <div class="series__actions">
         <a class="action" href={`/${eq.code}`}>About {eq.name} <Arrow /></a>
-        <a class="action action--quiet" href={releasesUrl(eq.code)}>Download {eq.version} <Arrow dir="down" /></a>
+        <a class="action action--quiet" href={releasesUrl(eq.code)}>{downloadLabel(eq)} <Arrow dir="down" /></a>
       </div>
     </div>
     <div class="series__figure series__figure--eq">
@@ -78,7 +80,7 @@ const compressor = product("compressor");
       <Readings items={dialogue.readings} />
       <div class="series__actions">
         <a class="action" href={`/${dialogue.code}`}>About {dialogue.name} <Arrow /></a>
-        <a class="action action--quiet" href={releasesUrl(dialogue.code)}>Download {dialogue.version}, macOS and Windows <Arrow dir="down" /></a>
+        <a class="action action--quiet" href={releasesUrl(dialogue.code)}>{downloadLabel(dialogue)}, macOS and Windows <Arrow dir="down" /></a>
       </div>
     </div>
   </section>
@@ -86,17 +88,36 @@ const compressor = product("compressor");
   <section class="sheet series series--compressor" data-product="compressor" aria-labelledby="compressor-title">
     <div class="series__head">
       <h2 id="compressor-title" class="t-display">Compressor</h2>
-      <p class="series__kind t-label">{compressor.kind}. In development.</p>
+      <p class="series__kind t-label">{compressor.kind}</p>
     </div>
     <div class="series__text">
       <p class="t-lead">{compressor.summary}</p>
       <Readings items={compressor.readings} />
       <div class="series__actions">
         <a class="action" href={`/${compressor.code}`}>About {compressor.name} <Arrow /></a>
+        <a class="action action--quiet" href={releasesUrl(compressor.code)}>{downloadLabel(compressor)} <Arrow dir="down" /></a>
       </div>
     </div>
     <div class="series__figure">
       <CompressorFigure />
+    </div>
+  </section>
+
+  <section class="sheet series series--limiter" data-product="limiter" aria-labelledby="limiter-title">
+    <div class="series__figure">
+      <LimiterFigure />
+    </div>
+    <div class="series__head">
+      <h2 id="limiter-title" class="t-display">Limiter</h2>
+      <p class="series__kind t-label">{limiter.kind}</p>
+    </div>
+    <div class="series__text">
+      <p class="t-lead">{limiter.summary}</p>
+      <Readings items={limiter.readings} />
+      <div class="series__actions">
+        <a class="action" href={`/${limiter.code}`}>About {limiter.name} <Arrow /></a>
+        <a class="action action--quiet" href={releasesUrl(limiter.code)}>{downloadLabel(limiter)} <Arrow dir="down" /></a>
+      </div>
     </div>
   </section>
 
@@ -243,6 +264,10 @@ const compressor = product("compressor");
   .series--compressor .series__text { grid-column: 1 / span 5; }
   .series--compressor .series__figure { grid-column: 7 / span 6; grid-row: 1 / span 2; }
 
+  .series--limiter .series__figure { grid-column: 1 / span 7; grid-row: 1 / span 2; }
+  .series--limiter .series__head { grid-column: 9 / span 4; }
+  .series--limiter .series__text { grid-column: 9 / span 4; }
+
   .series .t-display {
     font-size: clamp(2.75rem, 5.6vw, 5rem);
   }
@@ -290,6 +315,7 @@ const compressor = product("compressor");
     .series .series__text,
     .series--dialogue .series__figure,
     .series--compressor .series__figure,
+    .series--limiter .series__figure,
     .open__title,
     .open__text,
     .platforms__head,
@@ -297,7 +323,8 @@ const compressor = product("compressor");
       grid-column: 1 / -1;
       grid-row: auto;
     }
-    .series--dialogue .series__figure {
+    .series--dialogue .series__figure,
+    .series--limiter .series__figure {
       order: 3;
     }
     .series--eq .series__figure {

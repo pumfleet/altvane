@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.1.0
 
-First version of Altvane Limiter, based on the ZL Limiter engine (upstream commit `412c844`, a work in progress
+First release of Altvane Limiter, based on the ZL Limiter engine (upstream commit `412c844`, a work in progress
 upstream).
 
 ### Added on top of the engine

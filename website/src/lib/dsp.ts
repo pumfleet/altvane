@@ -169,6 +169,84 @@ export function transfer({ threshold, ratio, width }: Knee, input: number): numb
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// Limiter: a lookahead peak limiter, at a resolution of one millisecond: a gain computer, a lookahead ramp and a release
+
+export interface Limit {
+  gain: number; // dB into the limiter
+  ceiling: number; // dB
+  release: number; // ms
+}
+
+export const LIMIT_SECONDS = 3;
+export const LIMIT_LOOKAHEAD = 2; // ms, the editor's default
+
+/** a small seeded generator, so the programme is the same at build time and in the browser */
+function mulberry32(seed: number) {
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * the peak level of a synthetic programme, one linear value per millisecond: a 120 bpm groove of kick, snare and
+ * hats over a bed, peaking about 3 dB under full scale. Illustrative, not a recording.
+ */
+export function programme(): Float64Array {
+  const n = LIMIT_SECONDS * 1000;
+  const rand = mulberry32(7);
+  const out = new Float64Array(n);
+  const hit = (t: number, at: number, peak: number, decay: number) => (t < at ? 0 : peak * Math.exp(-(t - at) / decay));
+  for (let t = 0; t < n; t++) {
+    const beat = t % 500;
+    const bar = Math.floor(t / 500);
+    const kick = bar % 2 === 0 ? hit(beat, 0, 0.7, 70) : hit(beat, 0, 0.16, 40);
+    const snare = bar % 2 === 1 ? hit(beat, 0, 0.58, 95) : 0;
+    const hats = hit(t % 125, 0, 0.12, 14);
+    const bed = 0.2 + 0.05 * Math.sin((t / n) * Math.PI * 3.2) + 0.03 * Math.sin(t / 37);
+    out[t] = (kick + snare + hats + bed) * (0.88 + 0.12 * rand());
+  }
+  const top = out.reduce((m, v) => Math.max(m, v), 0);
+  return out.map((v) => (v * 0.7) / top);
+}
+
+/**
+ * the limiter's gain, one linear value per millisecond. Each point's required gain brings it to the ceiling; the
+ * lowest required gain within the lookahead is ramped in over the lookahead, so the gain is already down when the peak
+ * arrives, and it recovers with the release. The ramp and the release only ever lower the gain below what is
+ * required, so the output never passes the ceiling.
+ */
+export function limit(peaks: Float64Array, { gain, ceiling, release }: Limit): Float64Array {
+  const n = peaks.length;
+  const drive = Math.pow(10, gain / 20);
+  const c = Math.pow(10, ceiling / 20);
+  const L = LIMIT_LOOKAHEAD;
+  const required = peaks.map((p) => Math.min(1, c / Math.max(p * drive, 1e-9)));
+  // the lowest required gain in the lookahead ahead of each point
+  const held = required.map((_, k) => {
+    let m = 1;
+    for (let j = k; j <= Math.min(n - 1, k + L); j++) m = Math.min(m, required[j]);
+    return m;
+  });
+  const k = 1 - Math.exp(-1 / Math.max(1, release));
+  const out = new Float64Array(n);
+  let g = 1;
+  for (let i = 0; i < n; i++) {
+    // the mean of the held gains over the last lookahead: every window it averages covers point i
+    let sum = 0;
+    for (let j = i - L; j <= i; j++) sum += held[Math.max(0, j)];
+    const ramp = sum / (L + 1);
+    g = ramp < g ? ramp : g + (ramp - g) * k;
+    out[i] = g;
+  }
+  return out;
+}
+
+export const dbOf = (x: number) => 20 * Math.log10(Math.max(x, 1e-9));
+
+// ---------------------------------------------------------------------------------------------------------------
 
 export function formatFreq(f: number): string {
   if (f >= 1000) return `${(f / 1000).toFixed(f >= 10000 ? 1 : 2)} kHz`;

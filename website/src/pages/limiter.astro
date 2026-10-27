@@ -1,0 +1,116 @@
+---
+import Base from "../layouts/Base.astro";
+import ProductHero from "../components/ProductHero.astro";
+import Section from "../components/Section.astro";
+import Features from "../components/Features.astro";
+import Gestures from "../components/Gestures.astro";
+import Plate from "../components/Plate.astro";
+import Readings from "../components/Readings.astro";
+import Builds from "../components/Builds.astro";
+import Close from "../components/Close.astro";
+import LimiterFigure from "../components/figures/LimiterFigure.astro";
+import { product } from "../data/products";
+
+const p = product("limiter");
+---
+<Base title="Altvane Limiter: true-peak limiter and loudness meter" description={p.summary} product="limiter">
+  <ProductHero product={p}>
+    <div class="limit-hero">
+      <LimiterFigure controls />
+      <p class="t-small limit-caption">
+        A lookahead peak limiter on three seconds of a groove, computed in your browser. Each column is the output's
+        peak in its slice of time; the outline is what the gain would have added past the ceiling, and the gain
+        reduction hangs from the top rule. Drag the waveform up or down to set the gain, as in the editor.
+      </p>
+    </div>
+  </ProductHero>
+
+  <Section id="features" title="What it does" note="For the last stage of a master: loud enough for its delivery, and never over.">
+    <Features
+      items={[
+        { lead: "Held at the ceiling", text: "Gain into a ceiling from −12 to 0 dB, held on the true peak or the sample peak. Oversampling up to 32×, and a lookahead of up to 5 ms that never changes the latency." },
+        { lead: "Loudness that keeps counting", text: "An ITU-R BS.1770-4 and EBU R128 meter: momentary, short-term, integrated, loudness range, maxima, true peak and PLR. It runs in the audio engine, so it measures with the editor closed and in offline renders. It counts while the host plays, and Auto starts it over when playback starts." },
+        { lead: "Targets, and Match target", text: "Streaming, Apple Music, YouTube, EBU R128, ATSC A/85, Podcast, CD / Club or your own, drawn on the display and the meters. Match target moves the gain by the difference to the target, in one undo step." },
+        { lead: "Hear the limiting, not the level", text: "Unity gain takes the gain back off the output, so you judge the limiting at the same loudness. Audition plays only what the limiter removes, where distortion and pumping are easy to hear." },
+        { lead: "Character", text: "Five starting points for the timing, from gentle to loud: Transparent, Balanced, Punchy, Aggressive and Safe. Each sets attack, release, recovery, lookahead and stereo link together. They are presets, not separate algorithms." },
+        { lead: "The last bits", text: "TPDF dither to 24, 20 or 16 bits, flat or noise shaped, after the limiter; a DC filter before it, so an offset never uses up headroom." },
+        { lead: "Everything else, done properly", text: "Presets with a factory set, A/B compare, undo and redo, help on every control, adjustable interface size, keyboard and screen-reader access, and host parameter menus." },
+      ]}
+    />
+  </Section>
+
+  <Section id="editor" title="The editor" note="What you hear scrolls by in the display, the meters stand on the right, and the controls sit on a card you can fold away.">
+    <Plate src="/images/limiter-editor.png" width={2240} height={1400} alt="The Altvane Limiter editor: a dark scrolling display with the output's waveform pressed against a dashed ceiling line at −1.0 dBTP, red gain reduction hanging from the top and a gold short-term loudness line below; a loudness panel reading −11.6 LUFS integrated against a −14 LUFS streaming target with a Match target button; true-peak, gain-reduction and loudness meters on the right; and a control card with Character, Gain, Ceiling and timing controls." caption="Altvane Limiter, rendered through the real processor from synthetic programme material." />
+  </Section>
+
+  <Section id="how" title="How it works">
+    <div class="prose">
+      <p class="t-body">
+        The limiter has two stages behind a fixed 5&nbsp;ms delay: a fast stage that catches each peak and recovers
+        at a rate that adapts to how hard it is working (Recovery), and a slower stage that takes over sustained
+        reduction (Attack and Release). Because the delay is fixed, changing the lookahead never moves the latency;
+        only oversampling does, and the plug-in reports it to your host.
+      </p>
+      <p class="t-body">
+        The meter K-weights the output into 100&nbsp;ms steps. Integrated loudness and loudness range are gated from
+        histograms of 0.01&nbsp;LU bins, so the gates are exact to 0.01&nbsp;LU, and the true peak comes from a
+        16× estimator. Shaped dither feeds its error back through Wannamaker's 9-tap filter, weighted to hearing,
+        and moves the noise to where it is least audible.
+      </p>
+    </div>
+  </Section>
+
+  <Section id="gestures" title="Under the hand" note="Values can be typed: double-click a value and enter it.">
+    <Gestures
+      rows={[
+        ["Change the gain", "Drag the waveform up or down (<kbd>Shift</kbd> for fine), or the Gain knob"],
+        ["Move the ceiling", "Drag its line in the display; double-click it or <kbd>Cmd</kbd>-click it to reset"],
+        ["Change a value", "Drag the knob or slider (<kbd>Shift</kbd> for fine), scroll, or double-click the value and type"],
+        ["Reset a value", "<kbd>Cmd</kbd>-click or double-click the knob"],
+        ["Land on a target", "Match target, in the loudness panel"],
+        ["Start a new measurement", "Reset in the loudness panel, or turn on Auto to start over with playback"],
+        ["Hear what is removed", "Audition, in the footer"],
+        ["Clear the peak holds", "Click the meters"],
+        ["Give the display the window", "Fold the control card away with its arrow; the Loudness tab hides the panel"],
+        ["Undo and redo", "<kbd>Cmd Z</kbd> and <kbd>Shift Cmd Z</kbd>"],
+      ]}
+    />
+  </Section>
+
+  <Section id="specs" title="Specifications" note="Loudness is checked against EBU Tech 3341 and Tech 3342 cases in the test suite.">
+    <Readings items={p.readings} size="large" />
+    <div class="spec-table">
+      <Readings
+        items={[
+          { value: "±0.1 LU", label: "on the EBU Tech 3341 tones and gating cases" },
+          { value: "0.01 LU", label: "gate resolution, integrated and range" },
+          { value: "24, 20, 16", label: "bit dither, flat or noise shaped" },
+          { value: "5 Hz", label: "DC filter, before the limiter" },
+        ]}
+      />
+    </div>
+    <div class="specs-builds"><Builds /></div>
+  </Section>
+
+  <Close product={p} />
+</Base>
+
+<style>
+  .limit-hero {
+    max-width: 700px;
+  }
+  .limit-caption {
+    margin-top: var(--s5);
+    max-width: 58ch;
+  }
+  .prose {
+    display: grid;
+    gap: var(--s4);
+  }
+  .spec-table {
+    margin-top: var(--s6);
+  }
+  .specs-builds {
+    margin-top: var(--s7);
+  }
+</style>

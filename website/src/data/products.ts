@@ -2,15 +2,14 @@
 
 export const REPO = "https://github.com/pumfleet/altvane";
 
-export type ProductCode = "eq" | "dialogue" | "compressor";
+export type ProductCode = "eq" | "dialogue" | "compressor" | "limiter";
 
 export interface Product {
   code: ProductCode;
   name: string;
   short: string;
   kind: string;
-  status: "released" | "in development";
-  version?: string;
+  version?: string; // the latest release, once there is one
   platforms: ("macOS" | "Windows" | "Linux")[];
   platformNote?: string;
   summary: string;
@@ -24,7 +23,6 @@ export const products: Product[] = [
     name: "Altvane EQ",
     short: "EQ",
     kind: "Parametric and dynamic equalizer",
-    status: "released",
     version: "0.1.0",
     platforms: ["macOS", "Windows", "Linux"],
     summary:
@@ -41,7 +39,6 @@ export const products: Product[] = [
     name: "Altvane Dialogue",
     short: "Dialogue",
     kind: "Neural dialogue isolation",
-    status: "released",
     version: "0.1.0",
     platforms: ["macOS", "Windows"],
     platformNote: "macOS 11+ and Windows x64 for now",
@@ -59,15 +56,30 @@ export const products: Product[] = [
     name: "Altvane Compressor",
     short: "Compressor",
     kind: "Compressor, upward compressor and expander",
-    status: "in development",
     platforms: ["macOS", "Windows", "Linux"],
     summary:
       "Compress, inflate, expand or shape, with one soft knee, four detector styles and a side chain with its own 8-band EQ.",
-    close: "Altvane Compressor is in development.",
+    close: "Put Altvane Compressor on your next mix.",
     readings: [
       { value: "4", label: "directions: compress, inflate, expand, shape" },
       { value: "20 ms", label: "lookahead, or negative" },
       { value: "8×", label: "oversampling" },
+    ],
+  },
+  {
+    code: "limiter",
+    name: "Altvane Limiter",
+    short: "Limiter",
+    kind: "True-peak limiter and loudness meter",
+    version: "0.1.0",
+    platforms: ["macOS", "Windows", "Linux"],
+    summary:
+      "As loud as the delivery allows, and not a hair over the ceiling. True-peak limiting with a loudness meter that keeps counting with the editor closed, the delivery targets on screen, and Match target to land on one in a step.",
+    close: "Put Altvane Limiter on your next master.",
+    readings: [
+      { value: "32×", label: "oversampling, true peak or sample peak" },
+      { value: "5 ms", label: "lookahead, at a fixed latency" },
+      { value: "8", label: "delivery targets, Streaming to ATSC A/85" },
     ],
   },
 ];
@@ -76,6 +88,8 @@ export const product = (code: ProductCode) => products.find((p) => p.code === co
 
 /** the GitHub releases for one product; releases are tagged <code>-vX.Y.Z */
 export const releasesUrl = (code: ProductCode) => `${REPO}/releases?q=${code}-v&expanded=true`;
+/** "Download 0.1.0", or just "Download" before a product has a version */
+export const downloadLabel = (p: Product) => (p.version ? `Download ${p.version}` : "Download");
 export const sourceUrl = (code: ProductCode) => `${REPO}/tree/main/products/${code}`;
 
 /** release builds, from .github/release-matrix.json */

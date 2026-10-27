@@ -1,7 +1,7 @@
-// Geometry for the three poster figures. The same functions draw the static SVG at build time and redraw it in the
+// Geometry for the four poster figures. The same functions draw the static SVG at build time and redraw it in the
 // browser, so the page is complete without JavaScript and identical once it runs.
 
-import { type Band, type Knee, type StemRow, LIVE_BAND, logFreq, logPos, response, transfer } from "./dsp";
+import { type Band, type Knee, type Limit, type StemRow, LIVE_BAND, dbOf, limit, logFreq, logPos, response, transfer } from "./dsp";
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -138,3 +138,51 @@ export function compFromY(y: number): number {
   const db = COMP_FLOOR + -COMP_FLOOR * (1 - y / COMP_VIEW.h);
   return Math.max(-48, Math.min(-3, Math.round(db)));
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Limiter: three seconds of a programme as a waveform, one column per slice of time, mirrored about its centre line.
+// Each column reaches the output's peak in that slice, with a hairline outline out to where the gained input would
+// have gone; the gain reduction hangs from the top rule.
+
+export const LIMIT_VIEW = { w: 1000, h: 900 };
+export const LIMIT_COLS = 60;
+const LIMIT_CENTRE = 560;
+const LIMIT_FULL = 300; // half-height of a full-scale peak
+const LIMIT_MAX = 340; // where an outline is cut off
+const LIMIT_PER_DB = 12.5; // gain reduction, down from the top rule
+const LIMIT_GR_MAX = 160;
+
+export function limitColumns(peaks: Float64Array, s: Limit) {
+  const gains = limit(peaks, s);
+  const drive = Math.pow(10, s.gain / 20);
+  const step = LIMIT_VIEW.w / LIMIT_COLS;
+  const width = step * 0.4;
+  const span = peaks.length / LIMIT_COLS;
+  return Array.from({ length: LIMIT_COLS }, (_, i) => {
+    let input = 0;
+    let output = 0;
+    let least = 1;
+    for (let t = Math.floor(i * span); t < Math.floor((i + 1) * span); t++) {
+      input = Math.max(input, peaks[t] * drive);
+      output = Math.max(output, peaks[t] * drive * gains[t]);
+      least = Math.min(least, gains[t]);
+    }
+    const out = output * LIMIT_FULL;
+    const ghost = Math.min(LIMIT_MAX, input * LIMIT_FULL);
+    return {
+      x: r2(i * step + (step - width) / 2),
+      w: r2(width),
+      out: r2(out),
+      ghost: r2(Math.max(out, ghost)),
+      reduction: r2(Math.min(LIMIT_GR_MAX, -dbOf(least) * LIMIT_PER_DB)),
+      db: dbOf(least),
+    };
+  });
+}
+
+/** the y of a level above the centre line, for the ceiling's lines */
+export const limitLevelY = (db: number) => r2(Math.pow(10, db / 20) * LIMIT_FULL);
+export const LIMIT_AXIS = { centre: LIMIT_CENTRE, full: LIMIT_FULL, perDb: LIMIT_PER_DB };
+
+/** the most gain reduction in a set of columns, in dB (negative) */
+export const limitMost = (cols: { db: number }[]) => Math.min(0, ...cols.map((c) => c.db));

@@ -7,18 +7,12 @@ import { products, releasesUrl } from "../data/products";
   {products.map((p) => (
     <li class="programme__row" data-product={p.code}>
       <a class="programme__name" href={`/${p.code}`}>{p.name}</a>
-      <span class="programme__meta t-small num">
-        {p.status === "released" ? `${p.version}${p.platformNote ? `, ${p.platformNote}` : ""}` : "In development"}
-      </span>
-      {p.status === "released" ? (
-        <a class="programme__get" href={releasesUrl(p.code)} aria-label={`Download ${p.name} ${p.version}`}>
-          Download <Arrow dir="down" />
-        </a>
-      ) : (
-        <a class="programme__get programme__get--source" href={`/${p.code}`} aria-label={`About ${p.name}, in development`}>
-          Details <Arrow />
-        </a>
+      {(p.version || p.platformNote) && (
+        <span class="programme__meta t-small num">{[p.version, p.platformNote].filter(Boolean).join(", ")}</span>
       )}
+      <a class="programme__get" href={releasesUrl(p.code)} aria-label={[`Download ${p.name}`, p.version].filter(Boolean).join(" ")}>
+        Download <Arrow dir="down" />
+      </a>
     </li>
   ))}
 </ol>
@@ -80,15 +74,5 @@ import { products, releasesUrl } from "../data/products";
   }
   .programme__get:hover :global(svg) {
     transform: translateY(2px);
-  }
-  .programme__get--source {
-    color: var(--ink-3);
-    font-weight: 450;
-  }
-  .programme__get--source:hover {
-    color: var(--ink);
-  }
-  .programme__get--source:hover :global(svg) {
-    transform: translateX(3px);
   }
 </style>
