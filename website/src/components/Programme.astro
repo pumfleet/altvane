@@ -1,0 +1,94 @@
+---
+// The download list, set like a concert programme: one line per plug-in, its version, and the action.
+import Arrow from "./Arrow.astro";
+import { products, releasesUrl } from "../data/products";
+---
+<ol class="programme">
+  {products.map((p) => (
+    <li class="programme__row" data-product={p.code}>
+      <a class="programme__name" href={`/${p.code}`}>{p.name}</a>
+      <span class="programme__meta t-small num">
+        {p.status === "released" ? `${p.version}${p.platformNote ? `, ${p.platformNote}` : ""}` : "In development"}
+      </span>
+      {p.status === "released" ? (
+        <a class="programme__get" href={releasesUrl(p.code)} aria-label={`Download ${p.name} ${p.version}`}>
+          Download <Arrow dir="down" />
+        </a>
+      ) : (
+        <a class="programme__get programme__get--source" href={`/${p.code}`} aria-label={`About ${p.name}, in development`}>
+          Details <Arrow />
+        </a>
+      )}
+    </li>
+  ))}
+</ol>
+
+<style>
+  .programme {
+    border-top: 1.5px solid var(--ink);
+  }
+  .programme__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "name get" "meta get";
+    align-items: center;
+    column-gap: var(--s5);
+    padding-block: var(--s3) calc(var(--s3) + 1px);
+    border-bottom: 1px solid var(--rule);
+    position: relative;
+  }
+  .programme__row::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: -1px;
+    width: 0;
+    height: 1.5px;
+    background: var(--spot);
+    transition: width 0.6s var(--ease-out);
+  }
+  .programme__row:hover::before,
+  .programme__row:focus-within::before {
+    width: 100%;
+  }
+  .programme__name {
+    grid-area: name;
+    font-stretch: 112%;
+    font-weight: 450;
+    font-size: 1.1875rem;
+    letter-spacing: -0.012em;
+    text-decoration: none;
+  }
+  .programme__meta {
+    grid-area: meta;
+  }
+  .programme__get {
+    grid-area: get;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
+    font-weight: 500;
+    font-stretch: 108%;
+    font-size: 0.9375rem;
+    text-decoration: none;
+    padding: var(--s2) 0 var(--s2) var(--s3);
+  }
+  .programme__get :global(svg) {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.45s var(--ease-out);
+  }
+  .programme__get:hover :global(svg) {
+    transform: translateY(2px);
+  }
+  .programme__get--source {
+    color: var(--ink-3);
+    font-weight: 450;
+  }
+  .programme__get--source:hover {
+    color: var(--ink);
+  }
+  .programme__get--source:hover :global(svg) {
+    transform: translateX(3px);
+  }
+</style>

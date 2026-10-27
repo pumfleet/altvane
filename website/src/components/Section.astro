@@ -1,0 +1,46 @@
+---
+// A product-page section: the heading in the first four columns, the content in the rest.
+interface Props {
+  id: string;
+  title: string;
+  note?: string;
+}
+const { id, title, note } = Astro.props;
+---
+<section class="sheet section" aria-labelledby={id}>
+  <div class="section__head">
+    <h2 id={id} class="t-title">{title}</h2>
+    {note && <p class="t-small">{note}</p>}
+  </div>
+  <div class="section__body">
+    <slot />
+  </div>
+</section>
+
+<style>
+  .section {
+    margin-top: var(--s9);
+    padding-top: var(--s5);
+    border-top: 1px solid var(--rule);
+    row-gap: var(--s5);
+  }
+  .section__head {
+    grid-column: 1 / span 4;
+    display: grid;
+    gap: var(--s3);
+    align-content: start;
+  }
+  .section__head p {
+    max-width: 30ch;
+  }
+  .section__body {
+    grid-column: 5 / span 8;
+    min-width: 0;
+  }
+  @media (max-width: 900px) {
+    .section__head,
+    .section__body {
+      grid-column: 1 / -1;
+    }
+  }
+</style>
