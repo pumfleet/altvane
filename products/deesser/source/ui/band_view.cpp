@@ -61,7 +61,7 @@ namespace altvane::deesser {
             field->on_begin = [this, is_low] {
                 juce::RangedAudioParameter* paras[] = {param(params::kBandLow), param(params::kBandHigh)};
                 editor_.beginEdit(paras, is_low ? "Change Band Low" : "Change Band High");
-                field_edit_id_ = editor_.getEditId();
+                field_edit_ids_[is_low ? 0 : 1] = editor_.getEditId();
             };
             field->on_change = [this, is_low](const float v) {
                 const auto& tree = p_ref_.parameters_;
@@ -71,8 +71,8 @@ namespace altvane::deesser {
                     setBand(tree.getRawParameterValue(params::kBandLow)->load(), v, false);
                 }
             };
-            field->on_end = [this] {
-                if (editor_.isEditing(field_edit_id_)) {
+            field->on_end = [this, is_low] {
+                if (editor_.isEditing(field_edit_ids_[is_low ? 0 : 1])) {
                     editor_.endEdit();
                 }
             };

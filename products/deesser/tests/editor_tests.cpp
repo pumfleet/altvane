@@ -331,3 +331,26 @@ TEST_CASE("typing an edge past the other moves both, as one undo step", "[editor
     CHECK(std::abs(f.value(params::kBandLow) - params::kBandLowDefault) < 1.f);
     CHECK(params::isOpen(f.value(params::kBandHigh)));
 }
+
+TEST_CASE("one band field's edit survives the other's wheel ending", "[editor]") {
+    Fixture f;
+    auto& band = f.editor->getBandViewForTesting();
+    auto& low = band.getLowField();
+    auto& high = band.getHighField();
+    f.p.session_.undo_manager.clearUndoHistory();
+    // a scroll on Low, then a drag on High before Low's wheel timer ends its edit
+    low.on_begin();
+    low.on_change(5000.f);
+    high.on_begin();
+    high.on_change(12000.f);
+    low.on_end();
+    high.on_change(14000.f);
+    high.on_end();
+    CHECK(std::abs(f.value(params::kBandHigh) - 14000.f) < 1.f);
+    // the drag is one step of its own, with every change in it
+    f.p.session_.undo_manager.undo();
+    CHECK(params::isOpen(f.value(params::kBandHigh)));
+    CHECK(std::abs(f.value(params::kBandLow) - 5000.f) < 1.f);
+    f.p.session_.undo_manager.redo();
+    CHECK(std::abs(f.value(params::kBandHigh) - 14000.f) < 1.f);
+}
