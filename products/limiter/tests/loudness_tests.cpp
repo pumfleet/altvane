@@ -148,3 +148,27 @@ TEST_CASE("the processor measures the output and starts over when playback start
     CHECK(p.pullLoudness().generation > r.generation);
     p.setPlayHead(nullptr);
 }
+
+TEST_CASE("audio heard while stopped never reaches the integrated loudness", "[loudness]") {
+    PluginProcessor p;
+    FakePlayHead playhead;
+    p.setPlayHead(&playhead);
+    set(p.na_parameters_, zlstate::PLoudnessAutoReset::kID, 0.f);
+    prepare(p);
+
+    // stop, play, stop with something loud going through, then play on: with auto reset off the measurement
+    // continues, and the loud stopped audio must not leak into it through the momentary or short-term windows
+    playhead.playing = true;
+    run(p, sine(1000.0, -30.f), 4.0);
+    playhead.playing = false;
+    run(p, sine(1000.0, -10.f), 3.05);
+    playhead.playing = true;
+    run(p, sine(1000.0, -30.f), 4.0);
+    const auto r = p.pullLoudness();
+    REQUIRE(r.has_integrated);
+    CHECK_THAT(r.integrated, WithinAbs(-30.0, .1));
+    CHECK_THAT(r.max_momentary, WithinAbs(-30.0, .1));
+    CHECK_THAT(r.max_short_term, WithinAbs(-30.0, .1));
+    CHECK(r.seconds < 8.1);
+    p.setPlayHead(nullptr);
+}

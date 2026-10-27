@@ -113,6 +113,7 @@ private:
     std::atomic<int> num_main_channels_{0};
 
     bool update_channel_layout_per_call_{false};
+    size_t max_block_size_{1};
 
     // Altvane: the output stage around the limiter
     altvane::limiter::DCFilter dc_filter_;
@@ -127,6 +128,8 @@ private:
     void updateLoudnessTransport();
 
     void processBlockInternal(juce::AudioBuffer<float>& buffer, bool bypass);
+
+    void processPiece(std::span<float*> main, size_t num_samples, bool bypass);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PluginProcessor)
 };

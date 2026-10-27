@@ -89,12 +89,13 @@ void PluginProcessor::prepareToPlay(const double sample_rate, const int samples_
     const juce::PluginHostType host_type;
     update_channel_layout_per_call_ = host_type.isMaschine();
 
-    controller_.prepare(sample_rate, static_cast<size_t>(samples_per_block));
+    max_block_size_ = static_cast<size_t>(std::max(1, samples_per_block));
+    controller_.prepare(sample_rate, max_block_size_);
 
     const auto channels = static_cast<size_t>(std::max(1, getMainBusNumInputChannels()));
     dc_filter_.prepare(sample_rate);
     dither_.prepare(sample_rate);
-    loudness_meter_.prepare(sample_rate, channels, static_cast<size_t>(samples_per_block));
+    loudness_meter_.prepare(sample_rate, channels, max_block_size_);
 
     updateChannelLayout();
 }
@@ -213,14 +214,21 @@ void PluginProcessor::processBlockInternal(juce::AudioBuffer<float>& buffer, con
         buffer.clear();
         return;
     }
-    std::array<float*, 2> main_pointers{};
-    for (int channel = 0; channel < num_main_channels; ++channel) {
-        main_pointers[static_cast<size_t>(channel)] = buffer.getWritePointer(channel);
-    }
-    const auto main = std::span<float*>{main_pointers.data(), static_cast<size_t>(num_main_channels)};
-    const auto num_samples = static_cast<size_t>(buffer.getNumSamples());
     updateLoudnessTransport();
 
+    // the engine's buffers hold the prepared block size; hosts may send more, so work in pieces of at most that
+    const auto total = static_cast<size_t>(buffer.getNumSamples());
+    for (size_t start = 0; start < total; start += max_block_size_) {
+        std::array<float*, 2> main_pointers{};
+        for (int channel = 0; channel < num_main_channels; ++channel) {
+            main_pointers[static_cast<size_t>(channel)] = buffer.getWritePointer(channel) + start;
+        }
+        processPiece(std::span<float*>{main_pointers.data(), static_cast<size_t>(num_main_channels)},
+                     std::min(max_block_size_, total - start), bypass);
+    }
+}
+
+void PluginProcessor::processPiece(const std::span<float*> main, const size_t num_samples, const bool bypass) {
     // the output stage only touches what the limiter does: bypass passes the input, delta the removed signal
     const auto bypassed = bypass || bypass_.load(std::memory_order::relaxed) > .5f;
     const auto processing = !bypassed && delta_.load(std::memory_order::relaxed) < .5f;
@@ -244,7 +252,7 @@ void PluginProcessor::processBlockInternal(juce::AudioBuffer<float>& buffer, con
                          : altvane::limiter::Dither::Shape::kFlat);
     dither_.process(main, num_samples);
 
-    std::array<const float*, 2> measured{main_pointers[0], main_pointers[1]};
+    std::array<const float*, 2> measured{main[0], main.size() > 1 ? main[1] : main[0]};
     loudness_meter_.process(std::span<const float* const>{measured.data(), main.size()}, num_samples);
 }
 

@@ -248,6 +248,24 @@ TEST_CASE("the DC filter removes an offset", "[output]") {
     CHECK(std::abs(mean / 48000.0) < 1e-3);
 }
 
+TEST_CASE("host blocks larger than the prepared size are processed in pieces", "[realtime]") {
+    // JUCE allows a host to send more than prepareToPlay announced; the engine's buffers only hold that much
+    const auto render = [](const int host_block) {
+        PluginProcessor p;
+        set(p, zlp::PInputGain::kID, 9.f);
+        prepare(p, 256);
+        return run(p, sine(440.0, -6.f), 1.0, false, host_block);
+    };
+    const auto small = render(256);
+    const auto large = render(1500);
+    REQUIRE(small[0].size() == large[0].size());
+    float worst = 0.f;
+    for (size_t n = 0; n < small[0].size(); ++n) {
+        worst = std::max({worst, std::abs(small[0][n] - large[0][n]), std::abs(small[1][n] - large[1][n])});
+    }
+    CHECK(worst < 1e-6f);
+}
+
 TEST_CASE("the audio thread does not allocate", "[realtime]") {
     PluginProcessor p;
     set(p, zlp::PInputGain::kID, 12.f);

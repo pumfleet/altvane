@@ -81,7 +81,11 @@ namespace altvane::limiter {
          * whether blocks count towards the integrated loudness, range and maxima; momentary and short-term
          * loudness always follow the signal (audio thread)
          */
-        void setAccumulating(const bool accumulating) { accumulating_ = accumulating; }
+        void setAccumulating(const bool accumulating) {
+            accumulating_ = accumulating;
+            // the step in progress has some uncounted audio in it
+            step_paused_ = step_paused_ || !accumulating;
+        }
 
         void process(std::span<const float* const> channels, const size_t num_samples) {
             if (reset_requested_.exchange(false, std::memory_order::acq_rel)) {
@@ -182,6 +186,9 @@ namespace altvane::limiter {
         uint64_t steps_measured_{0};
         uint32_t generation_{0};
         bool accumulating_{true};
+        // the step in progress saw audio while not counting; the number of counted steps in a row
+        bool step_paused_{false};
+        size_t counted_run_{0};
         std::atomic<bool> reset_requested_{false};
 
         ui::TriBuffer<LoudnessReadings> readings_;
@@ -203,6 +210,8 @@ namespace altvane::limiter {
             max_short_term_ = LoudnessReadings::kNoLevel;
             true_peak_max_ = 0.f;
             steps_measured_ = 0;
+            step_paused_ = !accumulating_;
+            counted_run_ = 0;
             ++generation_;
             publish(LoudnessReadings::kNoLevel, LoudnessReadings::kNoLevel);
         }
@@ -240,13 +249,19 @@ namespace altvane::limiter {
             step_filled_ = 0;
 
             auto momentary = LoudnessReadings::kNoLevel, short_term = LoudnessReadings::kNoLevel;
-            if (accumulating_) {
+            // a window only counts when every step in it was measured while counting, so audio heard while the
+            // transport was stopped never reaches the integrated loudness or the range on resume
+            if (accumulating_ && !step_paused_) {
                 ++steps_measured_;
+                counted_run_ = std::min(counted_run_ + 1, kShortTermSteps);
+            } else {
+                counted_run_ = 0;
             }
+            step_paused_ = !accumulating_;
             if (steps_count_ >= kMomentarySteps) {
                 const auto energy = meanOfLastSteps(kMomentarySteps);
                 momentary = energyToLoudness(energy);
-                if (accumulating_) {
+                if (counted_run_ >= kMomentarySteps) {
                     // a 400 ms gating block every 100 ms (75 % overlap); the absolute gate is -70 LUFS
                     if (momentary > kHistogramFloor) {
                         add(gating_, gating_total_, momentary, energy);
@@ -257,7 +272,7 @@ namespace altvane::limiter {
             if (steps_count_ >= kShortTermSteps) {
                 const auto energy = meanOfLastSteps(kShortTermSteps);
                 short_term = energyToLoudness(energy);
-                if (accumulating_) {
+                if (counted_run_ >= kShortTermSteps) {
                     if (short_term > kHistogramFloor) {
                         add(range_, range_total_, short_term, energy);
                         const auto bin = static_cast<int>(std::floor(short_term)) - LoudnessReadings::kHistogramLow;
