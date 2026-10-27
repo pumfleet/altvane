@@ -347,8 +347,55 @@ TEST_CASE("the stem outputs are off or match the main output", "[engine][stems]"
     auto mismatched = makeLayout(stereo, true);
     mismatched.outputBuses.getReference(PluginProcessor::kFirstStemBus + dsp::kReverb) = mono;
     CHECK_FALSE(p.checkBusesLayoutSupported(mismatched));
+    // AU enables every bus at its default (stereo) and still needs a mono instance
+    auto mono_with_stereo_stems = makeLayout(stereo, true);
+    mono_with_stereo_stems.inputBuses.getReference(0) = mono;
+    mono_with_stereo_stems.outputBuses.getReference(0) = mono;
+    CHECK(p.checkBusesLayoutSupported(mono_with_stereo_stems));
     // by default, the plug-in is a plain stereo effect
     CHECK(p.getBusesLayout() == makeLayout(stereo, false));
+}
+
+TEST_CASE("a mono instance plays each stem on both channels of a stereo stem output", "[engine][stems]") {
+    PluginProcessor p;
+    setLevels(p, -6.f, -20.f, 3.f);
+    const auto input = makeSignal(1, 48000, 44100.0);
+    auto layout = makeLayout(juce::AudioChannelSet::stereo(), true);
+    layout.inputBuses.getReference(0) = juce::AudioChannelSet::mono();
+    layout.outputBuses.getReference(0) = juce::AudioChannelSet::mono();
+    REQUIRE(p.setBusesLayout(layout));
+    REQUIRE(p.getTotalNumOutputChannels() == 7);
+    p.setRateAndBufferSizeDetails(44100.0, 512);
+    p.setNonRealtime(true);
+    p.prepareToPlay(44100.0, 512);
+    const auto latency = p.getLatencySamples();
+    juce::AudioBuffer<float> out(7, input.getNumSamples() + latency);
+    juce::AudioBuffer<float> io(7, 512);
+    juce::MidiBuffer midi;
+    for (int pos = 0; pos < out.getNumSamples(); pos += 512) {
+        const auto n = std::min(512, out.getNumSamples() - pos);
+        io.setSize(7, n, false, false, true);
+        io.clear();
+        const auto available = std::clamp(input.getNumSamples() - pos, 0, n);
+        if (available > 0) {
+            io.copyFrom(0, 0, input, 0, pos, available);
+        }
+        p.processBlock(io, midi);
+        for (int c = 0; c < 7; ++c) {
+            out.copyFrom(c, pos, io, c, 0, n);
+        }
+    }
+    p.releaseResources();
+    juce::AudioBuffer<float> sum(1, out.getNumSamples());
+    sum.clear();
+    for (int s = 0; s < dsp::kNumStems; ++s) {
+        CAPTURE(s);
+        // the main output's channel, then two per stem
+        CHECK(differenceDb(out, 1 + 2 * s, out, 2 + 2 * s) < -200.f + 1.f);
+        CHECK(out.getMagnitude(1 + 2 * s, 0, out.getNumSamples()) > 0.f);
+        sum.addFrom(0, 0, out, 1 + 2 * s, 0, out.getNumSamples());
+    }
+    CHECK(differenceDb(out, 0, sum, 0) < -90.f);
 }
 
 TEST_CASE("with only some stem outputs on, those carry their stems", "[engine][stems]") {

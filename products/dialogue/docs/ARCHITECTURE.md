@@ -35,7 +35,8 @@ host rate ─► RateBridge: down to 48 kHz ─► Engine ─► up to the host 
 ## Stem outputs
 
 Output buses 1–3 (Voice, Ambience, Reverb) are off by default, so the plug-in is a plain effect; each may be on
-with the main output's channels. When any is on, `prepare` asks the engine for stems: the pipeline also gives each
+with the main output's channels, or stereo on a mono instance (the stem on both channels; AU enables every bus at
+its default, stereo, and must still offer mono). When any is on, `prepare` asks the engine for stems: the pipeline also gives each
 channel's stem transfers, `gain · weighted share`, which cross-fade with the mix's on a pipeline switch, and the
 worker synthesises each into its own output ring. Their sum is the mix's transfer, so the stem outputs add up to the
 main output (to float rounding, tested at 44.1–96 kHz). The `RateBridge` resamples each stem like the mix and adds

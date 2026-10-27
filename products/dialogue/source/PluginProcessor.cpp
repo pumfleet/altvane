@@ -76,9 +76,12 @@ namespace altvane::dialogue {
         if (in != out || (out != juce::AudioChannelSet::mono() && out != juce::AudioChannelSet::stereo())) {
             return false;
         }
-        // each stem output is off, or has the main output's channels
+        // each stem output is off, has the main output's channels, or is stereo on a mono instance (the stem on both
+        // channels: AU enables every bus at its default, stereo, and must still offer mono)
         for (int bus = kFirstStemBus; bus < layouts.outputBuses.size(); ++bus) {
-            if (const auto set = layouts.getChannelSet(false, bus); !set.isDisabled() && set != out) {
+            const auto set = layouts.getChannelSet(false, bus);
+            if (!set.isDisabled() && set != out
+                && !(out == juce::AudioChannelSet::mono() && set == juce::AudioChannelSet::stereo())) {
                 return false;
             }
         }
@@ -121,12 +124,14 @@ namespace altvane::dialogue {
         }
         dsp::StemOutputs stems{};
         std::array<bool, dsp::kNumStems> stem_enabled{};
+        std::array<int, dsp::kNumStems> stem_first{};
         if (stem_outputs_) {
             for (int s = 0; s < dsp::kNumStems; ++s) {
                 const auto bus = kFirstStemBus + s;
                 const auto first = getChannelCountOfBus(false, bus) >= channels
                                        ? getChannelIndexInProcessBlockBuffer(false, bus, 0)
                                        : -1;
+                stem_first[static_cast<size_t>(s)] = first;
                 stem_enabled[static_cast<size_t>(s)] = first >= 0 && first + channels <= buffer.getNumChannels();
                 for (int c = 0; c < channels; ++c) {
                     stems[static_cast<size_t>(s)][static_cast<size_t>(c)] =
@@ -197,6 +202,16 @@ namespace altvane::dialogue {
         }
         for (int c = 0; c < channels; ++c) {
             storePeak(output_peak_[static_cast<size_t>(c)], buffer.getMagnitude(c, 0, buffer.getNumSamples()));
+        }
+        // a stereo stem output on a mono instance carries its stem on both channels
+        if (channels == 1) {
+            for (int s = 0; s < dsp::kNumStems; ++s) {
+                const auto first = stem_first[static_cast<size_t>(s)];
+                if (stem_enabled[static_cast<size_t>(s)] && getChannelCountOfBus(false, kFirstStemBus + s) > 1
+                    && first + 1 < buffer.getNumChannels()) {
+                    buffer.copyFrom(first + 1, 0, buffer, first, 0, buffer.getNumSamples());
+                }
+            }
         }
         // a mono bus may be given a second, scratch channel
         const auto layout_channels = std::max(getTotalNumInputChannels(), getTotalNumOutputChannels());
