@@ -45,6 +45,19 @@ Altvane product shares.
 Altvane De-Esser (`products/deesser`) is new code, licensed under AGPL-3.0. Its spectrum uses the PFFFT bundled with
 r8brain-free-src, by Julien Pommier (FFTPACK licence, `licenses/pffft_LICENSE.txt`).
 
+## Altvane Limiter
+
+Altvane Limiter (`products/limiter`) is a fork of [ZL Limiter](https://github.com/ZL-Audio/ZLLimiter) by zsliu98 /
+ZL Audio, used under the GNU Affero General Public License v3 (see `LICENSE.md`).
+
+- The audio engine (`products/limiter/source/dsp`, `source/zlp`, `source/chore`) is upstream code, vendored unmodified
+  from the commit recorded in `products/limiter/UPSTREAM`, so upstream fixes can be taken directly.
+- The processor (`products/limiter/source/PluginProcessor.*`) and state (`source/state`) are adapted from upstream.
+  The Altvane Limiter editor (`products/limiter/source/ui`), output stage and loudness meter
+  (`products/limiter/source/engine`) are new code, also licensed under AGPL-3.0.
+- The original ZL Limiter interface has been removed; Altvane Limiter reads and writes the same preset and session
+  format, so ZL Limiter presets and sessions load (with Altvane's extra parameters at their defaults).
+
 ## Third-party components
 
 Third-party components and their licenses are listed in `licenses/`, including the Inter typeface (SIL OFL 1.1).

@@ -7,7 +7,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License along with Altvane. If not, see <https://www.gnu.org/licenses/>.
 // Renders an Altvane product's application icon and installer artwork as PNGs.
-// usage: AltvaneIcons <output-dir> <product-label> [grid|knee|ride]   (see make_icons.sh, which assembles .icns / .ico / .bmp)
+// usage: AltvaneIcons <output-dir> <product-label> [grid|knee|ride|ess|ceiling]   (see make_icons.sh, which assembles .icns / .ico / .bmp)
 
 #include <juce_gui_basics/juce_gui_basics.h>
 
@@ -22,10 +22,10 @@ namespace {
 
     /**
      * the quiet drawing behind the mark that tells the products apart: a frequency grid (EQ), a compressor's
-     * transfer curve over a level grid (Compressor), a level riding onto a target line (Leveler) or a voice's
-     * waveform with an ess held under a line (De-Esser)
+     * transfer curve over a level grid (Compressor), a level riding onto a target line (Leveler), a voice's
+     * waveform with an ess held under a line (De-Esser) or a waveform held under a flat ceiling (Limiter)
      */
-    enum class Motif { kGrid, kKnee, kRide, kEss };
+    enum class Motif { kGrid, kKnee, kRide, kEss, kCeiling };
 
     /**
      * the Altvane mark, the same as the editor header's, with a soft glow
@@ -126,6 +126,31 @@ namespace {
             g.fillRect(juce::Rectangle<float>(tile.getX(), at(0.f, kBase + kCeiling + .015f).y, tile.getWidth(),
                                               std::max(1.f, s / 512.f)));
         }
+        if (motif == Motif::kCeiling) {
+            // a level envelope whose peaks flatten against a ceiling line
+            const auto at = [&](const float u, const float v) {
+                return juce::Point<float>(tile.getX() + tile.getWidth() * u, tile.getBottom() - tile.getHeight() * v);
+            };
+            constexpr float kCeilingLevel = .62f;
+            constexpr std::array kPeaks{.3f, .55f, .8f, .42f, .9f, .5f, .75f, .35f, .85f, .6f, .95f, .45f};
+            juce::Path envelope;
+            envelope.startNewSubPath(at(0.f, .12f));
+            for (size_t i = 0; i < kPeaks.size(); ++i) {
+                const auto u = (static_cast<float>(i) + .5f) / static_cast<float>(kPeaks.size());
+                const auto half = .5f / static_cast<float>(kPeaks.size());
+                const auto peak = std::min(kPeaks[i], kCeilingLevel);
+                envelope.lineTo(at(u - half * .55f, peak));
+                envelope.lineTo(at(u + half * .25f, peak));
+                envelope.lineTo(at(u + half, .14f + .05f * static_cast<float>(i % 3)));
+            }
+            const auto stroke = std::max(1.f, s / 200.f);
+            g.setColour(juce::Colours::white.withAlpha(.09f));
+            g.strokePath(envelope, juce::PathStrokeType(stroke, juce::PathStrokeType::mitered,
+                                                        juce::PathStrokeType::rounded));
+            g.setColour(kAccent.withAlpha(.22f));
+            g.fillRect(juce::Rectangle<float>(tile.getX(), at(0.f, kCeilingLevel).y - stroke * .5f, tile.getWidth(),
+                                              stroke));
+        }
         g.restoreState();
         g.setColour(juce::Colours::white.withAlpha(.08f));
         g.drawRoundedRectangle(tile.reduced(s / 512.f), radius, std::max(1.f, s / 256.f));
@@ -206,16 +231,17 @@ namespace {
 int main(const int argc, char* argv[]) {
     juce::ScopedJuceInitialiser_GUI gui;
     if (argc < 3) {
-        std::cerr << "usage: AltvaneIcons <output-dir> <product-label> [grid|knee|ride|ess]" << std::endl;
+        std::cerr << "usage: AltvaneIcons <output-dir> <product-label> [grid|knee|ride|ess|ceiling]" << std::endl;
         return 1;
     }
     const auto dir = juce::File::getCurrentWorkingDirectory().getChildFile(argv[1]);
     const auto product = juce::String(argv[2]);
     const auto motif_name = argc > 3 ? juce::String(argv[3]) : juce::String("grid");
-    const auto motif = motif_name == "knee"   ? Motif::kKnee
-                       : motif_name == "ride" ? Motif::kRide
-                       : motif_name == "ess"  ? Motif::kEss
-                                              : Motif::kGrid;
+    const auto motif = motif_name == "knee"      ? Motif::kKnee
+                       : motif_name == "ride"    ? Motif::kRide
+                       : motif_name == "ess"     ? Motif::kEss
+                       : motif_name == "ceiling" ? Motif::kCeiling
+                                                 : Motif::kGrid;
     dir.createDirectory();
     for (const auto size : {16, 24, 32, 48, 64, 128, 256, 512, 1024}) {
         write(renderIcon(size, motif), dir.getChildFile("icon_" + juce::String(size) + ".png"));

@@ -1,0 +1,19 @@
+# Altvane Limiter's audio engine is ZL Limiter's, vendored unmodified.
+# scripts/check_upstream.sh limiter   verifies the vendored code matches this pin (CI runs it)
+# scripts/sync_upstream.sh limiter    moves the pin and re-vendors (read by bash: keep it KEY="value")
+
+# where the engine comes from, and the commit it is vendored at
+REPO="https://github.com/ZL-Audio/ZLLimiter"
+COMMIT="412c844df69919fe6aa36bb74f1f9f9c877d8a39"
+
+# upstream directories copied byte-for-byte into products/limiter/<same path>
+VENDORED="source/dsp source/zlp source/chore"
+
+# upstream submodules pinned at the same commit in products/limiter/<same path>
+SUBMODULES=""
+
+# upstream submodules Altvane shares across products in third_party/<name>: reported on sync, never moved
+SHARED_SUBMODULES="JUCE highway"
+
+# upstream files Altvane Limiter adapted rather than vendored: sync lists their upstream changes for porting by hand
+WATCH="source/PluginProcessor.cpp source/PluginProcessor.hpp source/state CMakeLists.txt"

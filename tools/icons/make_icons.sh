@@ -3,7 +3,7 @@
 # (uses iconutil and sips on macOS; elsewhere the .icns is assembled here and the .bmp files come from the tool).
 #   cmake --preset mac-arm64-debug -DALTVANE_BUILD_TOOLS=ON && cmake --build --preset mac-arm64-debug --target AltvaneIcons
 #   tools/icons/make_icons.sh build/mac-arm64-debug/tools/icons/AltvaneIcons_artefacts/Debug/AltvaneIcons eq EQ
-#   tools/icons/make_icons.sh <tool> compressor COMPRESSOR knee    (optional motif behind the mark: grid, knee, ride or ess)
+#   tools/icons/make_icons.sh <tool> compressor COMPRESSOR knee    (optional motif behind the mark: grid, knee, ride, ess or ceiling)
 set -euo pipefail
 
 tool="${1:?path to the AltvaneIcons executable}"
