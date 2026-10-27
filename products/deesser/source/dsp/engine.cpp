@@ -239,13 +239,14 @@ namespace altvane::deesser::dsp {
         const auto detection_channels = stereo && !ms ? 2 : 1;
         if (const auto layout = stereo ? static_cast<int>(c.stereo) : -2; layout != layout_) {
             // channels that now carry something else (left becomes mid, an idle right comes back) start afresh,
-            // rather than with the reduction they had
+            // rather than with the reduction and detection band (what Trigger plays) they had
             if (layout_ != -1) {
                 for (size_t ch = 0; ch < 2; ++ch) {
                     detectors_[ch].reset();
                     computers_[ch].reset();
                     shelf_[ch].reset();
                     bell_[ch].reset();
+                    band_delay_[ch].reset();
                 }
             }
             layout_ = layout;

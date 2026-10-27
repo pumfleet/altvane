@@ -374,6 +374,40 @@ TEST_CASE("back in Vocal, the detector does not weigh esses against a body heard
     CHECK(confidence > .9f);
 }
 
+TEST_CASE("Trigger does not replay a channel from before a Mid or Side spell", "[engine]") {
+    dsp::Controls c;
+    c.mode = dsp::Mode::kAllround;
+    c.listen = dsp::Listen::kTrigger;
+    dsp::Engine engine;
+    engine.setControls(c);
+    engine.prepare(kRate, 2);
+    std::vector<float> left(256), right(256);
+    float* io[] = {left.data(), right.data()};
+    const auto run = [&](const double seconds, const bool tone) {
+        float peak = 0.f;
+        for (int pos = 0; pos < static_cast<int>(kRate * seconds); pos += 256) {
+            for (int i = 0; i < 256; ++i) {
+                const auto t = static_cast<double>(pos + i) / kRate;
+                left[static_cast<size_t>(i)] = 0.f;
+                right[static_cast<size_t>(i)] = tone ? .5f * static_cast<float>(std::sin(2.0 * juce::MathConstants<double>::pi * 8000.0 * t)) : 0.f;
+            }
+            engine.process(io, 2, nullptr, 0, 256);
+            for (size_t i = 0; i < 256; ++i) {
+                peak = std::max({peak, std::abs(left[i]), std::abs(right[i])});
+            }
+        }
+        return peak;
+    };
+    CHECK(run(.5, true) > .1f);
+    // a second of silence in Mid, then Stereo again
+    c.stereo = dsp::StereoMode::kMid;
+    engine.setControls(c);
+    run(1.0, false);
+    c.stereo = dsp::StereoMode::kStereo;
+    engine.setControls(c);
+    CHECK(run(.5, false) < 1e-6f);
+}
+
 TEST_CASE("stereo link shares the reduction between the channels", "[engine]") {
     const auto len = static_cast<int>(kRate * .5);
     juce::AudioBuffer<float> input(2, len);
