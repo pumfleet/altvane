@@ -84,7 +84,7 @@ namespace altvane::dialogue {
         output_.setValue(tree.getRawParameterValue(params::kOutput)->load());
         bypass_.setOn(tree.getRawParameterValue(params::kBypass)->load() > .5f);
 
-        const auto show_stereo = p_ref_.getTotalNumOutputChannels() > 1;
+        const auto show_stereo = p_ref_.getMainBusNumOutputChannels() > 1;
         if (show_stereo != show_stereo_) {
             show_stereo_ = show_stereo;
             linked_.setVisible(show_stereo);
@@ -173,7 +173,7 @@ namespace altvane::dialogue {
 
     void OutputRail::tick(const double dt) {
         const auto peaks = p_ref_.takeOutputPeaks();
-        if (meter_.tick(dt, peaks[0], p_ref_.getTotalNumOutputChannels() > 1 ? peaks[1] : peaks[0])) {
+        if (meter_.tick(dt, peaks[0], p_ref_.getMainBusNumOutputChannels() > 1 ? peaks[1] : peaks[0])) {
             repaint();
         }
     }

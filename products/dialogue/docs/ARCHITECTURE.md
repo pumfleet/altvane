@@ -36,6 +36,20 @@ host rate ─► RateBridge: down to 48 kHz ─► Engine ─► up to the host 
 - `PluginProcessor` — parameters (`params.hpp`; the IDs are frozen, `tests` checks them), state, bypass cross-fade,
   output gain, meters. The audition mode (`listen`) is not a parameter and is never saved.
 
+## Stem outputs
+
+Output buses 1–3 (Voice, Ambience, Reverb) are off by default, so the plug-in is a plain effect; each may be on
+with the main output's channels, or stereo on a mono instance (the stem on both channels; AU enables every bus at
+its default, stereo, and must still offer mono). When any is on, `prepare` asks the engine for stems: the pipeline also gives each
+stream's stem transfers, `gain · weighted share`, decodes each stem to the channels like the mix (in Mid/Side from
+the mid and the side), the stem spectra cross-fade with the mix's on a pipeline switch, and the worker synthesises
+each into its own output ring. Their sum is the mix's transfer, so the stem outputs add up to the main output (to
+float rounding, tested at 44.1–96 kHz and in Mid/Side). The `RateBridge` resamples each stem like the mix and adds
+the round trip's residual to the ambience at its level. A sample the model was late for, or a frame it could not
+separate, goes to the voice, as the mix plays it unprocessed. The processor applies the output gain and the bypass
+fade (to silence) to the stems; `listen` does not touch them. A stem the host left off is written to scratch.
+JUCE's AU wrapper enables every bus, so AU always computes the stems: three more inverse FFTs per channel and hop.
+
 ## Threads and latency
 
 The audio thread never waits in real time and never allocates (`tests` counts allocations). It writes its block into
@@ -70,7 +84,8 @@ into `Presets/Factory`.
 ## Verification
 
 - `AltvaneDialogueTests` (Catch2): null tests at 44.1–192 kHz with irregular blocks, the real-time path while the model
-  falls behind, impulse latency, the 48 kHz round trip's alignment, solo stems summing to the input (also in
+  falls behind, impulse latency, the 48 kHz round trip's alignment, solo stems summing to the input, stem outputs
+  summing to the main output and matching the solos at their levels (also late, bypassed, partly enabled and in
   Mid/Side), Mid/Side meters decoded from both streams, stereo-mode changes while playing, block-size independence,
   Removed being the input minus the mix, no allocation on the audio thread, frozen parameter IDs, state, text
   round-trips, editor accessibility and parameter mapping, factory presets.

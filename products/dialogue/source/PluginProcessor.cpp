@@ -22,7 +22,10 @@ namespace altvane::dialogue {
     PluginProcessor::PluginProcessor() :
         AudioProcessor(BusesProperties()
                        .withInput("Input", juce::AudioChannelSet::stereo(), true)
-                       .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+                       .withOutput("Output", juce::AudioChannelSet::stereo(), true)
+                       .withOutput("Voice", juce::AudioChannelSet::stereo(), false)
+                       .withOutput("Ambience", juce::AudioChannelSet::stereo(), false)
+                       .withOutput("Reverb", juce::AudioChannelSet::stereo(), false)),
         parameters_(*this, &session_.undo_manager, "Parameters", params::createLayout()) {
         bypass_ = dynamic_cast<juce::AudioParameterBool*>(parameters_.getParameter(params::kBypass));
         for (size_t s = 0; s < dsp::kNumStems; ++s) {
@@ -43,9 +46,15 @@ namespace altvane::dialogue {
     void PluginProcessor::prepareToPlay(const double sample_rate, const int samples_per_block) {
         max_block_ = std::max(samples_per_block, 1);
         updateControls();
-        const auto channels = std::max(getTotalNumInputChannels(), getTotalNumOutputChannels());
-        model_ready_.store(bridge_.prepare(sample_rate, channels, max_block_));
+        const auto channels = std::max(getMainBusNumInputChannels(), getMainBusNumOutputChannels());
+        stem_outputs_ = false;
+        for (int s = 0; s < dsp::kNumStems; ++s) {
+            stem_outputs_ = stem_outputs_ || getChannelCountOfBus(false, kFirstStemBus + s) > 0;
+        }
+        model_ready_.store(bridge_.prepare(sample_rate, channels, max_block_, stem_outputs_));
         setLatencySamples(bridge_.getLatency());
+        // the engine writes every stem; one the host has not enabled goes here
+        stem_scratch_.setSize(stem_outputs_ ? dsp::kNumStems * 2 : 0, max_block_);
 
         bypass_mix_.reset(sample_rate, .05);
         bypass_mix_.setCurrentAndTargetValue(bypass_->get() ? 1.f : 0.f);
@@ -53,6 +62,8 @@ namespace altvane::dialogue {
         output_gain_.setCurrentAndTargetValue(juce::Decibels::decibelsToGain(output_->load()));
         residual_gain_.reset(sample_rate, .03);
         residual_gain_.setCurrentAndTargetValue(1.f);
+        stem_residual_gain_.reset(sample_rate, .03);
+        stem_residual_gain_.setCurrentAndTargetValue(1.f);
     }
 
     void PluginProcessor::releaseResources() {
@@ -62,7 +73,19 @@ namespace altvane::dialogue {
     bool PluginProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
         const auto in = layouts.getMainInputChannelSet();
         const auto out = layouts.getMainOutputChannelSet();
-        return in == out && (out == juce::AudioChannelSet::mono() || out == juce::AudioChannelSet::stereo());
+        if (in != out || (out != juce::AudioChannelSet::mono() && out != juce::AudioChannelSet::stereo())) {
+            return false;
+        }
+        // each stem output is off, has the main output's channels, or is stereo on a mono instance (the stem on both
+        // channels: AU enables every bus at its default, stereo, and must still offer mono)
+        for (int bus = kFirstStemBus; bus < layouts.outputBuses.size(); ++bus) {
+            const auto set = layouts.getChannelSet(false, bus);
+            if (!set.isDisabled() && set != out
+                && !(out == juce::AudioChannelSet::mono() && set == juce::AudioChannelSet::stereo())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     void PluginProcessor::audioWorkgroupContextChanged(const juce::AudioWorkgroup& workgroup) {
@@ -94,9 +117,28 @@ namespace altvane::dialogue {
 
     void PluginProcessor::process(juce::AudioBuffer<float>& buffer, const bool force_bypass) {
         juce::ScopedNoDenormals no_denormals;
-        const auto channels = std::min(buffer.getNumChannels(), 2);
+        // the main bus's channels come first, then the stem outputs'
+        const auto channels = std::min({buffer.getNumChannels(), getMainBusNumOutputChannels(), 2});
         for (auto c = getTotalNumInputChannels(); c < buffer.getNumChannels(); ++c) {
             buffer.clear(c, 0, buffer.getNumSamples());
+        }
+        dsp::StemOutputs stems{};
+        std::array<bool, dsp::kNumStems> stem_enabled{};
+        std::array<int, dsp::kNumStems> stem_first{};
+        if (stem_outputs_) {
+            for (int s = 0; s < dsp::kNumStems; ++s) {
+                const auto bus = kFirstStemBus + s;
+                const auto first = getChannelCountOfBus(false, bus) >= channels
+                                       ? getChannelIndexInProcessBlockBuffer(false, bus, 0)
+                                       : -1;
+                stem_first[static_cast<size_t>(s)] = first;
+                stem_enabled[static_cast<size_t>(s)] = first >= 0 && first + channels <= buffer.getNumChannels();
+                for (int c = 0; c < channels; ++c) {
+                    stems[static_cast<size_t>(s)][static_cast<size_t>(c)] =
+                            stem_enabled[static_cast<size_t>(s)] ? buffer.getWritePointer(first + c)
+                                                                 : stem_scratch_.getWritePointer(s * 2 + c);
+                }
+            }
         }
         updateControls();
         for (int c = 0; c < channels; ++c) {
@@ -117,6 +159,8 @@ namespace altvane::dialogue {
                 break;
         }
         residual_gain_.setTargetValue(residual);
+        // the stem outputs are the mix's parts, whatever the audition: the ambience stem gets it at its level
+        stem_residual_gain_.setTargetValue(ambience);
         bypass_mix_.setTargetValue(force_bypass || bypass_->get() ? 1.f : 0.f);
         output_gain_.setTargetValue(juce::Decibels::decibelsToGain(output_->load(std::memory_order::relaxed)));
         const auto realtime = !isNonRealtime();
@@ -124,10 +168,20 @@ namespace altvane::dialogue {
         for (int offset = 0; offset < buffer.getNumSamples(); offset += max_block_) {
             const auto n = std::min(max_block_, buffer.getNumSamples() - offset);
             juce::AudioBuffer<float> chunk(buffer.getArrayOfWritePointers(), channels, offset, n);
-            // the residual gain changes slowly; one value per chunk is enough
+            dsp::StemOutputs chunk_stems{};
+            for (size_t s = 0; s < dsp::kNumStems; ++s) {
+                for (size_t c = 0; c < static_cast<size_t>(channels); ++c) {
+                    chunk_stems[s][c] = stems[s][c] == nullptr ? nullptr
+                                                               : stems[s][c] + (stem_enabled[s] ? offset : 0);
+                }
+            }
+            // the residual gains change slowly; one value per chunk is enough
             const auto residual_gain = residual_gain_.getCurrentValue();
             residual_gain_.skip(n);
-            bridge_.process(chunk, realtime, residual_gain);
+            const auto stem_residual_gain = stem_residual_gain_.getCurrentValue();
+            stem_residual_gain_.skip(n);
+            bridge_.process(chunk, realtime, residual_gain, stem_outputs_ ? &chunk_stems : nullptr,
+                            stem_residual_gain);
             for (int i = 0; i < n; ++i) {
                 const auto mix = bypass_mix_.getNextValue();
                 const auto gain = output_gain_.getNextValue();
@@ -136,13 +190,32 @@ namespace altvane::dialogue {
                     const auto dry = bridge_.getDelayedDry(c)[i];
                     y[i] = y[i] * gain * (1.f - mix) + dry * mix;
                 }
+                // bypassed, the main output carries the input and the stem outputs fall silent
+                if (stem_outputs_) {
+                    for (size_t s = 0; s < dsp::kNumStems; ++s) {
+                        for (size_t c = 0; c < static_cast<size_t>(channels); ++c) {
+                            chunk_stems[s][c][i] *= gain * (1.f - mix);
+                        }
+                    }
+                }
             }
         }
         for (int c = 0; c < channels; ++c) {
             storePeak(output_peak_[static_cast<size_t>(c)], buffer.getMagnitude(c, 0, buffer.getNumSamples()));
         }
+        // a stereo stem output on a mono instance carries its stem on both channels
+        if (channels == 1) {
+            for (int s = 0; s < dsp::kNumStems; ++s) {
+                const auto first = stem_first[static_cast<size_t>(s)];
+                if (stem_enabled[static_cast<size_t>(s)] && getChannelCountOfBus(false, kFirstStemBus + s) > 1
+                    && first + 1 < buffer.getNumChannels()) {
+                    buffer.copyFrom(first + 1, 0, buffer, first, 0, buffer.getNumSamples());
+                }
+            }
+        }
         // a mono bus may be given a second, scratch channel
-        if (channels == 1 && buffer.getNumChannels() > 1) {
+        const auto layout_channels = std::max(getTotalNumInputChannels(), getTotalNumOutputChannels());
+        if (channels == 1 && buffer.getNumChannels() > layout_channels) {
             buffer.copyFrom(1, 0, buffer, 0, 0, buffer.getNumSamples());
         }
     }
