@@ -45,6 +45,40 @@ TEST_CASE("state round trips, with ZL Limiter's tags and Altvane's additions", "
     CHECK(b.na_parameters_.getRawParameterValue(zlstate::PLoudnessTarget::kID)->load() == 3.f);
 }
 
+TEST_CASE("a ZL Limiter state sets Altvane's own parameters to their defaults", "[state]") {
+    // a state without Altvane's parameters, as ZL Limiter writes it
+    PluginProcessor source;
+    set(source, zlp::PInputGain::kID, 5.f);
+    juce::MemoryBlock state;
+    source.getStateInformation(state);
+    auto xml = juce::AudioProcessor::getXmlFromBinary(state.getData(), static_cast<int>(state.getSize()));
+    REQUIRE(xml != nullptr);
+    for (auto* tree : xml->getChildIterator()) {
+        for (auto* child = tree->getFirstChildElement(); child != nullptr;) {
+            auto* next = child->getNextElement();
+            if (child->getStringAttribute("id").startsWith("altvane_")) {
+                tree->removeChildElement(child, true);
+            }
+            child = next;
+        }
+    }
+    juce::MemoryBlock upstream;
+    juce::AudioProcessor::copyXmlToBinary(*xml, upstream);
+
+    // loaded into an instance that has dither, the DC filter and a target set
+    PluginProcessor p;
+    set(p, params::PDitherBits::kID, 3.f);
+    set(p, params::PDCFilter::kID, 1.f);
+    set(p.na_parameters_, zlstate::PLoudnessTarget::kID, 4.f);
+    p.setStateInformation(upstream.getData(), static_cast<int>(upstream.getSize()));
+    const auto raw = [&](const char* id) { return p.parameters_.getRawParameterValue(id)->load(); };
+    CHECK_THAT(raw(zlp::PInputGain::kID), WithinAbs(5.0, 1e-3));
+    CHECK_THAT(raw(params::PDitherBits::kID), WithinAbs(params::PDitherBits::kDefaultI, 1e-3));
+    CHECK_THAT(raw(params::PDCFilter::kID), WithinAbs(0.0, 1e-3));
+    CHECK_THAT(p.na_parameters_.getRawParameterValue(zlstate::PLoudnessTarget::kID)->load(),
+               WithinAbs(zlstate::PLoudnessTarget::kDefaultI, 1e-3));
+}
+
 TEST_CASE("presets are ZL Limiter preset files", "[state]") {
     PluginProcessor a;
     set(a, zlp::PInputGain::kID, 4.f);

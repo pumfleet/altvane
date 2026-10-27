@@ -18,6 +18,27 @@ namespace {
     std::atomic<float>& raw(juce::AudioProcessorValueTreeState& tree, const char* id) {
         return *tree.getRawParameterValue(id);
     }
+
+    /**
+     * a copy of a saved tree with every parameter it lacks at its default: replaceState() would otherwise keep their
+     * current values, e.g. Altvane's dither and DC filter when a ZL Limiter preset or session loads
+     */
+    juce::ValueTree withDefaults(const juce::ValueTree& saved, const juce::AudioProcessorValueTreeState& tree,
+                                 const juce::AudioProcessor& owner) {
+        auto state = saved.createCopy();
+        for (auto* para : owner.getParameters()) {
+            const auto* ranged = dynamic_cast<juce::RangedAudioParameter*>(para);
+            if (ranged == nullptr || tree.getParameter(ranged->getParameterID()) != ranged ||
+                state.getChildWithProperty("id", ranged->getParameterID()).isValid()) {
+                continue;
+            }
+            juce::ValueTree child("PARAM");
+            child.setProperty("id", ranged->getParameterID(), nullptr);
+            child.setProperty("value", ranged->convertFrom0to1(ranged->getDefaultValue()), nullptr);
+            state.appendChild(child, nullptr);
+        }
+        return state;
+    }
 }
 
 PluginProcessor::PluginProcessor() :
@@ -163,8 +184,8 @@ void PluginProcessor::setStateInformation(const void* data, const int size_in_by
         return;
     }
 
-    parameters_.replaceState(parameter_state);
-    na_parameters_.replaceState(non_automatable_state);
+    parameters_.replaceState(withDefaults(parameter_state, parameters_, *this));
+    na_parameters_.replaceState(withDefaults(non_automatable_state, na_parameters_, dummy_processor_));
 }
 
 void PluginProcessor::updateChannelLayout() {
