@@ -268,6 +268,7 @@ namespace altvane::ui {
         drag_norm_ = range_.convertTo0to1(value_);
         drag_start_norm_ = drag_norm_;
         last_drag_y_ = e.position.y;
+        last_drag_x_ = e.position.x;
         if (on_begin) {
             on_begin();
         }
@@ -279,8 +280,12 @@ namespace altvane::ui {
         if (!dragging_) {
             return;
         }
-        const auto dy = last_drag_y_ - e.position.y;
+        auto dy = last_drag_y_ - e.position.y;
         last_drag_y_ = e.position.y;
+        if (horizontal_drag_) {
+            dy += e.position.x - last_drag_x_;
+            last_drag_x_ = e.position.x;
+        }
         const auto fine = e.mods.isShiftDown() ? .15f : 1.f;
         drag_norm_ = std::clamp(drag_norm_ + dy / drag_pixels_ * fine * InteractionSettings::drag_sensitivity, 0.f, 1.f);
         setFromUser(range_.convertFrom0to1(drag_norm_));
@@ -528,6 +533,94 @@ namespace altvane::ui {
         g.drawText(label_.toUpperCase(), b.removeFromLeft(label_w), juce::Justification::centredLeft);
         g.setColour(dragging_ ? colour::kTextPrimary : colour::kTextSecondary);
         Fonts::get().drawTabular(g, format(value_), b, juce::Justification::centredRight, type::kBody);
+    }
+
+    // ---------------------------------------------------------------- Slider
+
+    Slider::Slider() {
+        horizontal_drag_ = true;
+        drag_pixels_ = 260.f;
+    }
+
+    void Slider::setChip(const juce::String& text) {
+        chip_ = text;
+        repaint();
+    }
+
+    void Slider::setChipOn(const bool on) {
+        if (on != chip_on_) {
+            chip_on_ = on;
+            repaint();
+        }
+    }
+
+    juce::Rectangle<float> Slider::getChipArea() const {
+        if (chip_.isEmpty()) {
+            return {};
+        }
+        const auto text_w = juce::jmax(Fonts::get().getTabularWidth(format(value_), type::kBody), 28.f);
+        const auto w = juce::GlyphArrangement::getStringWidth(captionFont(), chip_) + 10.f;
+        return {static_cast<float>(getWidth()) - text_w - w - 6.f, 2.f, w, 14.f};
+    }
+
+    juce::Rectangle<int> Slider::getTextArea() const {
+        return getLocalBounds().removeFromTop(18).removeFromRight(getWidth() / 2);
+    }
+
+    void Slider::mouseDown(const juce::MouseEvent& e) {
+        if (!e.mods.isPopupMenu() && getChipArea().expanded(2.f).contains(e.position)) {
+            if (on_chip) {
+                on_chip();
+            }
+            return;
+        }
+        ValueControl::mouseDown(e);
+    }
+
+    void Slider::paint(juce::Graphics& g) {
+        const auto alpha = enabled_look_ ? 1.f : .35f;
+        auto b = getLocalBounds().toFloat();
+        paintFocusRing(g, b, size::kRadiusSmall);
+        auto row = b.removeFromTop(18.f);
+
+        g.setFont(captionFont());
+        g.setColour(colour::kTextTertiary.withMultipliedAlpha(alpha));
+        g.drawText(label_.toUpperCase(), row, juce::Justification::centredLeft);
+
+        if (chip_.isNotEmpty()) {
+            const auto chip = getChipArea();
+            if (chip_on_) {
+                g.setColour(resolve(accent_).withAlpha(.16f));
+                g.fillRoundedRectangle(chip, 3.f);
+            }
+            g.setColour(chip_on_ ? resolve(accent_) : colour::kTextTertiary);
+            g.drawText(chip_, chip, juce::Justification::centred);
+        }
+        const auto dim = chip_on_ ? .3f : 1.f;
+        g.setColour((dragging_ ? colour::kTextPrimary : colour::kTextPrimary.withMultipliedAlpha(.82f))
+            .withMultipliedAlpha(alpha));
+        Fonts::get().drawTabular(g, chip_on_ ? chip_ : format(value_), row, juce::Justification::centredRight,
+                                 type::kBody);
+
+        // track
+        const auto track = juce::Rectangle<float>(b.getX(), b.getY() + 6.f, b.getWidth(), 3.f);
+        g.setColour(colour::kHairlineStrong.withMultipliedAlpha(alpha));
+        g.fillRoundedRectangle(track, 1.5f);
+        const auto norm = getNormalised();
+        const auto from = bipolar_ ? .5f : 0.f;
+        const auto x0 = track.getX() + track.getWidth() * std::min(from, norm);
+        const auto x1 = track.getX() + track.getWidth() * std::max(from, norm);
+        g.setColour(resolve(accent_).withMultipliedAlpha(alpha * dim));
+        g.fillRoundedRectangle(juce::Rectangle<float>(x0, track.getY(), std::max(x1 - x0, 1.f), track.getHeight()),
+                               1.5f);
+        if (hovered_ || dragging_ || focus_ring_) {
+            const auto x = track.getX() + track.getWidth() * norm;
+            const auto thumb = juce::Rectangle<float>(9.f, 9.f).withCentre({x, track.getCentreY()});
+            g.setColour(colour::kWindow.withAlpha(.8f));
+            g.fillEllipse(thumb.expanded(3.f));
+            g.setColour(colour::kTextPrimary.withMultipliedAlpha(alpha));
+            g.fillEllipse(thumb);
+        }
     }
 
     // ---------------------------------------------------------------- Selector

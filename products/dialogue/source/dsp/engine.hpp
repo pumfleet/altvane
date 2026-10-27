@@ -19,6 +19,14 @@
 
 namespace altvane::dialogue::dsp {
     /**
+     * how a stereo input is separated: one analysis of the mid applied to both channels, one per channel,
+     * or one of the mid and one of the side; a mono input is always linked
+     */
+    enum class StereoMode { kLinked, kStereo, kMidSide };
+
+    inline constexpr int kNumStereoModes = 3;
+
+    /**
      * the controls the engine reads, written by the processor from its parameters
      */
     struct EngineControls {
@@ -26,7 +34,7 @@ namespace altvane::dialogue::dsp {
         std::array<std::array<std::atomic<float>, kSensitivityNodes>, kNumStems> sensitivity{}; // -1 .. 1
         std::atomic<int> listen{0}; // Listen
         std::atomic<int> quality{0}; // Quality
-        std::atomic<bool> linked{true}; // stereo: one analysis of the mid, or one per channel
+        std::atomic<int> stereo{0}; // StereoMode
 
         EngineControls() {
             for (auto& g : gains) {
@@ -39,6 +47,11 @@ namespace altvane::dialogue::dsp {
             }
         }
     };
+
+    /**
+     * where process() writes each stem at its level, stems[stem][channel]
+     */
+    using StemOutputs = std::array<std::array<float*, 2>, kNumStems>;
 
     /**
      * what the editor draws: band energies (power) of the input and of each stem, ~100 times a second
@@ -64,6 +77,9 @@ namespace altvane::dialogue::dsp {
      * a worker thread analyses each hop, runs the model, applies the stem levels and overlap-adds the result.
      * the output is the input processed and delayed by getLatency(); a sample the worker has not delivered in time
      * is replaced by the delayed input, so the output never drops out
+     *
+     * with stems, each stem at its level is synthesised too, and the stems add up to the mix (Listen::kMix);
+     * a late sample, and a frame the model could not separate, count as voice
      */
     class Engine {
     public:
@@ -75,9 +91,10 @@ namespace altvane::dialogue::dsp {
          * allocates and loads the models; stops the worker while it runs
          * @param max_block the largest number of samples a process() call will get
          * @param latency_multiple the latency is rounded up to a multiple of this (resampling alignment)
+         * @param stems whether process() will be asked for the stems as well as the mix
          * @return false if no model could be loaded (the engine then passes the input through, delayed)
          */
-        bool prepare(int num_channels, int max_block, int latency_multiple = 1);
+        bool prepare(int num_channels, int max_block, int latency_multiple = 1, bool stems = false);
 
         void release();
 
@@ -85,10 +102,13 @@ namespace altvane::dialogue::dsp {
 
         int getNumChannels() const { return num_channels_; }
 
+        bool hasStems() const { return stems_; }
+
         /**
          * process in place; in real time the model never blocks the caller, offline the caller waits for it
+         * @param stems where to write each stem, if the engine was prepared with stems
          */
-        void process(float* const* channels, int num_samples, bool realtime);
+        void process(float* const* channels, int num_samples, bool realtime, const StemOutputs* stems = nullptr);
 
         EngineControls& getControls() { return controls_; }
 
@@ -123,8 +143,10 @@ namespace altvane::dialogue::dsp {
 
         EngineControls controls_;
         int num_channels_{0}, max_block_{0}, latency_{0};
+        bool stems_{false};
         int64_t ring_mask_{0};
         std::array<std::vector<float>, 2> in_ring_, out_ring_;
+        std::array<std::array<std::vector<float>, 2>, kNumStems> stem_ring_;
         alignas(64) std::atomic<int64_t> written_{0};
         alignas(64) std::atomic<int64_t> produced_{0};
         alignas(64) std::atomic<uint64_t> underruns_{0};
@@ -137,14 +159,17 @@ namespace altvane::dialogue::dsp {
         std::array<float, kFftSize> frame_{};
         std::array<std::array<Spectrum, kHistory>, 2> history_{};
         std::array<std::array<float, kFftSize>, 2> ola_{};
-        std::array<std::unique_ptr<Pipeline>, 4> pipelines_;
+        std::array<std::array<std::array<float, kFftSize>, 2>, kNumStems> stem_ola_{};
+        // one per quality and stereo mode: quality * kNumStereoModes + mode
+        std::array<std::unique_ptr<Pipeline>, 2 * kNumStereoModes> pipelines_;
         int active_{-1}, fading_{-1}, fade_pos_{0};
         std::array<std::array<float, kSensitivityNodes>, kNumStems> sensitivity_cache_{};
         std::array<BinWeights, kNumStems> weights_{};
         std::array<float, kNumStems> gains_{1.f, 1.f, 1.f};
-        std::array<Spectrum, 2> transfer_{}, transfer_fading_{};
-        StemShares meter_shares_{}, meter_shares_fading_{};
-        std::array<Spectrum, 2> output_spec_{};
+        // per channel, the mix and each stem at its level (stem_spec_[stem][channel]), of the active and fading pipelines
+        std::array<Spectrum, 2> output_spec_{}, output_fading_{};
+        std::array<std::array<Spectrum, 2>, kNumStems> stem_spec_{}, stem_spec_fading_{};
+        std::array<Spectrum, kNumStems> meter_stems_{}; // the first channel's stems, for the analysis
         std::array<float, kFftSize> synth_{};
         ui::TriBuffer<AnalysisFrame> analysis_;
         uint64_t analysis_index_{0};
@@ -160,10 +185,16 @@ namespace altvane::dialogue::dsp {
         juce::AudioWorkgroup workgroup_;
         std::atomic<bool> workgroup_changed_{false};
 
-        void processAvailable();
+        /**
+         * run every hop whose input has arrived
+         * @param worker the worker thread, which stops early when it should exit; nullptr runs them all
+         */
+        void processAvailable(const juce::Thread* worker = nullptr);
         void processFrame(int64_t frame);
+        void synthesise(const Spectrum& y, std::array<float, kFftSize>& ola, std::vector<float>& ring, int64_t out_begin);
         int selectPipeline() const;
         void updateControls();
-        void publishAnalysis(const Spectrum& input, const StemShares& shares, const Spectrum& transfer);
+        void publishAnalysis(const Spectrum& input, const std::array<Spectrum, kNumStems>& stems,
+                             const Spectrum& output);
     };
 }

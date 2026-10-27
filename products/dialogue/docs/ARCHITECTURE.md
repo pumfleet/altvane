@@ -22,7 +22,11 @@ host rate ─► RateBridge: down to 48 kHz ─► Engine ─► up to the host 
   `computeTransfer` reweights the shares (renormalised, so they still sum to one) and applies the levels and the
   audition mode, giving one complex transfer per bin. The output frame is the input frame times the transfer, so the
   stems add up to the input by construction.
-- `dsp/engine` — the 48 kHz engine. See below.
+- `dsp/engine` — the 48 kHz engine. See below. A `Pipeline` is one quality and stereo mode: Linked runs one stream
+  on the mid and applies its transfer to both channels; Stereo runs one per channel; Mid/Side runs one on the mid
+  M = (L + R) / 2 and one on the side S = (L − R) / 2 and decodes L = M·T_M + S·T_S, R = M·T_M − S·T_S. Each
+  stream's shares sum to one, so in every mode the stems add up to the input. A mono input is always Linked. The
+  analysis shows the first channel; in Mid/Side its stems are decoded from both streams the same way.
 - `dsp/resampler`, `dsp/rate_bridge` — streaming rational polyphase conversion, one sample at a time (no bursts), and
   the bridge that runs the engine at any host rate. Both directions use one prototype length K at the common rate R,
   with K − 1 a multiple of R / host rate, and the engine's latency is a multiple of 48000 / gcd(48000, host rate),
@@ -31,6 +35,20 @@ host rate ─► RateBridge: down to 48 kHz ─► Engine ─► up to the host 
   with every level at unity the output is the delayed input at any rate.
 - `PluginProcessor` — parameters (`params.hpp`; the IDs are frozen, `tests` checks them), state, bypass cross-fade,
   output gain, meters. The audition mode (`listen`) is not a parameter and is never saved.
+
+## Stem outputs
+
+Output buses 1–3 (Voice, Ambience, Reverb) are off by default, so the plug-in is a plain effect; each may be on
+with the main output's channels, or stereo on a mono instance (the stem on both channels; AU enables every bus at
+its default, stereo, and must still offer mono). When any is on, `prepare` asks the engine for stems: the pipeline also gives each
+stream's stem transfers, `gain · weighted share`, decodes each stem to the channels like the mix (in Mid/Side from
+the mid and the side), the stem spectra cross-fade with the mix's on a pipeline switch, and the worker synthesises
+each into its own output ring. Their sum is the mix's transfer, so the stem outputs add up to the main output (to
+float rounding, tested at 44.1–96 kHz and in Mid/Side). The `RateBridge` resamples each stem like the mix and adds
+the round trip's residual to the ambience at its level. A sample the model was late for, or a frame it could not
+separate, goes to the voice, as the mix plays it unprocessed. The processor applies the output gain and the bypass
+fade (to silence) to the stems; `listen` does not touch them. A stem the host left off is written to scratch.
+JUCE's AU wrapper enables every bus, so AU always computes the stems: three more inverse FFTs per channel and hop.
 
 ## Threads and latency
 
@@ -51,7 +69,8 @@ Offline (`isNonRealtime`), the audio thread runs the pending hops itself under t
 contains unprocessed frames and does not depend on the block size (tested to 1e-6).
 
 Changing quality or stereo mode switches pipelines: the new one runs beside the old one until its estimates belong to
-frames it has seen (4 hops), then the transfer cross-fades over 8 hops.
+frames it has seen (4 hops), then the output spectra cross-fade over 8 hops (the outputs rather than the transfers,
+since a left/right and a mid/side transfer do not apply to the same signals).
 
 ## Editor
 
@@ -65,9 +84,11 @@ into `Presets/Factory`.
 ## Verification
 
 - `AltvaneDialogueTests` (Catch2): null tests at 44.1–192 kHz with irregular blocks, the real-time path while the model
-  falls behind, impulse latency, the 48 kHz round trip's alignment, solo stems summing to the input, block-size
-  independence, Removed being the input minus the mix, no allocation on the audio thread, frozen parameter IDs, state,
-  text round-trips, editor accessibility and parameter mapping, factory presets.
+  falls behind, impulse latency, the 48 kHz round trip's alignment, solo stems summing to the input, stem outputs
+  summing to the main output and matching the solos at their levels (also late, bypassed, partly enabled and in
+  Mid/Side), Mid/Side meters decoded from both streams, stereo-mode changes while playing, block-size independence,
+  Removed being the input minus the mix, no allocation on the audio thread, frozen parameter IDs, state, text
+  round-trips, editor accessibility and parameter mapping, factory presets.
 - `AltvaneDialogueRender` for listening, CPU and real-time soak tests (`--realtime`), `AltvaneDialogueSnapshot` for
   visual review, `auval -v aufx AvDl Altv`, pluginval at strictness 10.
 - `docs/BENCHMARK.md` records separation quality and CPU.
