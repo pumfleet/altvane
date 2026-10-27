@@ -215,6 +215,7 @@ void PluginProcessor::processBlockInternal(juce::AudioBuffer<float>& buffer, con
         return;
     }
     updateLoudnessTransport();
+    host_bypassed_.store(bypass, std::memory_order::relaxed);
 
     // the engine's buffers hold the prepared block size; hosts may send more, so work in pieces of at most that
     const auto total = static_cast<size_t>(buffer.getNumSamples());

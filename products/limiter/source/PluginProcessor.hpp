@@ -99,6 +99,11 @@ public:
      */
     int getNumMainChannels() const { return num_main_channels_.load(std::memory_order::relaxed); }
 
+    /**
+     * whether the host bypassed the last block (processBlockBypassed), for what the editor shows as the output
+     */
+    bool isHostBypassed() const { return host_bypassed_.load(std::memory_order::relaxed); }
+
 private:
     zlp::Controller controller_;
     zlp::LimiterAttach limiter_attach_;
@@ -111,6 +116,7 @@ private:
 
     ChannelLayout channel_layout_{kInvalid};
     std::atomic<int> num_main_channels_{0};
+    std::atomic<bool> host_bypassed_{false};
 
     bool update_channel_layout_per_call_{false};
     size_t max_block_size_{1};

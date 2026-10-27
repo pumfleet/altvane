@@ -85,6 +85,10 @@ namespace altvane::limiter {
             output_receiver_.reset();
             input_receiver_.reset();
             stereo_receiver_.prepare(sample_rate_, 2);
+            const auto fifo_size = sender.getSampleFIFOs()[zlp::Controller::kAnalyzerPostStream].front().size();
+            for (auto& channel : audible_) {
+                channel.assign(fifo_size, 0.f);
+            }
             correlation = std::numeric_limits<float>::quiet_NaN();
             column_filled_ = 0;
             return 0;
@@ -97,7 +101,27 @@ namespace altvane::limiter {
         auto& streams = sender.getSampleFIFOs();
         const auto& gained = streams[zlp::Controller::kAnalyzerGainedPreStream];
         const auto& limited = streams[zlp::Controller::kAnalyzerLimiterPostStream];
-        const auto& post = streams[zlp::Controller::kAnalyzerPostStream];
+        const auto& dry = streams[zlp::Controller::kAnalyzerPreStream];
+
+        // the engine captures its output stream before bypass or delta replace the output, so rebuild what is
+        // heard from the other streams: the (delayed) dry input when bypassed, gained minus limited in Audition
+        const auto& params = p_ref_.parameters_;
+        const auto bypassed = p_ref_.isHostBypassed() ||
+                              params.getRawParameterValue(zlp::PBypass::kID)->load(std::memory_order::relaxed) > .5f;
+        const auto delta = !bypassed &&
+                           params.getRawParameterValue(zlp::PDelta::kID)->load(std::memory_order::relaxed) > .5f;
+        if (delta) {
+            const auto subtract = [&](const int start, const int count) {
+                for (size_t c = 0; c < audible_.size(); ++c) {
+                    for (auto k = static_cast<size_t>(start); k < static_cast<size_t>(start + count); ++k) {
+                        audible_[c][k] = gained[c][k] - limited[c][k];
+                    }
+                }
+            };
+            subtract(range.start_index1, range.block_size1);
+            subtract(range.start_index2, range.block_size2);
+        }
+        const auto& post = bypassed ? dry : delta ? audible_ : streams[zlp::Controller::kAnalyzerPostStream];
 
         output_receiver_.run(range, post, true_peak);
         input_receiver_.run(range, gained, true_peak);

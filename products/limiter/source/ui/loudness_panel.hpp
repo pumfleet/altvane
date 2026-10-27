@@ -41,6 +41,8 @@ namespace altvane::limiter {
 
         std::optional<float> getGainToTarget() const;
 
+        bool isUnityOn() const;
+
         ui::Selector& getTargetSelectorForTesting() { return target_; }
 
     private:

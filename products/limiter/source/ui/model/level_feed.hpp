@@ -25,7 +25,8 @@ namespace altvane::limiter {
      * one 10 ms slice of the level history
      */
     struct LevelColumn {
-        // peaks of the gained input and of the output, dBFS
+        // peaks of the gained input and of what is heard (the output, the dry input when bypassed, the removed
+        // signal in Audition), dBFS
         float input, output;
         // gain reduction, dB (<= 0)
         float reduction;
@@ -88,6 +89,8 @@ namespace altvane::limiter {
         zldsp::analyzer::LimitReductionReceiver reduction_receiver_;
         zldsp::analyzer::MagnitudeReceiver output_receiver_, input_receiver_;
         zldsp::analyzer::StereoStatisticsReceiver stereo_receiver_;
+        // the audible output in Audition (gained minus limited), indexed like the engine's FIFO
+        std::vector<std::vector<float>> audible_{2};
         size_t column_samples_{480}, column_filled_{0};
         float column_input_{0.f}, column_output_{0.f}, column_reduction_{0.f};
         float loudness_{kFloor};

@@ -12,6 +12,7 @@
 #include "test_helpers.hpp"
 #include "ui/editor.hpp"
 #include "ui/factory_presets.hpp"
+#include "ui/model/level_feed.hpp"
 
 using Catch::Matchers::WithinAbs;
 using namespace test;
@@ -183,4 +184,59 @@ TEST_CASE("panels open and close with the session", "[editor]") {
     set(f.p.na_parameters_, zlstate::PLoudnessPanelOpen::kID, 1.f);
     f.frame();
     CHECK(f.editor->getLoudnessForTesting().isVisible());
+}
+
+TEST_CASE("match target waits for unity gain to be off", "[editor]") {
+    Fixture f;
+    set(f.p.na_parameters_, zlstate::PLoudnessTarget::kID, 0.f);
+    set(f.p, zlp::PInputOutputLink::kID, 1.f);
+    juce::AudioBuffer<float> buffer(2, kBlock);
+    juce::MidiBuffer midi;
+    const auto signal = sine(1000.0, -23.f);
+    for (int b = 0; b < static_cast<int>(3.0 * kSampleRate / kBlock); ++b) {
+        for (int i = 0; i < kBlock; ++i) {
+            const auto v = signal(b * kBlock + i).first;
+            buffer.setSample(0, i, v);
+            buffer.setSample(1, i, v);
+        }
+        f.p.processBlock(buffer, midi);
+    }
+    f.frame();
+    auto& panel = f.editor->getLoudnessForTesting();
+    // with unity on, the output gives the gain back: moving it would not move the loudness
+    CHECK_FALSE(panel.getGainToTarget().has_value());
+    panel.matchTarget();
+    CHECK_THAT(f.raw(zlp::PInputGain::kID), WithinAbs(0.0, .01));
+    set(f.p, zlp::PInputOutputLink::kID, 0.f);
+    f.frame();
+    CHECK(panel.getGainToTarget().has_value());
+}
+
+TEST_CASE("the display's output is what is heard, in bypass and in audition", "[editor]") {
+    // the output peaks the display and meters get for a steady sine, with some parameters set
+    const auto output_peak = [](const Generator& signal, const std::vector<std::pair<const char*, float>>& values) {
+        PluginProcessor p;
+        for (const auto& [id, v] : values) {
+            set(p, id, v);
+        }
+        prepare(p);
+        LevelFeed feed(p);
+        feed.setActive(true);
+        feed.pull(LoudnessReadings::kNoLevel, false);
+        for (int i = 0; i < 4; ++i) {
+            run(p, signal, .2);
+            feed.pull(LoudnessReadings::kNoLevel, false);
+        }
+        feed.setActive(false);
+        return std::max(feed.output_peaks[0], feed.output_peaks[1]);
+    };
+    const std::pair<const char*, float> push{zlp::PInputGain::kID, 12.f}, ceiling{zlp::POutputCeiling::kID, -1.f};
+    // limiting: the output sits at the ceiling
+    CHECK_THAT(output_peak(sine(1000.0, -6.f), {push, ceiling}), WithinAbs(-1.0, .2));
+    // bypassed: the dry input
+    CHECK_THAT(output_peak(sine(1000.0, -20.f), {push, ceiling, {zlp::PBypass::kID, 1.f}}), WithinAbs(-20.0, .2));
+    // audition: only what the limiter removes, so nothing from a signal it leaves alone...
+    CHECK(output_peak(sine(1000.0, -30.f), {{zlp::PDelta::kID, 1.f}}) < -80.f);
+    // ...and something from one it limits
+    CHECK(output_peak(sine(1000.0, -6.f), {push, ceiling, {zlp::PDelta::kID, 1.f}}) > -20.f);
 }
