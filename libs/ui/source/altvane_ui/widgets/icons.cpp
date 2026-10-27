@@ -160,6 +160,19 @@ namespace altvane::ui::icons {
             p.lineTo(2.f, 13.f);
             p.closeSubPath();
             break;
+        case Icon::kFader:
+            // a fader cap on its track
+            p.startNewSubPath(8.f, 1.5f);
+            p.lineTo(8.f, 4.5f);
+            p.startNewSubPath(8.f, 9.5f);
+            p.lineTo(8.f, 14.5f);
+            p.addRoundedRectangle(4.5f, 4.5f, 7.f, 5.f, 1.2f);
+            break;
+        case Icon::kTarget:
+            p.addEllipse(2.f, 2.f, 12.f, 12.f);
+            p.addEllipse(5.f, 5.f, 6.f, 6.f);
+            p.addEllipse(7.25f, 7.25f, 1.5f, 1.5f);
+            break;
         case Icon::kFreeze:
             for (int i = 0; i < 3; ++i) {
                 const auto a = static_cast<float>(i) * std::numbers::pi_v<float> / 3.f;
