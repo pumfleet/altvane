@@ -47,15 +47,28 @@ CPU on an M5 Max, per instance, as a share of one core: Eco 8%, High 22% (Linked
 
 ## Build from source
 
-Altvane Dialogue builds on macOS on Apple silicon for now (`PLATFORMS`). Configuring builds a small, static
-ONNX Runtime once (`scripts/build_onnxruntime.sh`, a few minutes, needs Python 3.10 or newer) and downloads the
-models at a pinned revision; both land in `build/deps/`.
+Altvane Dialogue builds on macOS 11 or newer (Apple silicon and Intel) and on Windows x64 (`PLATFORMS`). Configuring
+builds a small, static ONNX Runtime once (`scripts/build_onnxruntime.py`, a few minutes, needs Python 3.10 or newer)
+and downloads the models at a pinned revision; both land in `build/deps/`.
 
 ```console
 cmake --preset mac-arm64-debug -DALTVANE_PRODUCTS=dialogue -DALTVANE_BUILD_TESTS=ON -DALTVANE_BUILD_TOOLS=ON
 cmake --build --preset mac-arm64-debug
 ctest --test-dir build/mac-arm64-debug
 ```
+
+For an Intel Mac, configure with `-DCMAKE_OSX_ARCHITECTURES=x86_64 -DALTVANE_SIMD_TARGET=SSE4` instead of the
+preset (from either kind of Mac). On Windows, configure from a Visual Studio x64 developer prompt with clang-cl, as CI
+does:
+
+```console
+cmake -B Builds -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl ^
+  -DALTVANE_PRODUCTS=dialogue -DALTVANE_FORMATS="VST3;Standalone" -DALTVANE_SIMD_TARGET=AVX2 .
+cmake --build Builds
+```
+
+ONNX Runtime itself is built with MSVC and the static runtime; a Debug build of the plug-in builds a Debug ONNX
+Runtime alongside, as the two runtimes don't mix.
 
 Tools, with `ALTVANE_BUILD_TOOLS`:
 

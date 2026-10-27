@@ -90,20 +90,20 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Set up Python (macOS) # building ONNX Runtime needs Python 3.10 or newer
-        if: runner.os == 'macOS'
+      - name: Set up Python (macOS & Windows) # building ONNX Runtime needs Python 3.10 or newer
+        if: runner.os != 'Linux'
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Cache built dependencies (macOS) # ONNX Runtime and the model files, see products/dialogue
-        if: runner.os == 'macOS'
+      - name: Cache built dependencies (macOS & Windows) # ONNX Runtime and the model files, see products/dialogue
+        if: runner.os != 'Linux'
         uses: actions/cache@v4
         with:
           path: |
             build/deps/onnxruntime-1.*/
             build/deps/models/
-          key: deps-${{ matrix.os }}-${{ hashFiles('scripts/build_onnxruntime.sh', 'products/*/models/required_operators.config', 'products/*/models/models.cmake') }}
+          key: deps-${{ matrix.name }}-${{ hashFiles('scripts/build_onnxruntime.py', 'products/*/models/required_operators.config', 'products/*/models/models.cmake') }}
 
       - name: Set up sccache # compiler cache in the GitHub Actions cache; CMake picks it up from the env below
         uses: mozilla-actions/sccache-action@v0.0.11

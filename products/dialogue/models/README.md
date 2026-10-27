@@ -26,15 +26,19 @@ GRU and Gemm are about 70% of the time, so a hand-written inference path (Accele
 
 ## ONNX Runtime
 
-`scripts/build_onnxruntime.sh` builds a static, CPU-only ONNX Runtime with only the operators in
+`scripts/build_onnxruntime.py` builds a static, CPU-only ONNX Runtime with only the operators in
 `required_operators.config`. Regenerate that file whenever a model changes, from ORT-format conversions of the models
-(the runtime's graph optimisations add `FusedConv`):
+for both CPU families, because the runtime's graph optimisations differ: on arm they add `FusedConv`, on x86-64 CPUs
+with AVX2 they move `Conv` to the NCHWc kernels, and x86-64 CPUs without AVX2 keep the arm operators.
 
 ```
 python -m onnxruntime.tools.convert_onnx_models_to_ort --optimization_style Fixed --target_platform arm <dir with the .onnx files>
+python -m onnxruntime.tools.convert_onnx_models_to_ort --optimization_style Fixed --target_platform amd64 <another dir with them>
 ```
 
-and copy the generated `required_operators.config` here.
+(with the `onnxruntime` package of the version the build uses, on an x86-64 machine with AVX2 for the second) and
+merge the two generated `required_operators.config` files here. A missing operator shows only at run time, when the
+model fails to load, so run the tests on both CPU families.
 
 ## Replacing a model
 

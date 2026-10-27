@@ -1,3 +1,5 @@
 # platforms this product builds on, as <CMAKE_SYSTEM_NAME>-<arch>; without this file, every platform
-# (ONNX Runtime is only built for macOS so far, and its x86-64 build needs a newer macOS than 10.13)
+# (on macOS, both architectures need macOS 11 or newer; Linux and Windows on Arm aren't tested or released yet)
 Darwin-arm64
+Darwin-x86_64
+Windows-AMD64
