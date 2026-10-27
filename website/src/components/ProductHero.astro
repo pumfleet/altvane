@@ -1,0 +1,80 @@
+---
+import Arrow from "./Arrow.astro";
+import { type Product, releasesUrl, sourceUrl } from "../data/products";
+
+interface Props {
+  product: Product;
+}
+const { product: p } = Astro.props;
+---
+<section class="sheet phero" aria-labelledby="product-title">
+  <h1 id="product-title" class="t-display phero__title">
+    <span class="phero__brand">Altvane</span> {p.short}
+  </h1>
+  <div class="phero__copy">
+    <p class="t-label">{p.kind}{p.status === "in development" ? ". In development." : ""}</p>
+    <p class="t-lead">{p.summary}</p>
+    <div class="phero__actions">
+      {p.status === "released" ? (
+        <a class="action" href={releasesUrl(p.code)}>Download {p.version} <Arrow dir="down" /></a>
+      ) : (
+        <a class="action" href={sourceUrl(p.code)} data-external>Follow it on GitHub <Arrow dir="out" /></a>
+      )}
+      <p class="t-small">
+        {p.status === "released"
+          ? `Free, for ${p.platformNote ?? "macOS, Windows and Linux"}. From GitHub Releases.`
+          : "Not released yet. Build it from source today."}
+      </p>
+      <a class="action action--quiet" href={sourceUrl(p.code)} data-external>Source and README <Arrow dir="out" /></a>
+    </div>
+  </div>
+  <div class="phero__figure">
+    <slot />
+  </div>
+</section>
+
+<style>
+  .phero {
+    padding-top: clamp(40px, 6vh, 80px);
+    row-gap: clamp(32px, 5vh, 64px);
+  }
+  .phero__title {
+    grid-column: 1 / -1;
+    font-size: clamp(3rem, 8.4vw, 6rem);
+  }
+  .phero__brand {
+    font-weight: 250;
+    color: var(--ink-3);
+  }
+  .phero__copy {
+    grid-column: 1 / span 4;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s5);
+    border-top: 1.5px solid var(--spot);
+    padding-top: var(--s4);
+  }
+  .phero__actions {
+    display: grid;
+    gap: var(--s3);
+    justify-items: start;
+    margin-top: var(--s3);
+  }
+  .phero__actions .action {
+    width: 100%;
+    min-width: 0;
+  }
+  .phero__actions .t-small {
+    margin-bottom: var(--s3);
+  }
+  .phero__figure {
+    grid-column: 6 / span 7;
+    min-width: 0;
+  }
+  @media (max-width: 900px) {
+    .phero__copy,
+    .phero__figure {
+      grid-column: 1 / -1;
+    }
+  }
+</style>

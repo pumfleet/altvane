@@ -1,0 +1,89 @@
+---
+// Calibrated readings: a value with its unit and the condition it was measured under, never an adjective.
+interface Props {
+  items: { value: string; label: string }[];
+  size?: "large" | "small";
+}
+const { items, size = "small" } = Astro.props;
+const cols = Math.min(items.length, size === "large" ? 3 : 2);
+const odd = items.length % 2 === 1;
+---
+<dl class:list={["readings", `readings--${size}`, { "readings--odd": odd }]} style={`--cols: ${cols}`}>
+  {items.map((r) => {
+    const [n, x] = r.value.split("×");
+    return (
+      <div>
+        <dt class="num">
+          {x === undefined ? (
+            r.value
+          ) : (
+            <>
+              {n}
+              <svg class="readings__times" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7" /></svg>
+              <span class="visually-hidden">×</span>
+              {x}
+            </>
+          )}
+        </dt>
+        <dd>{r.label}</dd>
+      </div>
+    );
+  })}
+</dl>
+
+<style>
+  .readings {
+    display: grid;
+    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+    border-top: 1px solid var(--rule);
+  }
+  .readings div {
+    padding: var(--s4) var(--s4) var(--s4) 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .readings dt {
+    font-stretch: 115%;
+    font-weight: 380;
+    font-size: 1.625rem;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+  .readings__times {
+    display: inline-block;
+    width: 0.42em;
+    height: 0.42em;
+    margin-left: 0.08em;
+    vertical-align: 0.12em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.1;
+  }
+  .readings dd {
+    margin-top: var(--s1);
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: var(--ink-3);
+    max-width: 18ch;
+  }
+  /* two columns: an odd last reading takes the whole row, so no rule stops halfway */
+  .readings--small.readings--odd div:last-child {
+    grid-column: 1 / -1;
+  }
+  .readings--large dt {
+    font-size: clamp(2.25rem, 3.4vw, 3.5rem);
+    font-weight: 300;
+    letter-spacing: -0.04em;
+  }
+  .readings--large div {
+    padding-block: var(--s5) var(--s6);
+  }
+  @media (max-width: 640px) {
+    .readings--large {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .readings--large.readings--odd div:last-child {
+      grid-column: 1 / -1;
+    }
+  }
+</style>

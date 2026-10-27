@@ -1,0 +1,111 @@
+---
+import { REPO, products } from "../data/products";
+---
+<footer class="footer">
+  <div class="sheet footer__grid">
+    <div class="footer__brand">
+      <p class="footer__claim">nothing approximate.</p>
+      <p class="t-small">Altvane audio plug-ins. Free and open source under the GNU Affero General Public License v3.</p>
+    </div>
+    <nav class="footer__col" aria-label="Products, footer">
+      <h2 class="t-small">Plug-ins</h2>
+      <ul>
+        {products.map((p) => <li><a href={`/${p.code}`}>{p.name}</a></li>)}
+      </ul>
+    </nav>
+    <div class="footer__col">
+      <h2 class="t-small">Source</h2>
+      <ul>
+        <li><a href={REPO}>GitHub</a></li>
+        <li><a href={`${REPO}/releases`}>Releases</a></li>
+        <li><a href={`${REPO}/blob/main/LICENSE.md`}>License</a></li>
+        <li><a href={`${REPO}/blob/main/NOTICE.md`}>Notice</a></li>
+      </ul>
+    </div>
+    <div class="footer__col">
+      <h2 class="t-small">Built with</h2>
+      <ul>
+        <li><a href="https://juce.com">JUCE</a></li>
+        <li><a href="https://huggingface.co/Ceva-IP/DPDFNet">DPDFNet by Ceva</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="sheet footer__word" aria-hidden="true">
+    <span>altvane</span>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    margin-top: var(--s10);
+    border-top: 1px solid var(--rule);
+    padding-top: var(--s8);
+    overflow: hidden;
+  }
+  .footer__grid {
+    row-gap: var(--s7);
+  }
+  .footer__brand {
+    grid-column: 1 / span 4;
+    display: grid;
+    gap: var(--s5);
+    align-content: start;
+  }
+  .footer__brand p {
+    max-width: 30ch;
+  }
+  .footer__claim {
+    font-stretch: 118%;
+    font-weight: 360;
+    font-size: 1.75rem;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+  }
+  .footer__col {
+    grid-column: span 2;
+  }
+  .footer__col:nth-of-type(1) {
+    grid-column: 7 / span 2;
+  }
+  .footer__col h2 {
+    font-weight: 400;
+    margin-bottom: var(--s3);
+  }
+  .footer__col ul {
+    display: grid;
+    gap: var(--s2);
+  }
+  .footer__col a {
+    font-size: 0.9375rem;
+    text-decoration: none;
+    color: var(--ink-2);
+  }
+  .footer__col a:hover {
+    color: var(--ink);
+    text-decoration: underline;
+  }
+  .footer__word {
+    margin-top: var(--s9);
+  }
+  .footer__word span {
+    grid-column: 1 / -1;
+    display: block;
+    font-stretch: 125%;
+    font-weight: 300;
+    font-size: clamp(5rem, 24.6vw, 30rem);
+    line-height: 0.74;
+    letter-spacing: -0.06em;
+    margin-left: -0.04em;
+    color: var(--ink);
+    transform: translateY(0.12em);
+  }
+  @media (max-width: 760px) {
+    .footer__brand {
+      grid-column: 1 / -1;
+    }
+    .footer__col,
+    .footer__col:nth-of-type(1) {
+      grid-column: span 6;
+    }
+  }
+</style>

@@ -1,0 +1,125 @@
+---
+// The release matrix: which formats each platform's builds carry.
+import { builds } from "../data/products";
+const formats = ["VST3", "AU", "LV2", "Standalone"] as const;
+---
+<ul class="builds-list">
+  {builds.map((b) => (
+    <li>
+      <span class="builds-list__os">{b.os}</span>
+      <span class="builds-list__arch">{b.arch}</span>
+      <span class="builds-list__formats">{b.formats.join(", ")}</span>
+    </li>
+  ))}
+</ul>
+<div class="builds" role="region" aria-label="Release builds by platform" tabindex="0">
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Platform</th>
+        <th scope="col">Architectures</th>
+        {formats.map((f) => <th scope="col" class="builds__fmt">{f}</th>)}
+      </tr>
+    </thead>
+    <tbody>
+      {builds.map((b) => (
+        <tr>
+          <th scope="row">{b.os}</th>
+          <td>{b.arch}</td>
+          {formats.map((f) => (
+            <td class="builds__fmt">
+              {(b.formats as readonly string[]).includes(f) ? (
+                <span class="dot dot--on"><span class="visually-hidden">Yes</span></span>
+              ) : (
+                <span class="dot"><span class="visually-hidden">No</span></span>
+              )}
+            </td>
+          ))}
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+
+<style>
+  .builds-list {
+    display: none;
+    border-top: 1.5px solid var(--ink);
+  }
+  .builds-list li {
+    display: grid;
+    gap: var(--s1);
+    padding-block: var(--s4);
+    border-bottom: 1px solid var(--rule);
+  }
+  .builds-list__os {
+    font-stretch: 112%;
+    font-weight: 450;
+    font-size: 1.1875rem;
+    letter-spacing: -0.01em;
+  }
+  .builds-list__arch {
+    font-size: 0.8125rem;
+    color: var(--ink-3);
+  }
+  .builds-list__formats {
+    font-size: 0.9375rem;
+    color: var(--ink-2);
+  }
+  @media (max-width: 640px) {
+    .builds-list {
+      display: block;
+    }
+    .builds {
+      display: none;
+    }
+  }
+  .builds {
+    overflow-x: auto;
+    /* keeps the visually hidden cell labels inside the scroller */
+    position: relative;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9375rem;
+    min-width: 34rem;
+  }
+  th,
+  td {
+    text-align: left;
+    padding: var(--s4) var(--s4) var(--s4) 0;
+    border-bottom: 1px solid var(--rule);
+    font-weight: 400;
+    vertical-align: middle;
+  }
+  thead th {
+    font-size: 0.8125rem;
+    color: var(--ink-3);
+    border-bottom: 1.5px solid var(--ink);
+    padding-top: 0;
+  }
+  tbody th {
+    font-stretch: 112%;
+    font-weight: 450;
+    font-size: 1.1875rem;
+    letter-spacing: -0.01em;
+  }
+  td {
+    color: var(--ink-2);
+  }
+  .builds__fmt {
+    width: 12%;
+  }
+  .dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 1px solid var(--rule-strong);
+    border-radius: 50%;
+  }
+  .dot--on {
+    background: var(--ink);
+    border-color: var(--ink);
+  }
+</style>
