@@ -9,6 +9,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include <clocale>
+#include <model_data.hpp>
+
 #include "dsp/engine.hpp"
 #include "dsp/kernels.hpp"
 #include "dsp/separator.hpp"
@@ -180,4 +183,22 @@ TEST_CASE("the latency is the model's delay, then a hop or a block for the worke
     CHECK(budget % block == 0);
     CHECK(budget < std::max(block, dsp::kHop) + block);
     engine.release();
+}
+
+TEST_CASE("the models load under a locale with a decimal comma", "[model]") {
+    // the normalisation values in the model metadata are written with decimal points
+    const std::string previous = std::setlocale(LC_NUMERIC, nullptr);
+    const char* comma = nullptr;
+    for (const auto* name : {"de_DE.UTF-8", "de_DE.utf8", "de_DE", "fr_FR.UTF-8", "German_Germany.1252"}) {
+        if (std::setlocale(LC_NUMERIC, name) != nullptr) {
+            comma = name;
+            break;
+        }
+    }
+    if (comma == nullptr) {
+        SKIP("no locale with a decimal comma is installed");
+    }
+    CAPTURE(comma);
+    CHECK_NOTHROW(dsp::DpdfNet(models::dpdfnet2()));
+    std::setlocale(LC_NUMERIC, previous.c_str());
 }

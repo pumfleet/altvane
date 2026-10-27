@@ -12,6 +12,8 @@
 #include <array>
 #include <cmath>
 #include <cstring>
+#include <locale>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 
@@ -311,16 +313,24 @@ namespace altvane::dialogue::dsp {
             }
         }
 
+        /**
+         * comma-separated numbers with a decimal point, whatever the host's locale (a stream with the classic locale,
+         * since std::stof follows the process's C locale)
+         */
         std::vector<float> parseFloats(const std::string& text) {
             std::vector<float> values;
-            size_t pos = 0;
-            while (pos < text.size()) {
-                size_t used = 0;
-                values.push_back(std::stof(text.substr(pos), &used));
-                pos += used;
-                while (pos < text.size() && (text[pos] == ',' || text[pos] == ' ')) {
-                    ++pos;
+            std::istringstream stream(text);
+            stream.imbue(std::locale::classic());
+            float v = 0.f;
+            while (stream >> v) {
+                values.push_back(v);
+                stream >> std::ws;
+                if (stream.peek() == ',') {
+                    stream.get();
                 }
+            }
+            if (!stream.eof()) {
+                throw std::runtime_error("unreadable numbers in the model metadata");
             }
             return values;
         }
