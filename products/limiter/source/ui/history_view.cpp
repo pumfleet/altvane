@@ -70,6 +70,8 @@ namespace altvane::limiter {
         px_output_.resize(w);
         px_reduction_.resize(w);
         px_loudness_.resize(w);
+        // the pixel columns depend on the width: rebuild them before anything paints
+        aggregate();
     }
 
     float HistoryView::yOfDB(const float db) const {

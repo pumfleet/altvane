@@ -19,6 +19,8 @@ namespace altvane::limiter {
         constexpr float kPadX = 14.f, kPadY = 10.f, kDivider = 21.f;
         constexpr float kCharacterWidth = 150.f, kHeroWidth = 88.f, kChipColumn = 82.f;
         constexpr float kKnobWidth = 60.f, kSliderWidth = 124.f;
+        // how narrow the flexible columns may get when the window is small
+        constexpr float kMinCharacterWidth = 112.f, kMinKnobWidth = 52.f, kMinHeroWidth = 76.f;
 
         std::array<float, 5> timingValues(juce::AudioProcessorValueTreeState& tree) {
             std::array<float, 5> v{};
@@ -155,11 +157,27 @@ namespace altvane::limiter {
         }
     }
 
+    float ControlCard::getMinimumWidth() {
+        return getPreferredWidth() - (kCharacterWidth - kMinCharacterWidth) - 3.f * (kKnobWidth - kMinKnobWidth) -
+               2.f * (kHeroWidth - kMinHeroWidth);
+    }
+
     void ControlCard::resized() {
+        // narrower than preferred: the character column gives way first, then the knobs, then the hero knobs
+        auto shortfall = std::max(0.f, getPreferredWidth() - static_cast<float>(getWidth()));
+        const auto take = [&shortfall](const float width, const float minimum, const float count) {
+            const auto cut = std::min(shortfall / count, width - minimum);
+            shortfall -= cut * count;
+            return width - cut;
+        };
+        const auto character_width = take(kCharacterWidth, kMinCharacterWidth, 1.f);
+        const auto knob_width = take(kKnobWidth, kMinKnobWidth, 3.f);
+        const auto hero_width = take(kHeroWidth, kMinHeroWidth, 2.f);
+
         auto b = getLocalBounds().toFloat().reduced(kPadX, kPadY);
         collapse_.setBounds(juce::Rectangle<int>(22, 22).withPosition(getWidth() - 28, 6));
 
-        auto col = b.removeFromLeft(kCharacterWidth);
+        auto col = b.removeFromLeft(character_width);
         character_caption_ = col.removeFromTop(16.f);
         character_.setBounds(col.removeFromTop(26.f).toNearestInt());
         col.removeFromTop(8.f);
@@ -167,8 +185,8 @@ namespace altvane::limiter {
 
         dividers_[0] = b.getX() + kDivider * .5f;
         b.removeFromLeft(kDivider);
-        gain_.setBounds(b.removeFromLeft(kHeroWidth).toNearestInt());
-        ceiling_.setBounds(b.removeFromLeft(kHeroWidth).toNearestInt());
+        gain_.setBounds(b.removeFromLeft(hero_width).toNearestInt());
+        ceiling_.setBounds(b.removeFromLeft(hero_width).toNearestInt());
         b.removeFromLeft(6.f);
         {
             auto chips = b.removeFromLeft(kChipColumn).withSizeKeepingCentre(kChipColumn, 54.f);
@@ -178,11 +196,11 @@ namespace altvane::limiter {
         }
         dividers_[1] = b.getX() + kDivider * .5f;
         b.removeFromLeft(kDivider);
-        const auto knob_area = b.removeFromLeft(kKnobWidth * 3.f).withTrimmedTop(8.f);
+        const auto knob_area = b.removeFromLeft(knob_width * 3.f).withTrimmedTop(8.f);
         auto k = knob_area;
-        attack_.setBounds(k.removeFromLeft(kKnobWidth).toNearestInt());
-        release_.setBounds(k.removeFromLeft(kKnobWidth).toNearestInt());
-        recovery_.setBounds(k.removeFromLeft(kKnobWidth).toNearestInt());
+        attack_.setBounds(k.removeFromLeft(knob_width).toNearestInt());
+        release_.setBounds(k.removeFromLeft(knob_width).toNearestInt());
+        recovery_.setBounds(k.removeFromLeft(knob_width).toNearestInt());
         b.removeFromLeft(8.f);
         auto sliders = b.removeFromLeft(kSliderWidth).withSizeKeepingCentre(kSliderWidth, 34.f * 2.f + 12.f)
                        .translated(0.f, 4.f);

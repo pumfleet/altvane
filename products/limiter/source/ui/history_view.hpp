@@ -56,6 +56,7 @@ namespace altvane::limiter {
         juce::Rectangle<float> getPlotArea() const { return plot_; }
         float yOfDB(float db) const;
         void setHoverForTesting(std::optional<juce::Point<float>> p) { hover_ = p; repaint(); }
+        size_t getPixelCountForTesting() const { return px_count_; }
 
     private:
         enum class Drag { kNone, kGain, kCeiling };

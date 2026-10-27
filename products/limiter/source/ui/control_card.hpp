@@ -33,6 +33,11 @@ namespace altvane::limiter {
         static float getPreferredWidth();
 
         /**
+         * the narrowest the card lays out without clipping a control
+         */
+        static float getMinimumWidth();
+
+        /**
          * set the timing controls to one of kCharacters, as one undo step
          */
         void applyCharacter(size_t index);

@@ -240,3 +240,37 @@ TEST_CASE("the display's output is what is heard, in bypass and in audition", "[
     // ...and something from one it limits
     CHECK(output_peak(sine(1000.0, -6.f), {push, ceiling, {zlp::PDelta::kID, 1.f}}) > -20.f);
 }
+
+TEST_CASE("the window shrinks to its minimum without clipping or stale history", "[editor]") {
+    Fixture f;
+    f.editor->setSize(tokens::size::kDefaultWidth, tokens::size::kDefaultHeight);
+    // fill the history: the analyzer runs while the editor shows, so start it by hand
+    f.p.getController().setAnalyzerEnabled(true);
+    juce::AudioBuffer<float> buffer(2, kBlock);
+    juce::MidiBuffer midi;
+    const auto signal = sine(220.0, -3.f);
+    for (int b = 0; b < static_cast<int>(3.0 * kSampleRate / kBlock); ++b) {
+        for (int i = 0; i < kBlock; ++i) {
+            const auto v = signal(b * kBlock + i).first;
+            buffer.setSample(0, i, v);
+            buffer.setSample(1, i, v);
+        }
+        f.p.processBlock(buffer, midi);
+        f.frame();
+    }
+    auto& history = f.editor->getHistoryForTesting();
+    REQUIRE(history.getPixelCountForTesting() > 100);
+
+    // no frame in between: the pixel columns follow the new width straight away
+    f.editor->setSize(tokens::size::kMinWidth, tokens::size::kMinHeight);
+    CHECK(static_cast<float>(history.getPixelCountForTesting()) <= std::floor(history.getPlotArea().getWidth()));
+
+    // every control of the card stays inside it
+    auto& card = f.editor->getCardForTesting();
+    CHECK(card.isVisible());
+    for (auto* child : card.getChildren()) {
+        CAPTURE(child->getTitle(), child->getBounds().toString(), card.getLocalBounds().toString());
+        CHECK(card.getLocalBounds().contains(child->getBounds()));
+    }
+    f.p.getController().setAnalyzerEnabled(false);
+}
