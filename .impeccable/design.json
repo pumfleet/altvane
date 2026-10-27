@@ -1,0 +1,399 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-26T23:45:00Z",
+  "title": "Design System: Altvane",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "primary",
+        "displayName": "Programme Ink",
+        "canonical": "oklch(18.2% 0.003 248.0)",
+        "tonalRamp": [
+          "oklch(15.0% 0.001 248.0)",
+          "oklch(26.4% 0.002 248.0)",
+          "oklch(37.9% 0.003 248.0)",
+          "oklch(49.3% 0.003 248.0)",
+          "oklch(60.7% 0.003 248.0)",
+          "oklch(72.1% 0.003 248.0)",
+          "oklch(83.6% 0.002 248.0)",
+          "oklch(95.0% 0.001 248.0)"
+        ]
+      },
+      "eq": {
+        "role": "secondary",
+        "displayName": "EQ Cobalt",
+        "canonical": "oklch(46.3% 0.226 268.5)",
+        "tonalRamp": [
+          "oklch(15.0% 0.084 268.5)",
+          "oklch(26.4% 0.169 268.5)",
+          "oklch(37.9% 0.226 268.5)",
+          "oklch(49.3% 0.226 268.5)",
+          "oklch(60.7% 0.226 268.5)",
+          "oklch(72.1% 0.207 268.5)",
+          "oklch(83.6% 0.134 268.5)",
+          "oklch(95.0% 0.043 268.5)"
+        ]
+      },
+      "dialogue": {
+        "role": "secondary",
+        "displayName": "Dialogue Vermilion",
+        "canonical": "oklch(62.2% 0.187 35.4)",
+        "tonalRamp": [
+          "oklch(15.0% 0.070 35.4)",
+          "oklch(26.4% 0.140 35.4)",
+          "oklch(37.9% 0.187 35.4)",
+          "oklch(49.3% 0.187 35.4)",
+          "oklch(60.7% 0.187 35.4)",
+          "oklch(72.1% 0.171 35.4)",
+          "oklch(83.6% 0.111 35.4)",
+          "oklch(95.0% 0.035 35.4)"
+        ]
+      },
+      "compressor": {
+        "role": "secondary",
+        "displayName": "Compressor Viridian",
+        "canonical": "oklch(51.6% 0.101 167.5)",
+        "tonalRamp": [
+          "oklch(15.0% 0.038 167.5)",
+          "oklch(26.4% 0.076 167.5)",
+          "oklch(37.9% 0.101 167.5)",
+          "oklch(49.3% 0.101 167.5)",
+          "oklch(60.7% 0.101 167.5)",
+          "oklch(72.1% 0.092 167.5)",
+          "oklch(83.6% 0.060 167.5)",
+          "oklch(95.0% 0.019 167.5)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Cool Stock",
+        "canonical": "oklch(96.9% 0.002 145.6)",
+        "tonalRamp": [
+          "oklch(15.0% 0.001 145.6)",
+          "oklch(26.4% 0.001 145.6)",
+          "oklch(37.9% 0.002 145.6)",
+          "oklch(49.3% 0.002 145.6)",
+          "oklch(60.7% 0.002 145.6)",
+          "oklch(72.1% 0.002 145.6)",
+          "oklch(83.6% 0.001 145.6)",
+          "oklch(95.0% 0.000 145.6)"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Second Ink",
+        "canonical": "oklch(42.3% 0.006 258.3)",
+        "tonalRamp": [
+          "oklch(15.0% 0.002 258.3)",
+          "oklch(26.4% 0.004 258.3)",
+          "oklch(37.9% 0.006 258.3)",
+          "oklch(49.3% 0.006 258.3)",
+          "oklch(60.7% 0.006 258.3)",
+          "oklch(72.1% 0.005 258.3)",
+          "oklch(83.6% 0.004 258.3)",
+          "oklch(95.0% 0.001 258.3)"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Third Ink",
+        "canonical": "oklch(53.4% 0.005 258.3)",
+        "tonalRamp": [
+          "oklch(15.0% 0.002 258.3)",
+          "oklch(26.4% 0.004 258.3)",
+          "oklch(37.9% 0.005 258.3)",
+          "oklch(49.3% 0.005 258.3)",
+          "oklch(60.7% 0.005 258.3)",
+          "oklch(72.1% 0.005 258.3)",
+          "oklch(83.6% 0.003 258.3)",
+          "oklch(95.0% 0.001 258.3)"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "oklch(87.7% 0.003 165.1)",
+        "tonalRamp": [
+          "oklch(15.0% 0.001 165.1)",
+          "oklch(26.4% 0.002 165.1)",
+          "oklch(37.9% 0.003 165.1)",
+          "oklch(49.3% 0.003 165.1)",
+          "oklch(60.7% 0.003 165.1)",
+          "oklch(72.1% 0.003 165.1)",
+          "oklch(83.6% 0.002 165.1)",
+          "oklch(95.0% 0.001 165.1)"
+        ]
+      },
+      "rule-strong": {
+        "role": "neutral",
+        "displayName": "Strong Hairline",
+        "canonical": "oklch(79.0% 0.003 165.1)",
+        "tonalRamp": [
+          "oklch(15.0% 0.001 165.1)",
+          "oklch(26.4% 0.002 165.1)",
+          "oklch(37.9% 0.003 165.1)",
+          "oklch(49.3% 0.003 165.1)",
+          "oklch(60.7% 0.003 165.1)",
+          "oklch(72.1% 0.003 165.1)",
+          "oklch(83.6% 0.002 165.1)",
+          "oklch(95.0% 0.001 165.1)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Product names in the home series and product page titles. Lowercase, width 125%."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Closing statements. Lowercase, width 112%."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Product page section heads. Sentence case."
+      },
+      "name": {
+        "displayName": "Name",
+        "purpose": "First item in a ruled row: programme entries, feature leads, platform names."
+      },
+      "lead": {
+        "displayName": "Lead",
+        "purpose": "The one paragraph under a title or product name, Second Ink, max 38ch."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Prose, Second Ink, max 66ch."
+      },
+      "action": {
+        "displayName": "Action",
+        "purpose": "Set-type actions standing on a rule."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "The product kind line directly under a product's name."
+      },
+      "small": {
+        "displayName": "Small",
+        "purpose": "Captions, notes, version lines, column heads, in Third Ink."
+      },
+      "reading": {
+        "displayName": "Reading",
+        "purpose": "Measured values in tabular lining figures, each with its condition beneath."
+      },
+      "reading-large": {
+        "displayName": "Reading Large",
+        "purpose": "Specification readings on product pages."
+      },
+      "wordmark": {
+        "displayName": "Wordmark",
+        "purpose": "Lowercase 'altvane', set in type alone in the header; the brand has no symbol."
+      }
+    },
+    "shadows": [
+      {
+        "name": "plate-lift",
+        "value": "0 1px 2px rgb(17 18 19 / 0.08), 0 18px 48px -20px rgb(17 18 19 / 0.35)",
+        "purpose": "Screenshots of the plug-in editors inside a plate, and nowhere else."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Every CSS transition on the sheet: underline wipes, arrow nudges, thumb rotation."
+      },
+      {
+        "name": "figure-draw-in",
+        "value": "1 - 2^(-10t) over 1600ms, 120ms delay, once at 33% in view",
+        "purpose": "The single authored motion: each figure sweeps from its neutral state to its setting, staggered once. Static under reduced motion or without JavaScript."
+      },
+      {
+        "name": "rule-wipe",
+        "value": "0.6s (actions, programme rows), 0.5s (nav)",
+        "purpose": "The spot ink drawing along a rule from the left on hover or focus."
+      },
+      {
+        "name": "arrow-nudge",
+        "value": "0.45s, translate 3px (right), 2px up-right (out), 2px down (download)",
+        "purpose": "The drawn arrow answering hover."
+      },
+      {
+        "name": "colour-shift",
+        "value": "0.2s",
+        "purpose": "Text colour and underline colour changes on links."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "narrow",
+        "value": "640px"
+      },
+      {
+        "name": "header",
+        "value": "760px"
+      },
+      {
+        "name": "stack",
+        "value": "900px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Action",
+      "kind": "button",
+      "refersTo": "action",
+      "description": "The primary action: set type standing on a 1.5px ink rule with a drawn arrow; the product's spot ink wipes along the rule on hover.",
+      "html": "<a class=\"ds-action\" href=\"#\" style=\"--spot: #2a3fd4\">Download 0.1.0 <svg viewBox=\"0 0 18 18\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"square\"><path d=\"M9 2v12M4 9l5 5 5-5M3 16.5h12\"/></svg></a>",
+      "css": ".ds-action { display: inline-flex; align-items: center; justify-content: space-between; gap: 16px; min-width: min(100%, 22rem); padding-block: 12px; position: relative; color: var(--ink, #111213); font-family: var(--font, 'Archivo Variable', 'Helvetica Neue', Helvetica, Arial, sans-serif); font-stretch: 112%; font-weight: 480; font-size: 1.0625rem; letter-spacing: -0.005em; text-decoration: none; border-bottom: 1.5px solid var(--ink, #111213); } .ds-action svg { width: 18px; height: 18px; flex: none; transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1); } .ds-action::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1.5px; height: 1.5px; background: var(--spot, #111213); transform: scaleX(0); transform-origin: left; transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); } .ds-action:hover::after, .ds-action:focus-visible::after { transform: scaleX(1); } .ds-action:hover svg { transform: translate(0, 2px); } .ds-action:focus-visible { outline: 2px solid var(--ink, #111213); outline-offset: 3px; border-radius: 1px; }"
+    },
+    {
+      "name": "Quiet Action",
+      "kind": "button",
+      "refersTo": "action-quiet",
+      "description": "The secondary action beside a primary one: Second Ink on a 1px Strong Hairline rule.",
+      "html": "<a class=\"ds-action-quiet\" href=\"#\" style=\"--spot: #e0502a\">Next: Altvane Dialogue <svg viewBox=\"0 0 18 18\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"square\"><path d=\"M2 9h13M10 4l5 5-5 5\"/></svg></a>",
+      "css": ".ds-action-quiet { display: inline-flex; align-items: center; justify-content: space-between; gap: 16px; min-width: min(100%, 22rem); padding-block: 12px; position: relative; color: var(--ink-2, #4c4e51); font-family: var(--font, 'Archivo Variable', 'Helvetica Neue', Helvetica, Arial, sans-serif); font-stretch: 112%; font-weight: 420; font-size: 1.0625rem; letter-spacing: -0.005em; text-decoration: none; border-bottom: 1px solid var(--rule-strong, #b9bbba); transition: color 0.2s cubic-bezier(0.16, 1, 0.3, 1); } .ds-action-quiet svg { width: 18px; height: 18px; flex: none; transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1); } .ds-action-quiet::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1.5px; height: 1.5px; background: var(--spot, #111213); transform: scaleX(0); transform-origin: left; transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); } .ds-action-quiet:hover { color: var(--ink, #111213); } .ds-action-quiet:hover::after, .ds-action-quiet:focus-visible::after { transform: scaleX(1); } .ds-action-quiet:hover svg { transform: translate(3px, 0); } .ds-action-quiet:focus-visible { outline: 2px solid var(--ink, #111213); outline-offset: 3px; border-radius: 1px; }"
+    },
+    {
+      "name": "Header Navigation",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "The lowercase wordmark, set-type product links that underline in their own product's spot ink, a hairline and registration ticks beneath.",
+      "html": "<header class=\"ds-nav\"><div class=\"ds-nav__row\"><a class=\"ds-nav__brand\" href=\"#\"><svg viewBox=\"0 0 48 48\" width=\"22\" height=\"22\" aria-hidden=\"true\"><path d=\"M24 24V4A20 20 0 0 0 4 24Z\" fill=\"currentColor\"/><path d=\"M24 24V44A20 20 0 0 0 44 24Z\" fill=\"currentColor\"/></svg><span>altvane</span></a><nav class=\"ds-nav__links\"><a href=\"#\" aria-current=\"page\" style=\"--spot: #2a3fd4\">EQ</a><a href=\"#\" style=\"--spot: #e0502a\">Dialogue</a><a href=\"#\" style=\"--spot: #0f7a5c\">Compressor</a></nav><a class=\"ds-nav__source\" href=\"#\">Source</a></div><div class=\"ds-nav__ticks\" aria-hidden=\"true\"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></header>",
+      "css": ".ds-nav { font-family: var(--font, 'Archivo Variable', 'Helvetica Neue', Helvetica, Arial, sans-serif); color: var(--ink, #111213); background: var(--paper, #f4f5f4); } .ds-nav__row { display: flex; align-items: center; gap: 48px; min-height: 76px; padding: 16px 0; } .ds-nav__brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink, #111213); text-decoration: none; margin-right: auto; } .ds-nav__brand span { font-stretch: 118%; font-weight: 540; font-size: 1.375rem; letter-spacing: -0.03em; line-height: 1; } .ds-nav__links { display: flex; gap: clamp(20px, 3vw, 48px); } .ds-nav__links a, .ds-nav__source { font-size: 0.9375rem; font-weight: 450; font-stretch: 106%; text-decoration: none; color: var(--ink-2, #4c4e51); padding-block: 8px; background: linear-gradient(var(--spot, #111213), var(--spot, #111213)) left bottom / 0 1.5px no-repeat; transition: background-size 0.5s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s; } .ds-nav__links a:hover, .ds-nav__source:hover, .ds-nav__links a[aria-current='page'] { color: var(--ink, #111213); background-size: 100% 1.5px; } .ds-nav__links a:focus-visible, .ds-nav__source:focus-visible, .ds-nav__brand:focus-visible { outline: 2px solid var(--ink, #111213); outline-offset: 3px; } .ds-nav__ticks { display: grid; grid-template-columns: repeat(12, 1fr); border-top: 1px solid var(--rule, #d5d7d6); height: 7px; } .ds-nav__ticks span { border-left: 1px solid var(--rule-strong, #b9bbba); height: 7px; }"
+    },
+    {
+      "name": "Programme",
+      "kind": "custom",
+      "refersTo": "programme-row",
+      "description": "The download list set like a concert programme: one ruled row per plug-in with its version and a download link; the spot ink draws across the row on hover.",
+      "html": "<ol class=\"ds-programme\"><li style=\"--spot: #2a3fd4\"><a class=\"ds-programme__name\" href=\"#\">Altvane EQ</a><span class=\"ds-programme__meta\">0.1.0</span><a class=\"ds-programme__get\" href=\"#\">Download <svg viewBox=\"0 0 18 18\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"square\"><path d=\"M9 2v12M4 9l5 5 5-5M3 16.5h12\"/></svg></a></li><li style=\"--spot: #e0502a\"><a class=\"ds-programme__name\" href=\"#\">Altvane Dialogue</a><span class=\"ds-programme__meta\">0.1.0, macOS on Apple silicon for now</span><a class=\"ds-programme__get\" href=\"#\">Download <svg viewBox=\"0 0 18 18\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"square\"><path d=\"M9 2v12M4 9l5 5 5-5M3 16.5h12\"/></svg></a></li><li style=\"--spot: #0f7a5c\"><a class=\"ds-programme__name\" href=\"#\">Altvane Compressor</a><span class=\"ds-programme__meta\">In development</span><a class=\"ds-programme__get ds-programme__get--quiet\" href=\"#\">Details <svg viewBox=\"0 0 18 18\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"square\"><path d=\"M2 9h13M10 4l5 5-5 5\"/></svg></a></li></ol>",
+      "css": ".ds-programme { list-style: none; margin: 0; padding: 0; max-width: 30rem; border-top: 1.5px solid var(--ink, #111213); font-family: var(--font, 'Archivo Variable', 'Helvetica Neue', Helvetica, Arial, sans-serif); color: var(--ink, #111213); } .ds-programme li { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'name get' 'meta get'; align-items: center; column-gap: 24px; padding: 12px 0 13px; border-bottom: 1px solid var(--rule, #d5d7d6); position: relative; } .ds-programme li::before { content: ''; position: absolute; left: 0; top: -1px; width: 0; height: 1.5px; background: var(--spot, #111213); transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1); } .ds-programme li:hover::before, .ds-programme li:focus-within::before { width: 100%; } .ds-programme__name { grid-area: name; font-stretch: 112%; font-weight: 450; font-size: 1.1875rem; letter-spacing: -0.012em; color: inherit; text-decoration: none; } .ds-programme__meta { grid-area: meta; font-size: 0.8125rem; line-height: 1.45; color: var(--ink-3, #6b6d70); font-variant-numeric: tabular-nums lining-nums; } .ds-programme__get { grid-area: get; display: inline-flex; align-items: center; gap: 8px; font-weight: 500; font-stretch: 108%; font-size: 0.9375rem; color: inherit; text-decoration: none; padding: 8px 0 8px 12px; } .ds-programme__get svg { width: 16px; height: 16px; transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1); } .ds-programme__get:hover svg { transform: translateY(2px); } .ds-programme__get--quiet { color: var(--ink-3, #6b6d70); font-weight: 450; } .ds-programme__get--quiet:hover { color: var(--ink, #111213); } .ds-programme__get--quiet:hover svg { transform: translateX(3px); } .ds-programme a:focus-visible { outline: 2px solid var(--ink, #111213); outline-offset: 3px; }"
+    },
+    {
+      "name": "Readings",
+      "kind": "custom",
+      "refersTo": "reading",
+      "description": "Measured values on hairlines in tabular lining figures, each with the condition it was measured under.",
+      "html": "<dl class=\"ds-readings\"><div><dt>0.01 dB</dt><dd>curve accuracy in the zero-latency modes</dd></div><div><dt>8%</dt><dd>of one core in Eco on an M5 Max</dd></div><div><dt>80 ms</dt><dd>latency at 512-sample buffers</dd></div></dl>",
+      "css": ".ds-readings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; border-top: 1px solid var(--rule, #d5d7d6); font-family: var(--font, 'Archivo Variable', 'Helvetica Neue', Helvetica, Arial, sans-serif); color: var(--ink, #111213); } .ds-readings div { padding: 16px 16px 16px 0; border-bottom: 1px solid var(--rule, #d5d7d6); } .ds-readings div:last-child:nth-child(odd) { grid-column: 1 / -1; } .ds-readings dt { font-stretch: 115%; font-weight: 380; font-size: 1.625rem; letter-spacing: -0.025em; line-height: 1.1; white-space: nowrap; font-variant-numeric: tabular-nums lining-nums; } .ds-readings dd { margin: 4px 0 0; font-size: 0.8125rem; line-height: 1.4; color: var(--ink-3, #6b6d70); max-width: 18ch; }"
+    },
+    {
+      "name": "Figure Control",
+      "kind": "input",
+      "refersTo": "control-thumb",
+      "description": "A label and tabular value over a hairline range; the square ink thumb turns spot ink and rotates into a diamond on hover or drag.",
+      "html": "<div class=\"ds-control\" style=\"--spot: #0f7a5c\"><label class=\"ds-control__label\" for=\"ds-ctl-threshold\">Threshold</label><output class=\"ds-control__value\" for=\"ds-ctl-threshold\">−18 dB</output><input id=\"ds-ctl-threshold\" class=\"ds-control__range\" type=\"range\" min=\"-48\" max=\"-3\" step=\"1\" value=\"-18\" /></div>",
+      "css": ".ds-control { display: grid; grid-template-columns: 1fr auto; row-gap: 4px; align-items: baseline; max-width: 18rem; font-family: var(--font, 'Archivo Variable', 'Helvetica Neue', Helvetica, Arial, sans-serif); color: var(--ink, #111213); } .ds-control__label { font-size: 0.9375rem; font-weight: 450; font-stretch: 108%; } .ds-control__value { font-size: 0.9375rem; color: var(--ink-2, #4c4e51); font-variant-numeric: tabular-nums lining-nums; } .ds-control__range { grid-column: 1 / -1; appearance: none; -webkit-appearance: none; width: 100%; height: 28px; margin: 0; background: linear-gradient(var(--rule-strong, #b9bbba), var(--rule-strong, #b9bbba)) center / 100% 1px no-repeat; cursor: ew-resize; } .ds-control__range::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: var(--ink, #111213); border: 0; border-radius: 0; transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s; } .ds-control__range::-moz-range-thumb { width: 14px; height: 14px; background: var(--ink, #111213); border: 0; border-radius: 0; } .ds-control__range:hover::-webkit-slider-thumb, .ds-control__range:active::-webkit-slider-thumb { background: var(--spot, #111213); transform: rotate(45deg); } .ds-control__range:focus-visible { outline: 2px solid var(--ink, #111213); outline-offset: 2px; }"
+    },
+    {
+      "name": "Release Matrix",
+      "kind": "custom",
+      "refersTo": "format-dot",
+      "description": "A ruled table of platforms against formats: row heads in the Name style, filled ink dots for yes, hairline outlines for no. No badges.",
+      "html": "<table class=\"ds-matrix\"><thead><tr><th scope=\"col\">Platform</th><th scope=\"col\">VST3</th><th scope=\"col\">AU</th><th scope=\"col\">LV2</th></tr></thead><tbody><tr><th scope=\"row\">macOS</th><td><span class=\"ds-dot ds-dot--on\"></span></td><td><span class=\"ds-dot ds-dot--on\"></span></td><td><span class=\"ds-dot\"></span></td></tr><tr><th scope=\"row\">Linux</th><td><span class=\"ds-dot ds-dot--on\"></span></td><td><span class=\"ds-dot\"></span></td><td><span class=\"ds-dot ds-dot--on\"></span></td></tr></tbody></table>",
+      "css": ".ds-matrix { width: 100%; border-collapse: collapse; font-family: var(--font, 'Archivo Variable', 'Helvetica Neue', Helvetica, Arial, sans-serif); font-size: 0.9375rem; color: var(--ink, #111213); } .ds-matrix th, .ds-matrix td { text-align: left; padding: 16px 16px 16px 0; border-bottom: 1px solid var(--rule, #d5d7d6); font-weight: 400; vertical-align: middle; } .ds-matrix thead th { font-size: 0.8125rem; color: var(--ink-3, #6b6d70); border-bottom: 1.5px solid var(--ink, #111213); padding-top: 0; } .ds-matrix tbody th { font-stretch: 112%; font-weight: 450; font-size: 1.1875rem; letter-spacing: -0.01em; } .ds-dot { display: inline-block; width: 12px; height: 12px; border: 1px solid var(--rule-strong, #b9bbba); border-radius: 50%; } .ds-dot--on { background: var(--ink, #111213); border-color: var(--ink, #111213); }"
+    },
+    {
+      "name": "Plate",
+      "kind": "card",
+      "refersTo": "plate",
+      "description": "A screenshot of a plug-in editor set like a printed plate: registration corners, a 6px radius and the plate lift shadow on the image only, a caption flush left beneath.",
+      "html": "<figure class=\"ds-plate\"><div class=\"ds-plate__frame\"><div class=\"ds-plate__img\" role=\"img\" aria-label=\"Editor screenshot\"></div><span class=\"ds-corner ds-corner--tl\"></span><span class=\"ds-corner ds-corner--tr\"></span><span class=\"ds-corner ds-corner--bl\"></span><span class=\"ds-corner ds-corner--br\"></span></div><figcaption>Altvane EQ 0.1.0, its own screenshot.</figcaption></figure>",
+      "css": ".ds-plate { margin: 0; max-width: 32rem; font-family: var(--font, 'Archivo Variable', 'Helvetica Neue', Helvetica, Arial, sans-serif); } .ds-plate__frame { position: relative; padding: clamp(12px, 1.6vw, 24px); } .ds-plate__img { aspect-ratio: 1040 / 620; background: #1a1c1f; border-radius: 6px; box-shadow: 0 1px 2px rgb(17 18 19 / 0.08), 0 18px 48px -20px rgb(17 18 19 / 0.35); } .ds-corner { position: absolute; width: 14px; height: 14px; border: 0 solid var(--ink, #111213); } .ds-corner--tl { left: 0; top: 0; border-left-width: 1px; border-top-width: 1px; } .ds-corner--tr { right: 0; top: 0; border-right-width: 1px; border-top-width: 1px; } .ds-corner--bl { left: 0; bottom: 0; border-left-width: 1px; border-bottom-width: 1px; } .ds-corner--br { right: 0; bottom: 0; border-right-width: 1px; border-bottom-width: 1px; } .ds-plate figcaption { margin-top: 12px; font-size: 0.8125rem; line-height: 1.45; letter-spacing: 0.004em; color: var(--ink-3, #6b6d70); max-width: 60ch; }"
+    },
+    {
+      "name": "Wordmark",
+      "kind": "custom",
+      "refersTo": "wordmark",
+      "description": "The brand is the lowercase word 'altvane' in Archivo, with no symbol: 540 weight, 1.5rem, width 118%, -0.035em in the header, and at poster scale at the foot of every page.",
+      "html": "<div class=\"ds-wordmark\"><span class=\"ds-wordmark__header\">altvane</span><span class=\"ds-wordmark__poster\">altvane</span></div>",
+      "css": ".ds-wordmark { display: flex; align-items: baseline; gap: 48px; color: var(--ink, #111213); font-family: var(--font, 'Archivo Variable', 'Helvetica Neue', Helvetica, Arial, sans-serif); } .ds-wordmark__header { font-stretch: 118%; font-weight: 540; font-size: 1.5rem; letter-spacing: -0.035em; line-height: 1; } .ds-wordmark__poster { font-stretch: 125%; font-weight: 300; font-size: 5rem; letter-spacing: -0.06em; line-height: 0.8; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Musica Viva Sheet",
+    "overview": "Every Altvane plug-in is announced the way a concert in a Swiss poster series is: one cool white sheet, lowercase grotesk set flush left on a strict twelve-column grid, and one large geometric figure. The figure is not illustration. It is computed from the product's real mechanism (EQ's filter response as concentric arcs, Dialogue's stems summing to the input, the Compressor's gain computer as columns under a knee), it draws in once from the product's neutral state, and it answers the pointer and the keyboard. The sheet carries the precision claim; the figure proves it.\n\nThe page is quiet and dense in the way a printed programme is dense: near-black ink, hairline rules, registration ticks on every column line, small tabular readings with the condition they were measured under. Hierarchy comes from Archivo's width axis and from scale, not from colour, boxes or weight. Each product owns exactly one printed spot ink, and that ink appears only in its figure, its own rules and the links that name it. Actions are set type standing on a rule with a drawn arrow; nothing on the sheet is a filled button.\n\nThe world rejects the plug-in category's defaults: a dark hero, a GUI screenshot used as the hook, feature cards and format badges. Screenshots do appear, but only further down a product page, framed as a plate.",
+    "keyCharacteristics": [
+      "Cool white stock, near-black ink, one spot ink per product.",
+      "Archivo Variable across its width axis: expanded and light for names, normal for text, tabular figures for readings.",
+      "Twelve-column sheet with registration ticks; figures crop off the right edge of the sheet.",
+      "Hairline rules everywhere; a 1.5px rule heads every list, table and product section.",
+      "No boxes: actions are type on a rule; lists and tables are ruled, never carded.",
+      "One authored motion: the figure's draw-in, plus underline wipes in the spot ink."
+    ],
+    "rules": [
+      {
+        "name": "The One Spot Ink Rule",
+        "body": "Each product owns one spot ink, used for that product's figure, its 1.5px section rule and its hover wipes, and nothing else. A spot ink only ever marks its own product: where another product is named (a header nav link, a programme row, a \"Next\" action), that element wipes in the named product's ink, never the page's.",
+        "section": "colors"
+      },
+      {
+        "name": "The Spot Never Sets Text Rule",
+        "body": "Spot inks are for marks, rules and fills, never for type. Dialogue Vermilion is 3.59:1 on the stock: enough for a graphic, not for words.",
+        "section": "colors"
+      },
+      {
+        "name": "The Three Inks Rule",
+        "body": "Text is set in Programme Ink, Second Ink or Third Ink, and nothing lighter. Hairlines are for rules only.",
+        "section": "colors"
+      },
+      {
+        "name": "The Width Axis Rule",
+        "body": "Hierarchy is carried by width before weight: 125% for display, 112% to 118% for names, titles, actions and the wordmark, 100% for reading text. Never use bold weights to make something louder; make it wider and larger.",
+        "section": "typography"
+      },
+      {
+        "name": "The Lowercase Poster Rule",
+        "body": "Display and headline sizes are set lowercase via text-transform; title size and below keep sentence case so product names stay readable.",
+        "section": "typography"
+      },
+      {
+        "name": "The Reading Rule",
+        "body": "Every number on the sheet is set in tabular lining figures and carries the condition it was measured under. A value with an adjective instead of a condition does not belong in a reading.",
+        "section": "typography"
+      },
+      {
+        "name": "The Twelve Columns Rule",
+        "body": "Every element starts and ends on a column line. If a placement cannot be written as `grid-column: a / span b` on the sheet, it is wrong.",
+        "section": "layout"
+      },
+      {
+        "name": "The Crop Rule",
+        "body": "Figures are large enough to be cut by the sheet's edge. They do not sit centred in a box with margin around them.",
+        "section": "layout"
+      },
+      {
+        "name": "The Printed Sheet Rule",
+        "body": "Nothing on the sheet casts a shadow except a screenshot of a real window. No cards, panels or sticky bars float.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Square Corner Rule",
+        "body": "Corners are square unless the object is a circle by geometry or a picture of something outside the sheet.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "**Do** give every product surface its spot ink through `data-product`, and use it only for the figure, the 1.5px section rule and hover wipes.",
+      "**Do** set actions as type on a rule with a drawn arrow: 1.5px Programme Ink for primary, 1px Strong Hairline for quiet.",
+      "**Do** carry hierarchy on Archivo's width axis (125% display, 112% names and titles, 100% text), going lighter as type gets larger.",
+      "**Do** place every element on the twelve-column sheet and let figures crop at the sheet's edge.",
+      "**Do** head every list, table and section with a 1.5px rule and separate rows with 1px hairlines.",
+      "**Do** compute every figure from the product's real mechanism, and keep it complete and static without JavaScript or under reduced motion.",
+      "**Do** set every number in tabular lining figures with the condition it was measured under."
+    ],
+    "donts": [
+      "**Don't** fill a button or draw a box around an action.",
+      "**Don't** set text in a spot ink, or in any colour lighter than Third Ink (#6b6d70).",
+      "**Don't** use a product's spot ink for anything that is not that product's figure, rule or link.",
+      "**Don't** use cards, panels, format badges or a dark section; group content with rules instead.",
+      "**Don't** add shadows or rounded corners to anything except a screenshot plate (6px) or a key cap (3px).",
+      "**Don't** lead a page with a GUI screenshot; the figure is the hook, and screenshots sit lower on product pages as plates.",
+      "**Don't** add motion beyond the figure's single draw-in and the underline and arrow responses to hover.",
+      "**Don't** add a symbol or logo mark beside the wordmark, and don't use the `libs/ui` weather-vane mark or the plug-ins' Inter typeface on the website."
+    ]
+  }
+}

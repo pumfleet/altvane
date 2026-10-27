@@ -1,0 +1,50 @@
+---
+import Arrow from "./Arrow.astro";
+import { type Product, products, releasesUrl, sourceUrl } from "../data/products";
+
+interface Props {
+  product: Product;
+}
+const { product: p } = Astro.props;
+const next = products[(products.findIndex((x) => x.code === p.code) + 1) % products.length];
+---
+<section class="sheet close" aria-labelledby="close-title">
+  <h2 id="close-title" class="t-headline close__title">
+    {p.close}
+  </h2>
+  <div class="close__actions">
+    {p.status === "released" ? (
+      <a class="action" href={releasesUrl(p.code)}>Download {p.name} <Arrow dir="down" /></a>
+    ) : (
+      <a class="action" href={sourceUrl(p.code)} data-external>Follow it on GitHub <Arrow dir="out" /></a>
+    )}
+    <a class="action action--quiet" href={`/${next.code}`} data-product={next.code}>Next: {next.name} <Arrow /></a>
+  </div>
+</section>
+
+<style>
+  .close {
+    margin-top: var(--s10);
+    row-gap: var(--s6);
+    align-items: end;
+  }
+  .close__title {
+    grid-column: 1 / span 7;
+    max-width: 16ch;
+  }
+  .close__actions {
+    grid-column: 9 / span 4;
+    display: grid;
+    gap: var(--s3);
+  }
+  .close__actions .action {
+    min-width: 0;
+    width: 100%;
+  }
+  @media (max-width: 900px) {
+    .close__title,
+    .close__actions {
+      grid-column: 1 / -1;
+    }
+  }
+</style>

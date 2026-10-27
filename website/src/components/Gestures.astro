@@ -1,0 +1,55 @@
+---
+interface Props {
+  rows: [string, string][];
+}
+const { rows } = Astro.props;
+---
+<table class="gestures">
+  <thead>
+    <tr><th scope="col">Action</th><th scope="col">Gesture</th></tr>
+  </thead>
+  <tbody>
+    {rows.map(([action, gesture]) => (
+      <tr><th scope="row">{action}</th><td set:html={gesture} /></tr>
+    ))}
+  </tbody>
+</table>
+
+<style>
+  .gestures {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9375rem;
+  }
+  th,
+  td {
+    text-align: left;
+    vertical-align: top;
+    padding: var(--s3) var(--s4) var(--s3) 0;
+    border-bottom: 1px solid var(--rule);
+    font-weight: 400;
+  }
+  thead th {
+    font-size: 0.8125rem;
+    color: var(--ink-3);
+    border-bottom: 1.5px solid var(--ink);
+    padding-top: 0;
+  }
+  tbody th {
+    width: 38%;
+    font-weight: 450;
+  }
+  td {
+    color: var(--ink-2);
+  }
+  td :global(kbd) {
+    font: inherit;
+    font-size: 0.875em;
+    font-variant-numeric: tabular-nums;
+    padding: 0 0.35em;
+    border: 1px solid var(--rule-strong);
+    border-radius: 3px;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+</style>

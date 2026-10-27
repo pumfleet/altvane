@@ -1,0 +1,113 @@
+---
+import { REPO, products } from "../data/products";
+
+const path = Astro.url.pathname.replace(/\/$/, "");
+---
+<header class="header">
+  <div class="sheet header__row">
+    <a class="header__brand wordmark" href="/" aria-label="Altvane, home">altvane</a>
+    <nav class="header__nav" aria-label="Products">
+      <ul>
+        {products.map((p) => (
+          <li data-product={p.code}>
+            <a href={`/${p.code}`} aria-current={path === `/${p.code}` ? "page" : undefined}>{p.short}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+    <a class="header__source" href={REPO}>Source</a>
+  </div>
+  <div class="sheet ticks" aria-hidden="true">
+    {Array.from({ length: 12 }, () => <span />)}
+  </div>
+</header>
+
+<style>
+  .header {
+    position: relative;
+    z-index: 2;
+  }
+  .header__row {
+    align-items: center;
+    min-height: 76px;
+    padding-block: var(--s4);
+  }
+  .header__brand {
+    grid-column: 1 / span 3;
+    justify-self: start;
+    text-decoration: none;
+  }
+  .wordmark {
+    font-stretch: 118%;
+    font-weight: 540;
+    font-size: 1.5rem;
+    letter-spacing: -0.035em;
+    line-height: 1;
+    transform: translateY(-2px);
+  }
+  .header__nav {
+    grid-column: 6 / span 5;
+  }
+  .header__nav ul {
+    display: flex;
+    gap: clamp(20px, 3vw, 48px);
+  }
+  .header__nav a,
+  .header__source {
+    font-size: 0.9375rem;
+    font-weight: 450;
+    font-stretch: 106%;
+    text-decoration: none;
+    color: var(--ink-2);
+    padding-block: var(--s2);
+    background: linear-gradient(var(--spot), var(--spot)) left bottom / 0 1.5px no-repeat;
+    transition: background-size 0.5s var(--ease-out), color 0.2s;
+  }
+  .header__nav a:hover,
+  .header__source:hover {
+    color: var(--ink);
+    background-size: 100% 1.5px;
+  }
+  .header__nav a[aria-current="page"] {
+    color: var(--ink);
+    background-size: 100% 1.5px;
+  }
+  .header__source {
+    grid-column: 11 / span 2;
+    justify-self: end;
+    --spot: var(--ink);
+  }
+
+  /* registration ticks on every column line */
+  .ticks {
+    border-top: 1px solid var(--rule);
+    height: 7px;
+  }
+  .ticks span {
+    border-left: 1px solid var(--rule-strong);
+    height: 7px;
+    margin-left: calc(var(--gutter) / -2);
+  }
+  .ticks span:first-child {
+    margin-left: 0;
+  }
+
+  @media (max-width: 760px) {
+    .header__row {
+      row-gap: var(--s2);
+    }
+    .header__brand {
+      grid-column: 1 / span 6;
+    }
+    .header__source {
+      grid-column: 7 / span 6;
+    }
+    .header__nav {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
+    .header__nav ul {
+      gap: var(--s5);
+    }
+  }
+</style>

@@ -1,0 +1,96 @@
+---
+import Base from "../layouts/Base.astro";
+import ProductHero from "../components/ProductHero.astro";
+import Section from "../components/Section.astro";
+import Features from "../components/Features.astro";
+import Gestures from "../components/Gestures.astro";
+import Plate from "../components/Plate.astro";
+import Readings from "../components/Readings.astro";
+import Builds from "../components/Builds.astro";
+import Close from "../components/Close.astro";
+import EqFigure from "../components/figures/EqFigure.astro";
+import { product } from "../data/products";
+
+const p = product("eq");
+---
+<Base title="Altvane EQ: parametric and dynamic equalizer" description={p.summary} product="eq">
+  <ProductHero product={p}>
+    <div class="eq-hero-figure">
+      <EqFigure
+        interactive
+        class="eq-figure--bleed"
+        label="Altvane EQ's response drawn as 32 concentric arcs, one per frequency from 20 Hz to 20 kHz. The length of each arc is the gain at that frequency. Use the arrow keys to move band 4."
+      >
+        Five bands, computed with the same biquad formulas an equalizer runs. Each arc is one frequency, from 20&nbsp;Hz
+        at the centre to 20&nbsp;kHz at the edge, and its length is the gain there; the dotted ray is 0&nbsp;dB. Move
+        over the figure, or focus it and use the arrow keys, to tune band&nbsp;4.
+      </EqFigure>
+    </div>
+  </ProductHero>
+
+  <Section id="features" title="What it does">
+    <Features
+      items={[
+        { lead: "The curve is the truth", text: "Every curve is computed from the actual filter coefficients, in every processing mode, and tested against the processed audio: within 0.01 dB in the zero-latency modes." },
+        { lead: "Work on the graph", text: "Drag a node for frequency and gain, and its side handles or the scroll wheel for Q. Drag the dynamic range directly, lasso and move groups, and grab a resonance straight off the analyzer." },
+        { lead: "Nothing in the way", text: "A band panel follows the band you select. Dynamics and side-chain detector settings appear only when a band is dynamic." },
+        { lead: "Up to 24 bands", text: "11 shapes from 6 to 96 dB/oct, on stereo, left, right, mid or side. Dynamic EQ with an editable detector filter, an external side chain, and six processing structures from zero-latency minimum phase to linear phase." },
+        { lead: "EQ Match", text: "Match to the side chain, a reference curve or a file. Draw corrections into the result and fit it progressively." },
+        { lead: "Everything else, done properly", text: "Presets, A/B compare, undo and redo, loudness match, a piano roll, a collision display, adjustable interface size and accent colour, and keyboard and screen-reader access to every control." },
+      ]}
+    />
+  </Section>
+
+  <Section id="editor" title="The editor" note="A full-bleed frequency graph and a floating band panel. Nothing else competes for the screen.">
+    <Plate src="/images/eq-editor.png" width={1040} height={620} alt="The Altvane EQ editor: a dark frequency graph with six numbered band nodes on a white response curve, an analyzer below, and an output meter on the right." caption="Altvane EQ 0.1.0." />
+  </Section>
+
+  <Section id="gestures" title="Under the hand" note="Values can be typed: double-click a value and enter 1.2k, 440, A4 or −3.5.">
+    <Gestures
+      rows={[
+        ["Add a band", "Double-click the graph (<kbd>Option</kbd> for a shelf), or right-click for a shape"],
+        ["Move a band", "Drag its node; <kbd>Shift</kbd> for fine, <kbd>Cmd</kbd> to lock an axis"],
+        ["Q or width", "Drag the side handles, or scroll over the node"],
+        ["Gain while scrolling", "<kbd>Option</kbd> + scroll"],
+        ["Bypass or delete", "Double-click the node, or <kbd>Option</kbd>-click or <kbd>Delete</kbd>"],
+        ["Listen to a band", "Hold <kbd>S</kbd> over it, or the headphones button"],
+        ["Select several", "Drag a lasso or <kbd>Shift</kbd>-click; <kbd>Cmd A</kbd> for all"],
+        ["Copy, paste, duplicate", "<kbd>Cmd C</kbd>, <kbd>Cmd V</kbd>, <kbd>Cmd D</kbd>"],
+        ["Nudge", "Arrow keys (<kbd>Shift</kbd> for fine)"],
+        ["Cycle bands", "<kbd>Tab</kbd> and <kbd>Shift Tab</kbd>"],
+        ["Undo and redo", "<kbd>Cmd Z</kbd> and <kbd>Shift Cmd Z</kbd>"],
+      ]}
+    />
+  </Section>
+
+  <Section id="specs" title="Specifications" note="Curve accuracy is measured against the processed audio in the zero-latency modes.">
+    <Readings items={p.readings} size="large" />
+    <div class="specs-builds"><Builds /></div>
+  </Section>
+
+
+  <Close product={p} />
+</Base>
+
+<style>
+  .eq-hero-figure {
+    height: min(78vh, 760px);
+    min-height: 520px;
+    margin-right: calc(-1 * var(--margin));
+  }
+  .eq-hero-figure :global(.eq-figure--bleed) {
+    --bleed: 124%;
+  }
+  @media (max-width: 900px) {
+    .eq-hero-figure {
+      height: min(110vw, 560px);
+      min-height: 0;
+    }
+    .eq-hero-figure :global(.eq-note) {
+      display: none;
+    }
+  }
+  .specs-builds {
+    margin-top: var(--s7);
+  }
+</style>
