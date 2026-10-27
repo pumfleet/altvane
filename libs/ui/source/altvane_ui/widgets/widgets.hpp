@@ -66,6 +66,8 @@ namespace altvane::ui {
         juce::String label_;
         bool hovered_{false}, dragging_{false}, enabled_look_{true}, focus_ring_{false};
         float drag_pixels_{220.f};
+        // sliders drag sideways, everything else up and down
+        bool drag_horizontal_{false};
 
         /**
          * area where a double-click opens the text editor

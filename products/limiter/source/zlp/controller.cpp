@@ -1,0 +1,341 @@
+// Copyright (C) 2026 - zsliu98
+// This file is part of ZLLimiter
+//
+// ZLLimiter is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License Version 3 as published by the Free Software Foundation.
+//
+// ZLLimiter is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License along with ZLLimiter. If not, see <https://www.gnu.org/licenses/>.
+
+#include "controller.hpp"
+
+#include <algorithm>
+
+namespace zlp {
+    Controller::Controller(juce::AudioProcessor& processor) :
+        p_ref_(processor) {
+    }
+
+    Controller::~Controller() {
+        cancelPendingUpdate();
+    }
+
+    void Controller::prepare(const double sample_rate, const size_t maximum_block_size) {
+        cancelPendingUpdate();
+        is_prepared_ = false;
+        const auto maximum_channels = static_cast<size_t>(p_ref_.getMainBusNumInputChannels());
+        prepareLimiters(sample_rate, maximum_block_size, maximum_channels);
+        input_gain_.prepare(sample_rate, maximum_block_size, 0.25);
+        output_gain_.prepare(sample_rate, maximum_block_size, 0.25);
+
+        dry_buffers_.resize(maximum_channels);
+        dry_pointers_.resize(maximum_channels);
+        gained_buffers_.resize(maximum_channels);
+        gained_pointers_.resize(maximum_channels);
+        limited_buffers_.resize(maximum_channels);
+        limited_pointers_.resize(maximum_channels);
+        for (size_t channel = 0; channel < maximum_channels; ++channel) {
+            dry_buffers_[channel].resize(maximum_block_size);
+            dry_pointers_[channel] = dry_buffers_[channel].data();
+            gained_buffers_[channel].resize(maximum_block_size);
+            gained_pointers_[channel] = gained_buffers_[channel].data();
+            limited_buffers_[channel].resize(maximum_block_size);
+            limited_pointers_[channel] = limited_buffers_[channel].data();
+        }
+        const auto maximum_latency = getMaximumLatencySamples();
+        const auto maximum_delay_seconds = static_cast<float>(
+            static_cast<double>(maximum_latency) / std::max(sample_rate, 1.0));
+        dry_delay_.prepare(sample_rate, maximum_block_size, maximum_channels, maximum_delay_seconds);
+        gained_delay_.prepare(sample_rate, maximum_block_size, maximum_channels, maximum_delay_seconds);
+        gained_delay_needs_reset_ = true;
+        gained_delay_needs_warmup_ = false;
+        gained_delay_fill_remaining_ = 0;
+        analyzer_num_channels_.store(maximum_channels, std::memory_order_release);
+        mag_analyzer_sender_.prepare(sample_rate, maximum_block_size, {2, 2, 2, 2}, 0.5);
+        for (size_t stream = 0; stream < kAnalyzerStreamNum; ++stream) {
+            mag_analyzer_sender_.setON(stream, true);
+        }
+        analyzer_generation_.fetch_add(1, std::memory_order_release);
+
+        oversampling_index_ = kOversamplingModeCount;
+        is_prepared_ = true;
+        signalParameterUpdates();
+        prepareBuffer();
+        cancelPendingUpdate();
+        const auto latency = getActiveLatencySamples();
+        pending_latency_samples_.store(static_cast<int>(latency), std::memory_order_release);
+        p_ref_.setLatencySamples(static_cast<int>(latency));
+    }
+
+    void Controller::reset() {
+        if (!is_prepared_) {
+            return;
+        }
+
+        resetActiveLimiter();
+        input_gain_.reset();
+        output_gain_.reset();
+
+        const auto latency = static_cast<int>(getActiveLatencySamples());
+        dry_delay_.setDelayInSamples(latency);
+        dry_delay_.reset();
+        gained_delay_.setDelayInSamples(latency);
+        gained_delay_.reset();
+        gained_delay_needs_reset_ = false;
+        gained_delay_needs_warmup_ = false;
+        gained_delay_fill_remaining_ = 0;
+
+        analyzer_generation_.fetch_add(1, std::memory_order_release);
+    }
+
+    void Controller::prepareBuffer() {
+        if (!is_prepared_ || !to_update_.check()) {
+            return;
+        }
+
+        const auto update_input_gain = to_update_input_gain_.check();
+        const auto update_link = to_update_input_output_link_.check();
+        if (update_input_gain || update_link) {
+            const auto input_db = input_gain_db_.load(std::memory_order_relaxed);
+            if (update_input_gain) {
+                input_gain_.setGainDecibels(input_db);
+            }
+            const auto linked = input_output_link_.load(std::memory_order_relaxed);
+            const auto output_db = linked ? std::min(0.0f, -input_db) : 0.0f;
+            output_gain_.setGainDecibels(output_db);
+        }
+
+        if (to_update_output_mode_.check()) {
+            bypass_enabled_ = bypass_parameter_.load(std::memory_order_relaxed);
+            delta_enabled_ = delta_parameter_.load(std::memory_order_relaxed);
+        }
+
+        auto next_oversampling_index = oversampling_index_;
+        if (to_update_oversampling_.check()) {
+            const auto index = std::clamp(
+                oversampling_index_parameter_.load(std::memory_order_relaxed),
+                0, static_cast<int>(kOversamplingModeCount - 1));
+            next_oversampling_index = static_cast<size_t>(index);
+        }
+
+        const auto update_all_parameters = next_oversampling_index != oversampling_index_;
+        size_t limiter_index = 0;
+        const auto update_limiter = [&](auto& limiter) {
+            if (limiter_index++ != next_oversampling_index) {
+                return;
+            }
+            // consume pending flags even when a newly selected limiter needs every parameter
+            if (to_update_output_ceiling_.check() || update_all_parameters) {
+                limiter.setOutputCeilingDecibels(output_ceiling_db_.load(std::memory_order_relaxed));
+            }
+            if (to_update_true_peak_.check() || update_all_parameters) {
+                limiter.setTruePeakEnabled(true_peak_enabled_.load(std::memory_order_relaxed));
+            }
+            if (to_update_lookahead_.check() || update_all_parameters) {
+                limiter.setLookaheadMilliseconds(lookahead_ms_.load(std::memory_order_relaxed));
+            }
+            if (to_update_attack_.check() || update_all_parameters) {
+                limiter.setAttackMilliseconds(attack_ms_.load(std::memory_order_relaxed));
+            }
+            if (to_update_release_.check() || update_all_parameters) {
+                limiter.setReleaseMilliseconds(release_ms_.load(std::memory_order_relaxed));
+            }
+            if (to_update_channel_delta_.check() || update_all_parameters) {
+                limiter.setChannelDeltaDecibels(channel_delta_db_.load(std::memory_order_relaxed));
+            }
+            if (to_update_recovery_.check() || update_all_parameters) {
+                limiter.setRecoveryMilliseconds(recovery_ms_.load(std::memory_order_relaxed));
+            }
+        };
+        std::apply([&](auto&... limiter) {
+            (update_limiter(limiter), ...);
+        }, limiters_);
+
+        // apply parameters before resetting the selected limiter so recovery starts at its new targets
+        selectOversampling(next_oversampling_index);
+    }
+
+    void Controller::process(std::span<float*> buffer, const size_t num_samples, const bool host_bypassed) {
+        if (!is_prepared_ || buffer.empty() || num_samples == 0) {
+            return;
+        }
+        prepareBuffer();
+        auto dry_buffer = std::span<float*>{dry_pointers_.data(), buffer.size()};
+        dry_delay_.process(buffer, dry_buffer, num_samples);
+        input_gain_.process(buffer, num_samples);
+
+        auto gained_buffer = std::span<float*>{gained_pointers_.data(), buffer.size()};
+        bool gained_delay_ready = false;
+        const auto analyzer_on = analyzer_enabled_.load(std::memory_order_acquire);
+        const auto needs_gained_delay = analyzer_on || delta_enabled_;
+        if (needs_gained_delay) {
+            if (gained_delay_needs_reset_) {
+                const auto latency = getActiveLatencySamples();
+                gained_delay_.setDelayInSamples(static_cast<int>(latency));
+                gained_delay_.reset();
+                gained_delay_fill_remaining_ = gained_delay_needs_warmup_ ? latency : 0;
+                gained_delay_needs_reset_ = false;
+                gained_delay_needs_warmup_ = false;
+            }
+            gained_delay_.process(buffer, gained_buffer, num_samples);
+            gained_delay_ready = gained_delay_fill_remaining_ == 0;
+            gained_delay_fill_remaining_ -= std::min(gained_delay_fill_remaining_, num_samples);
+        } else {
+            gained_delay_needs_reset_ = true;
+            gained_delay_needs_warmup_ = true;
+        }
+
+        processActiveLimiter(buffer, num_samples);
+        if (analyzer_on || delta_enabled_) {
+            for (size_t channel = 0; channel < buffer.size(); ++channel) {
+                zldsp::vector::copy(limited_pointers_[channel], buffer[channel], num_samples);
+            }
+        }
+        output_gain_.process(buffer, num_samples);
+
+        if (gained_delay_ready && analyzer_on) {
+            if (static_cast<size_t>(mag_analyzer_sender_.getAbstractFIFO().getNumFree()) >= num_samples) {
+                const auto right = std::min(size_t(1), buffer.size() - 1);
+                std::array<float*, 2> pre{dry_buffer[0], dry_buffer[right]};
+                std::array<float*, 2> gained{gained_buffer[0], gained_buffer[right]};
+                std::array<float*, 2> limited{limited_pointers_[0], limited_pointers_[right]};
+                std::array<float*, 2> post{buffer[0], buffer[right]};
+                mag_analyzer_sender_.process({pre, gained, limited, post}, num_samples);
+            } else {
+                analyzer_generation_.fetch_add(1, std::memory_order_release);
+            }
+        }
+        if (host_bypassed || bypass_enabled_) {
+            for (size_t channel = 0; channel < buffer.size(); ++channel) {
+                zldsp::vector::copy(buffer[channel], dry_buffer[channel], num_samples);
+            }
+        } else if (delta_enabled_ && gained_delay_ready) {
+            for (size_t channel = 0; channel < buffer.size(); ++channel) {
+                zldsp::vector::sub(buffer[channel], gained_buffer[channel], limited_pointers_[channel], num_samples);
+            }
+        }
+    }
+
+    void Controller::signalParameterUpdates() {
+        to_update_input_gain_.signal();
+        to_update_input_output_link_.signal();
+        to_update_output_ceiling_.signal();
+        to_update_output_mode_.signal();
+        to_update_true_peak_.signal();
+        to_update_oversampling_.signal();
+        to_update_lookahead_.signal();
+        to_update_attack_.signal();
+        to_update_release_.signal();
+        to_update_channel_delta_.signal();
+        to_update_recovery_.signal();
+        to_update_.signal();
+    }
+
+    void Controller::prepareLimiters(const double sample_rate,
+                                     const size_t maximum_block_size,
+                                     const size_t maximum_channels) {
+        std::apply([&](auto&... limiter) {
+            (limiter.prepare(sample_rate, maximum_block_size, maximum_channels), ...);
+        }, limiters_);
+    }
+
+    void Controller::selectOversampling(const size_t oversampling_index) {
+        const auto clamped_index = std::min(oversampling_index, kOversamplingModeCount - 1);
+        if (clamped_index == oversampling_index_) {
+            return;
+        }
+        oversampling_index_ = clamped_index;
+        reset();
+
+        const auto latency = getActiveLatencySamples();
+        pending_latency_samples_.store(static_cast<int>(latency), std::memory_order_release);
+        triggerAsyncUpdate();
+    }
+
+    void Controller::resetActiveLimiter() {
+        switch (oversampling_index_) {
+        case 0:
+            std::get<0>(limiters_).reset();
+            break;
+        case 1:
+            std::get<1>(limiters_).reset();
+            break;
+        case 2:
+            std::get<2>(limiters_).reset();
+            break;
+        case 3:
+            std::get<3>(limiters_).reset();
+            break;
+        case 4:
+            std::get<4>(limiters_).reset();
+            break;
+        case 5:
+            std::get<5>(limiters_).reset();
+            break;
+        default:
+            jassertfalse;
+            break;
+        }
+    }
+
+    void Controller::processActiveLimiter(std::span<float*> buffer, const size_t num_samples) {
+        switch (oversampling_index_) {
+        case 0:
+            std::get<0>(limiters_).process(buffer, num_samples);
+            break;
+        case 1:
+            std::get<1>(limiters_).process(buffer, num_samples);
+            break;
+        case 2:
+            std::get<2>(limiters_).process(buffer, num_samples);
+            break;
+        case 3:
+            std::get<3>(limiters_).process(buffer, num_samples);
+            break;
+        case 4:
+            std::get<4>(limiters_).process(buffer, num_samples);
+            break;
+        case 5:
+            std::get<5>(limiters_).process(buffer, num_samples);
+            break;
+        default:
+            jassertfalse;
+            break;
+        }
+    }
+
+    size_t Controller::getActiveLatencySamples() const {
+        switch (oversampling_index_) {
+        case 0:
+            return std::get<0>(limiters_).getLatencySamples();
+        case 1:
+            return std::get<1>(limiters_).getLatencySamples();
+        case 2:
+            return std::get<2>(limiters_).getLatencySamples();
+        case 3:
+            return std::get<3>(limiters_).getLatencySamples();
+        case 4:
+            return std::get<4>(limiters_).getLatencySamples();
+        case 5:
+            return std::get<5>(limiters_).getLatencySamples();
+        default:
+            jassertfalse;
+            return std::get<2>(limiters_).getLatencySamples();
+        }
+    }
+
+    size_t Controller::getMaximumLatencySamples() const {
+        size_t maximum_latency = 0;
+        const auto update = [&](const auto& limiter) {
+            maximum_latency = std::max(maximum_latency, limiter.getLatencySamples());
+        };
+        std::apply([&](const auto&... limiter) {
+            (update(limiter), ...);
+        }, limiters_);
+        return maximum_latency;
+    }
+
+    void Controller::handleAsyncUpdate() {
+        p_ref_.setLatencySamples(pending_latency_samples_.load(std::memory_order_acquire));
+    }
+}

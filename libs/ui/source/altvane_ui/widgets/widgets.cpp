@@ -267,7 +267,7 @@ namespace altvane::ui {
         dragging_ = true;
         drag_norm_ = range_.convertTo0to1(value_);
         drag_start_norm_ = drag_norm_;
-        last_drag_y_ = e.position.y;
+        last_drag_y_ = drag_horizontal_ ? e.position.x : e.position.y;
         if (on_begin) {
             on_begin();
         }
@@ -279,8 +279,10 @@ namespace altvane::ui {
         if (!dragging_) {
             return;
         }
-        const auto dy = last_drag_y_ - e.position.y;
-        last_drag_y_ = e.position.y;
+        // up or right increases
+        const auto position = drag_horizontal_ ? e.position.x : e.position.y;
+        const auto dy = drag_horizontal_ ? position - last_drag_y_ : last_drag_y_ - position;
+        last_drag_y_ = position;
         const auto fine = e.mods.isShiftDown() ? .15f : 1.f;
         drag_norm_ = std::clamp(drag_norm_ + dy / drag_pixels_ * fine * InteractionSettings::drag_sensitivity, 0.f, 1.f);
         setFromUser(range_.convertFrom0to1(drag_norm_));

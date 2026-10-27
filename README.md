@@ -8,6 +8,7 @@ shared third-party dependencies and a shared design system.
 | [Altvane EQ](products/eq/README.md) | `products/eq` | Parametric and dynamic equalizer, on the ZL Equalizer 2 engine |
 | [Altvane Dialogue](products/dialogue/README.md) | `products/dialogue` | Neural dialogue isolation: voice, ambience and voice reverb levels (macOS on Apple silicon for now) |
 | [Altvane Compressor](products/compressor/README.md) | `products/compressor` | Compressor, upward compressor and expander, on the ZL Compressor engine (in development) |
+| [Altvane Limiter](products/limiter/README.md) | `products/limiter` | True-peak limiter and loudness meter with delivery targets, on the ZL Limiter engine |
 
 ## Layout
 
@@ -120,5 +121,5 @@ submodules, lists the upstream files to adapt (processor, state, CMake), and war
 
 ## License
 
-Altvane EQ and Altvane Compressor are licensed under the GNU Affero General Public License v3, as are ZL Equalizer
-and ZL Compressor, which they are based on; see [LICENSE.md](LICENSE.md) and [NOTICE.md](NOTICE.md). Third-party licenses are in [licenses/](licenses).
+Altvane EQ, Altvane Compressor and Altvane Limiter are licensed under the GNU Affero General Public License v3, as
+are ZL Equalizer, ZL Compressor and ZL Limiter, which they are based on; see [LICENSE.md](LICENSE.md) and [NOTICE.md](NOTICE.md). Third-party licenses are in [licenses/](licenses).
