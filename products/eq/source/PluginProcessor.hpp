@@ -82,6 +82,8 @@ public:
 private:
     std::array<std::vector<double>, 2> main_buffer_, side_buffer_;
     std::array<double*, 2> main_pointers_{}, side_pointers_{};
+    // Altvane: the block size prepareToPlay announced; larger host blocks are processed in pieces of this size
+    size_t max_block_size_{1};
     zlp::Controller controller_;
     std::array<std::unique_ptr<zlp::FilterAttach>, zlp::kBandNum> filter_attachments_;
     std::array<std::unique_ptr<zlp::FilterDynamicAttach>, zlp::kBandNum> filter_dynamic_attachments_;
@@ -103,11 +105,14 @@ private:
 
     void updateChannelLayout();
 
-    template <bool bypass = false>
-    void processBlockInternal(juce::AudioBuffer<float>& buffer);
+    template <bool bypass = false, typename FloatType>
+    void processBlockInternal(juce::AudioBuffer<FloatType>& buffer);
 
-    template <bool bypass = false>
-    void processBlockInternal(juce::AudioBuffer<double>& buffer);
+    template <bool bypass>
+    void processPiece(juce::AudioBuffer<float>& buffer, int start, size_t num_samples);
+
+    template <bool bypass>
+    void processPiece(juce::AudioBuffer<double>& buffer, int start, size_t num_samples);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PluginProcessor)
 };
