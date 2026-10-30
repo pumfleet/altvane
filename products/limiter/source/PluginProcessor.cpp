@@ -229,7 +229,8 @@ void PluginProcessor::unlockEngine() {
 // thread. The audio thread plays silence for any block that arrives meanwhile: switching resets the engine (and so
 // drops a latency's worth of audio) in any case
 void PluginProcessor::applyOversampling() {
-    if (!prepared_.load(std::memory_order::acquire) ||
+    // offline, the render thread switches (see processBlockInternal)
+    if (isNonRealtime() || !prepared_.load(std::memory_order::acquire) ||
         wantedOversampling() == applied_oversampling_.load(std::memory_order::relaxed)) {
         return;
     }
@@ -294,8 +295,11 @@ void PluginProcessor::processBlockInternal(juce::AudioBuffer<float>& buffer, con
     if (buffer.getNumSamples() == 0) {
         return; // ignore empty blocks
     }
-    // the message thread is switching the engine's oversampling: play silence rather than wait
-    if (engine_busy_.exchange(true, std::memory_order::acquire)) {
+    // the message thread is switching the engine's oversampling: play silence rather than wait, except in an offline
+    // render, which has no deadline and must not lose audio
+    if (isNonRealtime()) {
+        lockEngine();
+    } else if (engine_busy_.exchange(true, std::memory_order::acquire)) {
         buffer.clear();
         return;
     }

@@ -132,11 +132,15 @@ TEST_CASE("oversampling switches on the message thread, never on the audio threa
     run(p, sine(1000.0, -20.f), .05);
     CHECK(p.getLatencySamples() == base);
     p.runTimerForTesting();
-    CHECK(p.getLatencySamples() > base);
+    const auto switched = p.getLatencySamples();
+    CHECK(switched > base);
 
-    // offline, the render thread switches at once, so the change lands on the block it was automated on
+    // offline, the render thread switches at once, so the change lands on the block it was automated on (and the timer
+    // leaves it to the render thread, so it never holds up a render)
     p.setNonRealtime(true);
     setFromHost(0.f);
+    p.runTimerForTesting();
+    CHECK(p.getLatencySamples() == switched);
     run(p, sine(1000.0, -20.f), .05);
     pumpMessages();
     CHECK(p.getLatencySamples() == base);

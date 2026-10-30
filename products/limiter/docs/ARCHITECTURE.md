@@ -61,7 +61,8 @@ allocate. Altvane does not let the parameter reach the engine there:
 - While it does, the audio thread plays silence for any block that arrives rather than wait (an atomic flag; the
   audio thread never spins). The switch resets the engine, so a latency's worth of audio is lost with or without this.
 - In an offline render (`isNonRealtime()`) the render thread switches at once, so the change lands on the block it was
-  automated on; the engine then posts the latency change itself, which does not matter offline.
+  automated on; the engine then posts the latency change itself, which does not matter offline. The timer leaves the
+  switch to it, and a render block waits for the engine rather than play silence, so a render never loses audio.
 
 ## Known engine issues (to raise upstream)
 
