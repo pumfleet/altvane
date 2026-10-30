@@ -9,7 +9,7 @@
 #include "editor.hpp"
 
 #include "../PluginProcessor.hpp"
-#include "../state/preset_json.hpp"
+#include "factory_presets.hpp"
 #include "theme/compressor_tokens.hpp"
 
 namespace altvane::compressor {
@@ -19,7 +19,7 @@ namespace altvane::compressor {
         // the knee display needs this much room above the control card
         constexpr int kKneeMin = 180, kKneeMax = 420, kKneeReserve = 196;
 
-        ui::ShellConfig makeConfig() {
+        ui::ShellConfig makeConfig(PluginProcessor& p) {
             ui::ShellConfig config;
             config.product = "COMPRESSOR";
             config.window = {
@@ -27,15 +27,16 @@ namespace altvane::compressor {
                 size::kMaxWidth, size::kMaxHeight
             };
             // presets stay in the upstream ZL Compressor JSON format, so they load in either plug-in
-            config.preset_codec = {zlstate::PresetJson::read, zlstate::PresetJson::write};
+            config.preset_codec = presetCodec(p);
             config.credit = juce::String(juce::CharPointer_UTF8(
                 "Based on ZL Compressor by ZL Audio  \xc2\xb7  AGPL-3.0"));
+            config.switches.push_back({"HELP", "Help balloons", Editor::kHelpSwitch, true});
             return config;
         }
     }
 
     Editor::Editor(PluginProcessor& p) :
-        EditorShell(p, p.parameters_, p.session_, makeConfig()),
+        EditorShell(p, p.parameters_, p.session_, makeConfig(p)),
         p_ref_(p),
         bridge_(p, param_editor_),
         history_(p),
@@ -46,7 +47,9 @@ namespace altvane::compressor {
         advanced_(bridge_),
         rail_(bridge_),
         side_panel_(bridge_, spectrum_),
-        footer_(bridge_) {
+        footer_(bridge_),
+        help_(root_) {
+        presets_.installFactoryPresets(factoryPresets(p), kFactoryPresetsVersion);
         model_.sync(bridge_);
 
         root_.addAndMakeVisible(level_);
@@ -58,6 +61,9 @@ namespace altvane::compressor {
         root_.addChildComponent(side_panel_);
         root_.addAndMakeVisible(footer_);
         root_.addChildComponent(advanced_);
+        // last, so it draws over everything
+        root_.addAndMakeVisible(help_);
+        help_.setActive(getUISettings().getSwitch(kHelpSwitch));
 
         knee_tab_.on_click = [this] {
             bridge_.setDisplay(zlstate::PComputerCurveDisplay::kID, isKneeOpen() ? 0.f : 1.f);
@@ -175,6 +181,10 @@ namespace altvane::compressor {
             advanced_.setVisible(false);
             setAdvancedOpen(true);
         }
+    }
+
+    void Editor::settingsApplied() {
+        help_.setActive(getUISettings().getSwitch(kHelpSwitch));
     }
 
     void Editor::showingChanged(const bool showing) {

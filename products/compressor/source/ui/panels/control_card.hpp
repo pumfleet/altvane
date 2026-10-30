@@ -61,6 +61,13 @@ namespace altvane::compressor {
 
         juce::Component& getMoreButton() { return more_; }
 
+        /**
+         * Learn: the first call starts measuring the input and output loudness, the second sets makeup from them
+         */
+        void toggleLearn();
+
+        bool isLearning() const { return learning_; }
+
         void paint(juce::Graphics& g) override;
 
         void paintOverChildren(juce::Graphics& g) override;
@@ -80,7 +87,6 @@ namespace altvane::compressor {
         juce::Rectangle<float> style_caption_, direction_name_;
         std::array<float, 3> dividers_{};
 
-        void toggleLearn();
         juce::String getStyleText() const;
     };
 }

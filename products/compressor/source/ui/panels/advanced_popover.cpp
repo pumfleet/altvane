@@ -9,6 +9,7 @@
 #include "advanced_popover.hpp"
 
 #include "altvane_ui/theme/fonts.hpp"
+#include "altvane_ui/widgets/help_balloon.hpp"
 #include "../model/formats.hpp"
 #include "../theme/compressor_tokens.hpp"
 
@@ -25,7 +26,7 @@ namespace altvane::compressor {
                                    std::function<juce::String(float)> format, const juce::String& help) {
             ui::bindValue(s, bridge_.getEditor(), bridge_.para(id), name);
             s.format = std::move(format);
-            s.setTooltip(help);
+            ui::setHelp(s, name, help);
             addAndMakeVisible(s);
         };
         slider(rms_mix_, zlp::PRMSMix::kID, "RMS mix", formats::percent, "Blend between peak and RMS detection.");

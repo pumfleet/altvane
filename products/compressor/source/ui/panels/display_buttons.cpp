@@ -9,6 +9,7 @@
 #include "display_buttons.hpp"
 
 #include "altvane_ui/theme/fonts.hpp"
+#include "altvane_ui/widgets/help_balloon.hpp"
 #include "altvane_ui/widgets/icons.hpp"
 #include "../theme/compressor_tokens.hpp"
 
@@ -27,11 +28,11 @@ namespace altvane::compressor {
         setMouseClickGrabsKeyboardFocus(false);
         if (kind == Kind::kKneeTab) {
             setTitle("Knee display");
-            setTooltip("Show or hide the knee display");
+            ui::setHelp(*this, "Knee display", "Show or hide the knee display.");
         } else {
             setTitle("Side chain");
-            setTooltip("What the detector listens to: source, stereo handling and its own EQ. "
-                "Glows when it changes the sound.");
+            ui::setHelp(*this, "Side chain", "What the detector listens to: source, stereo handling and its own EQ. "
+                        "Glows when it changes the sound.");
         }
     }
 
