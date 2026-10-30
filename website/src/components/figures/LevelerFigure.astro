@@ -1,0 +1,274 @@
+---
+import Control from "../Control.astro";
+import Choice from "../Choice.astro";
+import Neutral from "./Neutral.astro";
+import { type Ride, formatDb, rideSpread, vocal } from "../../lib/dsp";
+import { LEVEL_MARK, LEVEL_VIEW, levelColumns, rideY } from "../../lib/figures";
+
+interface Props {
+  controls?: boolean;
+}
+const { controls = false } = Astro.props;
+const setting: Ride = { target: -20, range: 12, speed: 0.5, guard: 0.7, lookahead: true };
+const v = vocal();
+const { cols, applied } = levelColumns(v, setting);
+// the rider doing nothing: every column heard as it came in
+const neutral = levelColumns(v, setting, 0).cols;
+const spread = rideSpread(v, applied);
+const target = rideY(setting.target);
+const n = (o: Record<string, number>) => JSON.stringify(o);
+const readoutId = `level-readout-${Math.random().toString(36).slice(2, 8)}`;
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+const description =
+  "Eight seconds of a vocal in four phrases at different levels, one column per 100 ms. The outline in each column is the level coming in, the ink mark the level heard, and the line between them the rider's move; the moves gather the phrases on the target, the ink rule. The breaths before the phrases, drawn hollow, do not move the fader: each is heard at the gain it finds.";
+const label = controls
+  ? `${description} Drag the figure up or down, or use the arrow keys, to move the target.`
+  : description;
+---
+<figure class="figure level-figure" data-product="leveler" data-level-figure data-setting={JSON.stringify(setting)} data-interactive={controls ? "" : undefined}>
+  <svg
+    viewBox={`0 0 ${LEVEL_VIEW.w} ${LEVEL_VIEW.h}`}
+    role={controls ? "application" : "img"}
+    aria-roledescription={controls ? "vocal rider" : undefined}
+    aria-label={label}
+    aria-describedby={controls ? readoutId : undefined}
+    tabindex={controls ? 0 : undefined}
+  >
+    <line class="level-target" x1="0" x2={LEVEL_VIEW.w} y1={target} y2={target} />
+    {cols.map((c, i) => {
+      if (c.kind === "room") return null;
+      const z = neutral[i];
+      const top = Math.min(c.input, c.output) + LEVEL_MARK / 2;
+      const len = Math.abs(c.input - c.output);
+      return (
+        <g class:list={["level-col", `level-col--${c.kind}`]} data-i={i}>
+          <rect class="level-move" x={c.cx - 0.75} y={top} width="1.5" height={len} data-n={n({ y: z.input + LEVEL_MARK / 2, height: 0 })} />
+          <rect class="level-in" x={c.x} y={c.input} width={c.w} height={LEVEL_MARK} />
+          <rect class="level-out" x={c.x} y={c.output} width={c.w} height={LEVEL_MARK} data-n={n({ y: z.output })} />
+        </g>
+      );
+    })}
+  </svg>
+  <Neutral />
+  <figcaption class="level-key t-small">
+    <span><i class="key key--in"></i>In</span>
+    <span><i class="key key--out"></i>Heard</span>
+    <span><i class="key key--breath"></i>Breath</span>
+    <span><i class="key key--target"></i>Target</span>
+    <span class="level-key__note">Synthetic vocal, for illustration.</span>
+  </figcaption>
+  {controls && (
+    <>
+      <p class="level-readout t-small num" id={readoutId} aria-live="polite">
+        <span>Spread in <b data-readout="before">{spread.before.toFixed(1)} dB</b></span>
+        <span>Spread heard <b data-readout="after">{spread.after.toFixed(1)} dB</b></span>
+      </p>
+      <div class="level-controls">
+        <Control name="target" label="Target" min={-32} max={-8} step={0.5} value={setting.target} display={formatDb(setting.target)} />
+        <Control name="range" label="Range" min={0} max={24} step={0.5} value={setting.range} display={`±${setting.range.toFixed(1)} dB`} />
+        <Control name="speed" label="Speed" min={0} max={1} step={0.01} value={setting.speed} display={pct(setting.speed)} />
+        <Control name="guard" label="Guard" min={0} max={1} step={0.01} value={setting.guard} display={pct(setting.guard)} />
+        <Choice name="lookahead" label="Lookahead" toggle value="on" options={[{ value: "on", label: "30 ms" }]} />
+      </div>
+    </>
+  )}
+</figure>
+
+<style>
+  .level-figure svg {
+    width: 100%;
+    height: auto;
+  }
+  .level-figure[data-interactive] svg {
+    cursor: ns-resize;
+  }
+  .level-target {
+    stroke: var(--ink);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .level-move {
+    fill: var(--spot);
+  }
+  .level-in {
+    fill: var(--paper);
+    stroke: var(--spot);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .level-out {
+    fill: var(--ink);
+  }
+  .level-col--breath .level-out {
+    fill: var(--paper);
+    stroke: var(--ink);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .level-key {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2) var(--s5);
+    margin-top: var(--s5);
+    padding-top: var(--s3);
+    border-top: 1px solid var(--rule);
+    align-items: center;
+  }
+  .level-key span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
+    color: var(--ink-2);
+  }
+  .level-key__note {
+    margin-left: auto;
+  }
+  .key {
+    width: 18px;
+    height: 7px;
+    display: inline-block;
+  }
+  .key--in {
+    border: 1px solid var(--spot);
+  }
+  .key--out {
+    background: var(--ink);
+  }
+  .key--breath {
+    border: 1px solid var(--ink);
+  }
+  .key--target {
+    height: 1px;
+    background: var(--ink);
+  }
+  .level-readout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2) var(--s6);
+    margin-top: var(--s4);
+    color: var(--ink-2);
+  }
+  .level-readout b {
+    font-weight: 450;
+    color: var(--ink);
+  }
+  .level-controls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s5) var(--gutter);
+    margin-top: var(--s6);
+  }
+  @media (max-width: 640px) {
+    .level-controls {
+      grid-template-columns: 1fr;
+    }
+    .level-key__note {
+      margin-left: 0;
+      width: 100%;
+    }
+  }
+</style>
+
+<script>
+  import { type Ride, formatDb, rideSpread, vocal } from "../../lib/dsp";
+  import { LEVEL_MARK, LEVEL_VIEW, levelColumns, rideDbAt, rideY } from "../../lib/figures";
+  import { drawIn } from "../../lib/motion";
+
+  const v = vocal();
+
+  for (const figure of document.querySelectorAll<HTMLElement>("[data-level-figure]")) {
+    const setting: Ride = JSON.parse(figure.dataset.setting!);
+    const svg = figure.querySelector("svg")!;
+    const groups = [...figure.querySelectorAll<SVGGElement>(".level-col")];
+    const target = figure.querySelector<SVGLineElement>(".level-target")!;
+    const out = (key: string) => figure.querySelector(`[data-readout='${key}']`);
+
+    const render = (s: Ride, amount = 1) => {
+      const shown = levelColumns(v, s, amount);
+      for (const g of groups) {
+        const c = shown.cols[Number(g.dataset.i)];
+        const [move, , heard] = g.children as unknown as SVGRectElement[];
+        move.setAttribute("y", String(Math.min(c.input, c.output) + LEVEL_MARK / 2));
+        move.setAttribute("height", String(Math.abs(c.input - c.output)));
+        heard.setAttribute("y", String(c.output));
+      }
+      const y = String(rideY(s.target));
+      target.setAttribute("y1", y);
+      target.setAttribute("y2", y);
+      return shown.applied;
+    };
+
+    // the draw-in: every phrase heard as it came in, and then the rider gathers them on the target
+    let touched = false;
+    drawIn(figure, (t) => {
+      if (!touched) render(setting, t);
+    });
+
+    if (!figure.hasAttribute("data-interactive")) continue;
+
+    const ranges = new Map<string, HTMLInputElement>();
+    const format: Record<string, (x: number) => string> = {
+      target: (x) => formatDb(x),
+      range: (x) => `±${x.toFixed(1)} dB`,
+      speed: (x) => `${Math.round(x * 100)}%`,
+      guard: (x) => `${Math.round(x * 100)}%`,
+    };
+    type Key = "target" | "range" | "speed" | "guard";
+    const update = () => {
+      touched = true;
+      const applied = render(setting);
+      const spread = rideSpread(v, applied);
+      out("before")!.textContent = `${spread.before.toFixed(1)} dB`;
+      out("after")!.textContent = `${spread.after.toFixed(1)} dB`;
+      for (const [key, input] of ranges) {
+        const value = setting[key as Key];
+        input.value = String(value);
+        const text = format[key](value);
+        input.setAttribute("aria-valuetext", text);
+        const o = figure.querySelector(`[data-out='${key}']`);
+        if (o) o.textContent = text;
+      }
+    };
+
+    for (const input of figure.querySelectorAll<HTMLInputElement>("input[type=range]")) {
+      ranges.set(input.name, input);
+      input.addEventListener("input", () => {
+        setting[input.name as Key] = Number(input.value);
+        update();
+      });
+    }
+    const lookahead = figure.querySelector<HTMLInputElement>("input[type=checkbox]");
+    lookahead?.addEventListener("change", () => {
+      setting.lookahead = lookahead.checked;
+      update();
+    });
+
+    // as in the editor: drag the target line up or down, and the arrow keys step it. A finger scrolls the page
+    // instead; the slider is there for touch
+    const setTarget = (db: number) => {
+      setting.target = Math.round(Math.max(-32, Math.min(-8, db)) * 2) / 2;
+      update();
+    };
+    let drag: { y: number; target: number } | null = null;
+    svg.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "touch") return;
+      drag = { y: e.clientY, target: setting.target };
+      svg.setPointerCapture(e.pointerId);
+    });
+    svg.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      const scale = LEVEL_VIEW.h / svg.getBoundingClientRect().height;
+      const dy = (e.clientY - drag.y) * scale * (e.shiftKey ? 0.25 : 1);
+      setTarget(rideDbAt(rideY(drag.target) + dy));
+    });
+    const release = () => (drag = null);
+    svg.addEventListener("pointerup", release);
+    svg.addEventListener("pointercancel", release);
+    svg.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+      e.preventDefault();
+      const step = e.shiftKey ? 0.5 : 1;
+      setTarget(setting.target + (e.key === "ArrowUp" ? step : -step));
+    });
+  }
+</script>

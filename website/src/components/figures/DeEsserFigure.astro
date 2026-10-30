@@ -1,0 +1,280 @@
+---
+import Control from "../Control.astro";
+import Choice from "../Choice.astro";
+import Neutral from "./Neutral.astro";
+import { type DeEss, deessSpectrum, formatDb, formatFreq, logPos } from "../../lib/dsp";
+import { DEESS_RULE, DEESS_VIEW, deessFigure } from "../../lib/figures";
+
+interface Props {
+  controls?: boolean;
+}
+const { controls = false } = Astro.props;
+const setting: DeEss = { threshold: -30, range: 9, low: 5500, mode: "vocal", sound: "ess" };
+const spec = deessSpectrum(setting.sound);
+const { cols, result, edge } = deessFigure(spec, setting);
+// the de-esser with nothing to reduce: every column is the input
+const neutral = deessFigure(spec, setting, 0).cols;
+const n = (o: Record<string, number>) => JSON.stringify(o);
+const readoutId = `deess-readout-${Math.random().toString(36).slice(2, 8)}`;
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+const description =
+  "One moment of a voice as a spectrum, low frequencies on the left: each column stands up to the level heard, and what the de-esser's shelf takes away is the cap on top of it. The rule along the top is the detection band, from its low edge.";
+const label = controls
+  ? `${description} Drag the figure left or right, or use the arrow keys, to move the band's low edge.`
+  : description;
+---
+<figure class="figure deess-figure" data-product="deesser" data-deess-figure data-setting={JSON.stringify(setting)} data-interactive={controls ? "" : undefined}>
+  <svg
+    viewBox={`0 0 ${DEESS_VIEW.w} ${DEESS_VIEW.h}`}
+    role={controls ? "application" : "img"}
+    aria-roledescription={controls ? "de-esser" : undefined}
+    aria-label={label}
+    aria-describedby={controls ? readoutId : undefined}
+    tabindex={controls ? 0 : undefined}
+  >
+    <line class="deess-floor" x1="0" x2={DEESS_VIEW.w} y1={DEESS_VIEW.h} y2={DEESS_VIEW.h} />
+    {cols.map((c, i) => {
+      const z = neutral[i];
+      return (
+        <g class="deess-col">
+          <rect class="deess-taken" x={c.x} y={c.top} width={c.w} height={c.taken} data-n={n({ height: z.taken })} />
+          <rect class="deess-out" x={c.x} y={c.out} width={c.w} height={c.body} data-n={n({ y: z.out, height: z.body })} />
+        </g>
+      );
+    })}
+    <g class="deess-band" transform={`translate(${edge} 0)`}>
+      <line class="deess-band__rule" x1="0" x2={DEESS_VIEW.w} y1={DEESS_RULE} y2={DEESS_RULE} />
+      <line class="deess-band__edge" x1="0" x2="0" y1={DEESS_RULE - 18} y2={DEESS_VIEW.h} />
+    </g>
+  </svg>
+  <Neutral />
+  <figcaption class="deess-key t-small">
+    <span><i class="key key--out"></i>Heard</span>
+    <span><i class="key key--taken"></i>Taken away</span>
+    <span><i class="key key--band"></i>Detection band</span>
+    <span class="deess-key__note">Synthetic spectrum, for illustration.</span>
+  </figcaption>
+  {controls && (
+    <>
+      <p class="deess-readout t-small num" id={readoutId} aria-live="polite">
+        <span>Band from <b data-readout="low">{formatFreq(setting.low)}</b></span>
+        <span>Sibilance <b data-readout="sibilance">{pct(result.sibilance)}</b></span>
+        <span>Reduction <b data-readout="reduction">{formatDb(-result.reduction)}</b></span>
+      </p>
+      <div class="deess-choices">
+        <Choice name="sound" label="Sound" value={setting.sound} options={[{ value: "ess", label: "Ess" }, { value: "vowel", label: "Bright vowel" }]} />
+        <Choice name="mode" label="Mode" value={setting.mode} options={[{ value: "vocal", label: "Vocal" }, { value: "allround", label: "Allround" }]} />
+      </div>
+      <div class="deess-controls">
+        <Control name="threshold" label="Threshold" min={-60} max={0} step={0.5} value={setting.threshold} display={formatDb(setting.threshold)} />
+        <Control name="range" label="Range" min={0} max={24} step={0.5} value={setting.range} display={`${setting.range.toFixed(1)} dB`} />
+        <Control name="low" label="Band from" min={0} max={1} step={0.001} value={logPos(setting.low, 1000, 16000)} display={formatFreq(setting.low)} />
+      </div>
+    </>
+  )}
+</figure>
+
+<style>
+  .deess-figure svg {
+    width: 100%;
+    height: auto;
+  }
+  .deess-figure[data-interactive] svg {
+    cursor: ew-resize;
+  }
+  .deess-floor {
+    stroke: var(--ink);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .deess-out {
+    fill: var(--ink);
+  }
+  .deess-taken {
+    fill: var(--spot);
+  }
+  .deess-band__rule {
+    stroke: var(--ink);
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+  }
+  .deess-band__edge {
+    stroke: var(--ink);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+    stroke-dasharray: 2 5;
+  }
+  .deess-key {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2) var(--s5);
+    margin-top: var(--s5);
+    padding-top: var(--s3);
+    border-top: 1px solid var(--rule);
+    align-items: center;
+  }
+  .deess-key span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
+    color: var(--ink-2);
+  }
+  .deess-key__note {
+    margin-left: auto;
+  }
+  .key {
+    width: 18px;
+    height: 9px;
+    display: inline-block;
+  }
+  .key--out {
+    background: var(--ink);
+  }
+  .key--taken {
+    background: var(--spot);
+  }
+  .key--band {
+    height: 1.5px;
+    background: var(--ink);
+  }
+  .deess-readout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2) var(--s6);
+    margin-top: var(--s4);
+    color: var(--ink-2);
+  }
+  .deess-readout b {
+    font-weight: 450;
+    color: var(--ink);
+  }
+  .deess-choices {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s5) var(--gutter);
+    margin-top: var(--s6);
+  }
+  .deess-controls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s5) var(--gutter);
+    margin-top: var(--s5);
+  }
+  @media (max-width: 640px) {
+    .deess-controls,
+    .deess-choices {
+      grid-template-columns: 1fr;
+    }
+    .deess-key__note {
+      margin-left: 0;
+      width: 100%;
+    }
+  }
+</style>
+
+<script>
+  import { type DeEss, deessSpectrum, formatDb, formatFreq, logFreq, logPos } from "../../lib/dsp";
+  import { DEESS_VIEW, deessFigure, deessFreqAt, deessX } from "../../lib/figures";
+  import { drawIn } from "../../lib/motion";
+
+  const spectra = { ess: deessSpectrum("ess"), vowel: deessSpectrum("vowel") };
+  const LOW_MIN = 1000;
+  const LOW_MAX = 16000;
+
+  for (const figure of document.querySelectorAll<HTMLElement>("[data-deess-figure]")) {
+    const setting: DeEss = JSON.parse(figure.dataset.setting!);
+    const svg = figure.querySelector("svg")!;
+    const cols = [...figure.querySelectorAll<SVGGElement>(".deess-col")];
+    const band = figure.querySelector<SVGGElement>(".deess-band")!;
+    const out = (key: string) => figure.querySelector(`[data-readout='${key}']`);
+
+    const render = (s: DeEss, amount = 1) => {
+      const shown = deessFigure(spectra[s.sound], s, amount);
+      shown.cols.forEach((c, i) => {
+        const [taken, body] = cols[i].children as unknown as SVGRectElement[];
+        taken.setAttribute("y", String(c.top));
+        taken.setAttribute("height", String(c.taken));
+        body.setAttribute("y", String(c.out));
+        body.setAttribute("height", String(c.body));
+      });
+      band.setAttribute("transform", `translate(${shown.edge} 0)`);
+      return shown.result;
+    };
+
+    // the draw-in: the voice as it is, and then the shelf takes the ess down
+    let touched = false;
+    drawIn(figure, (t) => {
+      if (!touched) render(setting, t);
+    });
+
+    if (!figure.hasAttribute("data-interactive")) continue;
+
+    const ranges = new Map<string, HTMLInputElement>();
+    const format: Record<string, (v: number) => string> = {
+      threshold: (v) => formatDb(v),
+      range: (v) => `${v.toFixed(1)} dB`,
+      low: (v) => formatFreq(logFreq(v, LOW_MIN, LOW_MAX)),
+    };
+    const update = () => {
+      touched = true;
+      const r = render(setting);
+      out("low")!.textContent = formatFreq(setting.low);
+      out("sibilance")!.textContent = `${Math.round(r.sibilance * 100)}%`;
+      out("reduction")!.textContent = formatDb(-r.reduction);
+      for (const [key, input] of ranges) {
+        const value = key === "low" ? logPos(setting.low, LOW_MIN, LOW_MAX) : setting[key as "threshold" | "range"];
+        input.value = String(value);
+        const text = format[key](value);
+        input.setAttribute("aria-valuetext", text);
+        const o = figure.querySelector(`[data-out='${key}']`);
+        if (o) o.textContent = text;
+      }
+    };
+
+    for (const input of figure.querySelectorAll<HTMLInputElement>("input[type=range]")) {
+      ranges.set(input.name, input);
+      input.addEventListener("input", () => {
+        const v = Number(input.value);
+        if (input.name === "low") setting.low = logFreq(v, LOW_MIN, LOW_MAX);
+        else setting[input.name as "threshold" | "range"] = v;
+        update();
+      });
+    }
+    for (const input of figure.querySelectorAll<HTMLInputElement>("input[type=radio]")) {
+      input.addEventListener("change", () => {
+        if (!input.checked) return;
+        if (input.dataset.name === "sound") setting.sound = input.value as DeEss["sound"];
+        if (input.dataset.name === "mode") setting.mode = input.value as DeEss["mode"];
+        update();
+      });
+    }
+
+    // as in the editor: drag the band to move it, and the arrow keys nudge it. A finger scrolls the page instead;
+    // the slider is there for touch
+    const setLow = (hz: number) => {
+      setting.low = Math.round(Math.max(LOW_MIN, Math.min(LOW_MAX, hz)));
+      update();
+    };
+    let drag: { x: number; low: number } | null = null;
+    svg.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "touch") return;
+      drag = { x: e.clientX, low: setting.low };
+      svg.setPointerCapture(e.pointerId);
+    });
+    svg.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      const scale = DEESS_VIEW.w / svg.getBoundingClientRect().width;
+      const x = deessX(drag.low);
+      setLow(deessFreqAt(x + (e.clientX - drag.x) * scale * (e.shiftKey ? 0.25 : 1)));
+    });
+    const release = () => (drag = null);
+    svg.addEventListener("pointerup", release);
+    svg.addEventListener("pointercancel", release);
+    svg.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      e.preventDefault();
+      const step = Math.pow(2, (e.shiftKey ? 1 / 24 : 1 / 6) * (e.key === "ArrowRight" ? 1 : -1));
+      setLow(setting.low * step);
+    });
+  }
+</script>

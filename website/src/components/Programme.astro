@@ -1,20 +1,22 @@
 ---
-// The download list, set like a concert programme: one line per plug-in, its version, and the action.
+// The download list, set like a concert programme: one line per plug-in, where it comes from, and the action. A
+// released plug-in shows its version and downloads; one without a release yet builds from source.
 import Arrow from "./Arrow.astro";
-import { products, releasesUrl } from "../data/products";
+import { getAction, products } from "../data/products";
 ---
 <ol class="programme">
-  {products.map((p) => (
-    <li class="programme__row" data-product={p.code}>
-      <a class="programme__name" href={`/${p.code}`}>{p.name}</a>
-      {(p.version || p.platformNote) && (
-        <span class="programme__meta t-small num">{[p.version, p.platformNote].filter(Boolean).join(", ")}</span>
-      )}
-      <a class="programme__get" href={releasesUrl(p.code)} aria-label={[`Download ${p.name}`, p.version].filter(Boolean).join(" ")}>
-        Download <Arrow dir="down" />
-      </a>
-    </li>
-  ))}
+  {products.map((p) => {
+    const get = getAction(p);
+    return (
+      <li class="programme__row" data-product={p.code}>
+        <a class="programme__name" href={`/${p.code}`}>{p.name}</a>
+        <span class="programme__meta t-small num">{[p.version ?? "From source", p.platformNote].filter(Boolean).join(", ")}</span>
+        <a class="programme__get" href={get.href} aria-label={get.named} data-external={get.arrow === "out" ? "" : undefined}>
+          {p.version ? "Download" : "Build"} <Arrow dir={get.arrow} />
+        </a>
+      </li>
+    );
+  })}
 </ol>
 
 <style>
@@ -74,5 +76,8 @@ import { products, releasesUrl } from "../data/products";
   }
   .programme__get:hover :global(svg) {
     transform: translateY(2px);
+  }
+  .programme__get[data-external]:hover :global(svg) {
+    transform: translate(2px, -2px);
   }
 </style>

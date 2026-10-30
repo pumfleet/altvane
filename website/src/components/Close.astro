@@ -1,11 +1,12 @@
 ---
 import Arrow from "./Arrow.astro";
-import { type Product, products, releasesUrl } from "../data/products";
+import { type Product, getAction, products } from "../data/products";
 
 interface Props {
   product: Product;
 }
 const { product: p } = Astro.props;
+const get = getAction(p);
 const next = products[(products.findIndex((x) => x.code === p.code) + 1) % products.length];
 ---
 <section class="sheet close" aria-labelledby="close-title">
@@ -13,7 +14,7 @@ const next = products[(products.findIndex((x) => x.code === p.code) + 1) % produ
     {p.close}
   </h2>
   <div class="close__actions">
-    <a class="action" href={releasesUrl(p.code)}>Download {p.name} <Arrow dir="down" /></a>
+    <a class="action" href={get.href} data-external={get.arrow === "out" ? "" : undefined}>{get.named} <Arrow dir={get.arrow} /></a>
     <a class="action action--quiet" href={`/${next.code}`} data-product={next.code}>Next: {next.name} <Arrow /></a>
   </div>
 </section>

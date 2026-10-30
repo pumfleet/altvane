@@ -7,9 +7,23 @@ interface Props {
   title: string;
   description: string;
   product?: string;
+  /** the page's social image; without one, the home page's poster */
+  image?: { src: string; width: number; height: number; alt: string };
 }
-const { title, description, product } = Astro.props;
-const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : undefined;
+const {
+  title,
+  description,
+  product,
+  image = {
+    src: "/images/og.png",
+    width: 1200,
+    height: 630,
+    alt: "The altvane wordmark and “nothing approximate.” beside Altvane EQ's response drawn as concentric blue arcs.",
+  },
+} = Astro.props;
+const site = Astro.site ?? new URL("https://altvane.co");
+const canonical = new URL(Astro.url.pathname, site).href;
+const imageUrl = new URL(image.src, site).href;
 ---
 <!doctype html>
 <html lang="en">
@@ -20,11 +34,22 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : un
     <meta name="description" content={description} />
     <meta name="theme-color" content="#f4f5f4" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href={canonical} />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <meta property="og:site_name" content="Altvane" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
-    {canonical && <link rel="canonical" href={canonical} />}
-    {canonical && <meta property="og:url" content={canonical} />}
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={imageUrl} />
+    <meta property="og:image:width" content={String(image.width)} />
+    <meta property="og:image:height" content={String(image.height)} />
+    <meta property="og:image:alt" content={image.alt} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imageUrl} />
+    <meta name="twitter:image:alt" content={image.alt} />
   </head>
   <body data-product={product}>
     <a class="skip" href="#main">Skip to content</a>
