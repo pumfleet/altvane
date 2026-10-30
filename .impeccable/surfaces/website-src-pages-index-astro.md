@@ -2,15 +2,15 @@
 version: 1
 slug: "website-src-pages-index-astro"
 primary_target: "website/src/pages/index.astro"
-related_targets: ["website/src/pages/eq.astro","website/src/pages/dialogue.astro","website/src/pages/compressor.astro","website/src/pages/limiter.astro"]
+related_targets: ["website/src/pages/eq.astro","website/src/pages/dialogue.astro","website/src/pages/compressor.astro","website/src/pages/limiter.astro","website/src/pages/deesser.astro","website/src/pages/leveler.astro"]
 ---
 
-# Surface brief: altvane.com (home and product pages)
+# Surface brief: altvane.co (home and product pages)
 
-Scope: the marketing site in `website/`, which is the home page plus /eq, /dialogue, /compressor and /limiter. Visitor mode: Persuade.
-Audience: engineers and mixers deciding whether to try an Altvane plug-in. Action: download it free from GitHub Releases.
-Proof: the products' own math (filter response, stem sums, gain computer), the real editor screenshots, and measured
-README facts. Constraints: no invented pricing, testimonials, users or press.
+Scope: the marketing site in `website/`, which is the home page plus /eq, /dialogue, /compressor, /limiter, /deesser and /leveler. Visitor mode: Persuade.
+Audience: engineers and mixers deciding whether to try an Altvane plug-in. Action: download it free from GitHub Releases, or build it from source where there is no release yet.
+Proof: the products' own math (filter response, stem sums, gain computer, lookahead limiter, de-esser shelf, vocal
+rider), the real editor screenshots, and measured README and benchmark facts. Constraints: no invented pricing, testimonials, users or press.
 Memorable moment: each poster figure is a live instrument computed from the product's real mechanism.
 
 ## Direction contract
@@ -34,6 +34,6 @@ FORM: Musica Viva concert poster (Müller-Brockmann), the user's choice; it was 
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
-Signature interaction: the figures are live (RBJ peaking-filter arcs, stems summing to the input, the compressor knee, a lookahead limiter under its ceiling)
+Signature interaction: the figures are live (RBJ peaking-filter arcs, stems summing to the input, the compressor knee, a lookahead limiter under its ceiling, a de-esser's shelf on an ess, a vocal rider gathering phrases on a target)
 and respond to pointer and keyboard. Motion grammar: one authored draw-in, where arcs and bars sweep from zero with an
 exponential ease-out, staggered once per figure, and stay static under reduced motion.

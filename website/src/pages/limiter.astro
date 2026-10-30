@@ -13,7 +13,7 @@ import { product } from "../data/products";
 
 const p = product("limiter");
 ---
-<Base title="Altvane Limiter: true-peak limiter and loudness meter" description={p.summary} product="limiter">
+<Base title="Altvane Limiter: true-peak limiter and loudness meter" description={p.summary} product="limiter" image={p.editor}>
   <ProductHero product={p}>
     <div class="limit-hero">
       <LimiterFigure controls />
@@ -40,7 +40,7 @@ const p = product("limiter");
   </Section>
 
   <Section id="editor" title="The editor" note="What you hear scrolls by in the display, the meters stand on the right, and the controls sit on a card you can fold away.">
-    <Plate src="/images/limiter-editor.png" width={2240} height={1400} alt="The Altvane Limiter editor: a dark scrolling display with the output's waveform pressed against a dashed ceiling line at −1.0 dBTP, red gain reduction hanging from the top and a gold short-term loudness line below; a loudness panel reading −11.6 LUFS integrated against a −14 LUFS streaming target with a Match target button; true-peak, gain-reduction and loudness meters on the right; and a control card with Character, Gain, Ceiling and timing controls." caption="Altvane Limiter, rendered through the real processor from synthetic programme material." />
+    <Plate {...p.editor!} caption="Altvane Limiter, rendered through the real processor from synthetic programme material." />
   </Section>
 
   <Section id="how" title="How it works">

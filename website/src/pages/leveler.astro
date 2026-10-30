@@ -1,0 +1,121 @@
+---
+import Base from "../layouts/Base.astro";
+import ProductHero from "../components/ProductHero.astro";
+import Section from "../components/Section.astro";
+import Features from "../components/Features.astro";
+import Gestures from "../components/Gestures.astro";
+import Plate from "../components/Plate.astro";
+import Readings from "../components/Readings.astro";
+import Builds from "../components/Builds.astro";
+import Close from "../components/Close.astro";
+import LevelerFigure from "../components/figures/LevelerFigure.astro";
+import { product } from "../data/products";
+
+const p = product("leveler");
+---
+<Base title="Altvane Leveler: automatic vocal rider" description={p.summary} product="leveler" image={p.editor}>
+  <ProductHero product={p}>
+    <div class="level-hero">
+      <LevelerFigure controls />
+      <p class="t-small level-caption">
+        Eight seconds of a vocal through the rider, computed in your browser with the plug-in's 5&nbsp;ms hop, hold,
+        guard and lookahead; the voice and the breaths are marked rather than detected. Turn lookahead off and each
+        phrase starts out of place before the gain catches up. Drag the figure up or down to move the target, as in the
+        editor.
+      </p>
+    </div>
+  </ProductHero>
+
+  <Section id="features" title="What it does" note="Ride in real time, or write the moves to your host's automation and edit them there.">
+    <Features
+      items={[
+        { lead: "Moves before the phrase", text: "With lookahead (30 ms, reported to the host), the gain is already in place when a phrase starts. Turn lookahead off for zero latency when tracking or live." },
+        { lead: "Hears the voice, not just the level", text: "A pitch detector tells sung and spoken voice apart from breaths, sibilants, noise and drum spill. Guard sets how firmly those are kept from moving the fader, so a breath before a quiet phrase is not boosted 10 dB." },
+        { lead: "Rides like a person would", text: "It holds through the gaps between syllables, drifts to the Idle gain only after a longer silence, and cuts twice as fast as it boosts. Speed is continuous, from 1.5 s to 40 ms." },
+        { lead: "Follows the music", text: "Put the instrumental bus on the Music side chain, mono or stereo. The target rises when the chorus gets louder and falls when the verse thins out." },
+        { lead: "See every move", text: "An 8-second history shows the input, the leveled output, the music, the target and the sensitivity floor (drag both), the gain itself, and what the detector heard." },
+        { lead: "A rider fader, in your automation", text: "Off rides. Write sends the fader to the host's automation while the transport plays, and Read follows that automation instead. Grab the fader to ride by hand at any time. Presets and A/B never move it." },
+        { lead: "Everything else, done properly", text: "Learn sets the target from the voice's own loudness, and the range is up to ±24 dB, in BS.1770 loudness. Presets with a factory set, A/B compare, undo and redo, adjustable interface size and accent colour, keyboard control, screen-reader support and host parameter menus. 44.1–192 kHz, mono or stereo." },
+      ]}
+    />
+  </Section>
+
+  <Section id="editor" title="The editor" note="The history across the top, the rider fader and its range on the right, and the knobs below.">
+    <Plate {...p.editor!} caption="Altvane Leveler." />
+  </Section>
+
+  <Section id="how" title="How it works">
+    <div class="prose">
+      <p class="t-body">
+        The input is measured as it arrives, on a 5&nbsp;ms hop. K-weighted loudness is taken over 20&nbsp;ms for the
+        floor, 24&nbsp;dB under the target, and over 100&nbsp;ms of voiced hops only for riding. A YIN
+        pitch-confidence detector runs on the signal decimated to about 8&nbsp;kHz, so each hop is voiced, unvoiced
+        (a breath, a sibilant, noise) or silent.
+      </p>
+      <p class="t-body">
+        The rider moves the gain toward the target less the voice's level, within the range: at the speed on voiced
+        hops, slowed by the guard on unvoiced ones, and through a silence it holds for 300&nbsp;ms before gliding to
+        idle. The first 30&nbsp;ms of a phrase after a silence catch up at once, and with lookahead the audio is
+        delayed by 30&nbsp;ms before the gain is applied, so that move happens while the output is still silent. With
+        the music key, the target follows the key's loudness against its own 30-second memory, by up to ±12&nbsp;dB.
+      </p>
+    </div>
+  </Section>
+
+  <Section id="gestures" title="Under the hand" note="The rider fader is its own parameter: presets and A/B never move it, and a preset never changes the automation mode.">
+    <Gestures
+      rows={[
+        ["Set where the voice sits", "Target, or drag the TARGET line in the history, or Learn while the voice plays, then Stop"],
+        ["Ignore quieter sounds", "Sensitivity, or drag the FLOOR line; the floor sits 24 dB below the target"],
+        ["Limit the ride", "The handles left of the fader, or Max and Min under it"],
+        ["Set where it rests in silence", "The marker right of the fader, or Idle"],
+        ["Ride by hand", "Grab the fader; it goes back to riding when you let go"],
+        ["Write automation", "Write, arm the Rider parameter in your host (write, touch or latch), and play"],
+        ["Play back and edit it", "Read, then edit the Rider lane in your host"],
+        ["Follow the music", "Send the instrumental bus to the Music side chain, and raise Music"],
+        ["Change a value", "Drag (<kbd>Shift</kbd> for fine), scroll, or double-click the value and type"],
+        ["Reset a value", "<kbd>Cmd</kbd>-click or double-click"],
+        ["Undo and redo", "<kbd>Cmd Z</kbd> and <kbd>Shift Cmd Z</kbd>"],
+      ]}
+    />
+  </Section>
+
+  <Section id="specs" title="Specifications" note="Leveling is measured on 24 s of a synthetic sung vocal, seven phrases spread over about 18 dB, at a target of −20 dB and guard 70%.">
+    <Readings items={p.readings} size="large" />
+    <div class="spec-table">
+      <Readings
+        items={[
+          { value: "2.9 dB", label: "voiced level spread after leveling, from 7.4 dB; range ±12 dB, speed 50%" },
+          { value: "4.5 dB", label: "the same at the default range of ±6 dB" },
+          { value: "< 1.5 dB", label: "gain moved under a breath or a sibilant at guard 70%, in the tests" },
+          { value: "1440", label: "samples of lookahead at 48 kHz, 30.0 ms" },
+          { value: "1.0%", label: "of one core at most, 48 kHz, on a Threadripper PRO 7965WX" },
+          { value: "44.1–192", label: "kHz, mono or stereo" },
+        ]}
+      />
+    </div>
+    <div class="specs-builds"><Builds /></div>
+  </Section>
+
+  <Close product={p} />
+</Base>
+
+<style>
+  .level-hero {
+    max-width: 700px;
+  }
+  .level-caption {
+    margin-top: var(--s5);
+    max-width: 58ch;
+  }
+  .prose {
+    display: grid;
+    gap: var(--s4);
+  }
+  .spec-table {
+    margin-top: var(--s6);
+  }
+  .specs-builds {
+    margin-top: var(--s7);
+  }
+</style>
