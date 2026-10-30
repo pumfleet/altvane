@@ -7,31 +7,16 @@
 //
 // You should have received a copy of the GNU Affero General Public License along with Altvane Compressor. If not, see <https://www.gnu.org/licenses/>.
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
-#include "PluginProcessor.hpp"
+#include "alloc_counter.hpp"
+#include "test_helpers.hpp"
 
 using Catch::Matchers::WithinAbs;
+using namespace test;
 
 namespace {
-    constexpr double kSampleRate = 48000.0;
-    constexpr int kBlock = 512;
-
-    void set(PluginProcessor& p, const char* id, const float plain) {
-        auto* param = p.parameters_.getParameter(id);
-        REQUIRE(param != nullptr);
-        param->setValueNotifyingHost(param->convertTo0to1(plain));
-    }
-
-    float get(PluginProcessor& p, const char* id) {
-        return p.parameters_.getRawParameterValue(id)->load();
-    }
-
-    void prepare(PluginProcessor& p) {
-        p.setRateAndBufferSizeDetails(kSampleRate, kBlock);
-        p.prepareToPlay(kSampleRate, kBlock);
-    }
-
     /**
      * a static compressor: linked left/right detection, hard knee, instant attack, slow release
      * so that a steady sine settles to the curve's gain at its peak level
@@ -47,60 +32,105 @@ namespace {
     }
 
     /**
-     * runs a 1 kHz sine at the given peak level through the processor for the given time
-     * and returns the output peak (dBFS) over the last half second
+     * a busy setting: lookahead, oversampling, RMS, hold, a side-chain EQ band, a clipper
      */
-    float runSine(PluginProcessor& p, const float peak_db, const double seconds, const bool bypassed = false) {
-        juce::AudioBuffer<float> buffer(4, kBlock);
-        juce::MidiBuffer midi;
-        const auto amp = juce::Decibels::decibelsToGain(peak_db);
-        const auto blocks = static_cast<int>(seconds * kSampleRate / kBlock);
-        const auto measure_from = blocks - static_cast<int>(.5 * kSampleRate / kBlock);
-        double phase = 0.0;
-        float out_peak = 0.f;
-        for (int b = 0; b < blocks; ++b) {
-            buffer.clear();
-            for (int i = 0; i < kBlock; ++i) {
-                const auto v = amp * static_cast<float>(std::sin(phase));
-                phase += juce::MathConstants<double>::twoPi * 1000.0 / kSampleRate;
-                buffer.setSample(0, i, v);
-                buffer.setSample(1, i, v);
-            }
-            juce::AudioBuffer<float> io(buffer.getArrayOfWritePointers(), p.getTotalNumInputChannels(), kBlock);
-            if (bypassed) {
-                p.processBlockBypassed(io, midi);
-            } else {
-                p.processBlock(io, midi);
-            }
-            if (b >= measure_from) {
-                out_peak = std::max(out_peak, io.getMagnitude(0, 0, kBlock));
-            }
-        }
-        return juce::Decibels::gainToDecibels(out_peak, -240.f);
+    void makeBusy(PluginProcessor& p) {
+        set(p, zlp::PThreshold::kID, -30.f);
+        set(p, zlp::PRatio::kID, 6.f);
+        set(p, zlp::PAttack::kID, 3.f);
+        set(p, zlp::PRelease::kID, 80.f);
+        set(p, zlp::PHold::kID, 5.f);
+        set(p, zlp::PLookAhead::kID, 2.f);
+        set(p, zlp::POversample::kID, 1.f);
+        set(p, zlp::PRMSON::kID, 1.f);
+        set(p, zlp::PClipperDrive::kID, 30.f);
+        set(p, zlp::POutGain::kID, 6.f);
+        set(p, zlp::PFilterType::kID + juce::String(0), static_cast<float>(zldsp::filter::FilterType::kHighPass));
+        set(p, zlp::PFreq::kID + juce::String(0), 150.f);
+        set(p, zlp::PFilterStatus::kID + juce::String(0), 2.f);
     }
 
-    void pumpMessages() {
-        juce::MessageManager::getInstance()->runDispatchLoopUntil(50);
+    /**
+     * a 1 kHz sine at the given peak level for the given time; the output peak (dBFS) over the last half second
+     */
+    float runSine(PluginProcessor& p, const float peak_db, const double length) {
+        const auto out = run(p, {sine(1000.0, peak_db)}, seconds(length));
+        return peakDB(out[0], out[0].size() - static_cast<size_t>(seconds(.5)));
     }
+
+    template <typename T>
+    float worstDifference(const std::vector<std::vector<T>>& a, const std::vector<std::vector<T>>& b) {
+        REQUIRE(a.size() == b.size());
+        double worst = 0.0;
+        for (size_t c = 0; c < a.size(); ++c) {
+            REQUIRE(a[c].size() == b[c].size());
+            for (size_t n = 0; n < a[c].size(); ++n) {
+                worst = std::max(worst, std::abs(static_cast<double>(a[c][n]) - static_cast<double>(b[c][n])));
+            }
+        }
+        return static_cast<float>(worst);
+    }
+
+    // every parameter ZL Compressor 0.6.1 has, in its order; sessions and presets refer to these
+    const juce::StringArray& frozenIDs() {
+        static const auto ids = [] {
+            juce::StringArray result{
+                "comp_style", "comp_direction", "threshold", "ratio", "knee_width", "curve", "floor", "attack",
+                "release", "pump", "smooth", "hold", "range", "wet", "makeup", "external_side", "side_out",
+                "side gain", "side_eq_bypass", "side_stereo_mode", "side_stereo_swap", "side_stereo_link",
+                "side_stereo_wet1", "side_stereo_wet2", "comp_on", "comp_delta", "clipper_drive", "oversample",
+                "lookahead", "rms_on", "rms_length", "rms_speed", "rms_mix", "range_inf"
+            };
+            for (int band = 0; band < 8; ++band) {
+                for (const auto* id : {"filter_status", "filter_type", "order", "freq", "gain", "Q"}) {
+                    result.add(id + juce::String(band));
+                }
+            }
+            return result;
+        }();
+        return ids;
+    }
+}
+
+TEST_CASE("parameter IDs never change", "[state]") {
+    PluginProcessor p;
+    juce::StringArray ids;
+    for (auto* para : p.getParameters()) {
+        ids.add(dynamic_cast<juce::RangedAudioParameter*>(para)->getParameterID());
+    }
+    // this list may only grow
+    CHECK(ids == frozenIDs());
 }
 
 TEST_CASE("state round trip keeps every parameter", "[state]") {
     PluginProcessor a;
-    set(a, zlp::PThreshold::kID, -21.5f);
-    set(a, zlp::PRatio::kID, 6.f);
-    set(a, zlp::PCompDirection::kID, 2.f);
-    set(a, zlp::PSideGain::kID, 4.f);
-    set(a, "freq3", 2500.f);
+    // every parameter away from its default, on both trees
+    for (auto* tree : {&a.parameters_, &a.na_parameters_}) {
+        auto& processor = tree == &a.parameters_ ? static_cast<juce::AudioProcessor&>(a) : a.dummy_processor_;
+        for (auto* para : processor.getParameters()) {
+            // through the plain value, so a switch or a choice lands on one of its steps
+            auto* ranged = dynamic_cast<juce::RangedAudioParameter*>(para);
+            const auto plain = ranged->convertFrom0to1(para->getDefaultValue() < .5f ? .73f : .21f);
+            para->setValueNotifyingHost(ranged->convertTo0to1(plain));
+        }
+    }
     juce::MemoryBlock block;
     a.getStateInformation(block);
 
     PluginProcessor b;
     b.setStateInformation(block.getData(), static_cast<int>(block.getSize()));
-    CHECK_THAT(get(b, zlp::PThreshold::kID), WithinAbs(-21.5, .05));
-    CHECK_THAT(get(b, zlp::PRatio::kID), WithinAbs(6.0, .01));
-    CHECK_THAT(get(b, zlp::PCompDirection::kID), WithinAbs(2.0, 1e-6));
-    CHECK_THAT(get(b, zlp::PSideGain::kID), WithinAbs(4.0, .01));
-    CHECK_THAT(get(b, "freq3"), WithinAbs(2500.0, 1.0));
+    for (const auto& [from, to] : {
+             std::pair{&a.parameters_, &b.parameters_}, std::pair{&a.na_parameters_, &b.na_parameters_}
+         }) {
+        auto& processor = from == &a.parameters_ ? static_cast<juce::AudioProcessor&>(a) : a.dummy_processor_;
+        for (auto* para : processor.getParameters()) {
+            const auto id = dynamic_cast<juce::RangedAudioParameter*>(para)->getParameterID();
+            CAPTURE(id);
+            const auto plain = from->getRawParameterValue(id)->load();
+            REQUIRE(std::abs(para->getValue() - para->getDefaultValue()) > 1e-3f);
+            CHECK_THAT(to->getRawParameterValue(id)->load(), WithinAbs(plain, 1e-4 * std::max(1.f, std::abs(plain))));
+        }
+    }
 }
 
 TEST_CASE("state is written with ZL Compressor's tags", "[state]") {
@@ -121,8 +151,7 @@ TEST_CASE("a steady tone settles on the compression curve", "[dsp]") {
     makeStatic(p, -30.f, 4.f);
     prepare(p);
     // -10 dBFS is 20 dB over the threshold: at 4:1 the output sits 15 dB lower
-    const auto out = runSine(p, -10.f, 2.0);
-    CHECK_THAT(out, WithinAbs(-25.0, .5));
+    CHECK_THAT(runSine(p, -10.f, 2.0), WithinAbs(-25.0, .5));
 
     // below the threshold nothing happens
     PluginProcessor quiet;
@@ -141,48 +170,170 @@ TEST_CASE("makeup and range shape the output", "[dsp]") {
     CHECK_THAT(runSine(p, -10.f, 2.0), WithinAbs(-13.0, .5));
 }
 
-TEST_CASE("host bypass passes audio unchanged", "[dsp]") {
+TEST_CASE("host bypass passes the input, delayed by the reported latency", "[bypass]") {
+    // what could otherwise be heard: the engine's own delay and filters, delta, the side-chain listen, a solo
+    enum Setting { kPlain, kLatency, kDelta, kListen, kSolo };
+    const auto [main_channels, aux_channels] = GENERATE(std::pair{2, 2}, std::pair{2, 1}, std::pair{2, 0},
+                                      std::pair{1, 2}, std::pair{1, 1}, std::pair{1, 0});
+    const auto setting = GENERATE(kPlain, kLatency, kDelta, kListen, kSolo);
+    const auto double_precision = GENERATE(false, true);
+    CAPTURE(main_channels, aux_channels, setting, double_precision);
+
     PluginProcessor p;
+    setLayout(p, main_channels, aux_channels);
     makeStatic(p, -40.f, 10.f);
     set(p, zlp::POutGain::kID, 6.f);
+    if (setting == kLatency) {
+        set(p, zlp::PLookAhead::kID, 5.f);
+        set(p, zlp::POversample::kID, 2.f);
+    } else if (setting == kDelta) {
+        set(p, zlp::PCompDelta::kID, 1.f);
+    } else if (setting == kListen) {
+        set(p, zlp::PExtSide::kID, 1.f);
+        set(p, zlp::PSideOut::kID, 1.f);
+    } else if (setting == kSolo) {
+        set(p, zlp::PFreq::kID + juce::String(0), 300.f);
+        set(p, zlp::PFilterStatus::kID + juce::String(0), 2.f);
+        p.getEqualizeController().setSoloBand(0);
+    }
     prepare(p);
-    CHECK_THAT(runSine(p, -6.f, 1.5, true), WithinAbs(-6.0, .05));
+
+    Run r{sine(997.0, -3.f), sine(300.0, -6.f)};
+    const auto check = [&]<typename T>(T) {
+        // the engine reports its latency from the message thread
+        run<T>(p, r, seconds(.1));
+        pumpMessages();
+        const auto latency = static_cast<int64_t>(p.getLatencySamples());
+        if (setting == kLatency) {
+            CHECK(latency > 240);
+        }
+        r.start = seconds(.1);
+        r.bypassed = true;
+        const auto out = run<T>(p, r, seconds(.3));
+        double worst = 0.0;
+        for (const auto& channel : out) {
+            for (size_t n = 0; n < channel.size(); ++n) {
+                const auto expected = static_cast<double>(r.main(r.start + static_cast<int64_t>(n) - latency));
+                worst = std::max(worst, std::abs(static_cast<double>(channel[n]) - expected));
+            }
+        }
+        CHECK(worst < 1e-7);
+    };
+    if (double_precision) {
+        check(0.0);
+    } else {
+        check(0.f);
+    }
 }
 
 TEST_CASE("latency follows lookahead and oversampling", "[latency]") {
     PluginProcessor p;
     prepare(p);
-    runSine(p, -20.f, .1);
+    runSine(p, -20.f, .6);
     pumpMessages();
     CHECK(p.getLatencySamples() == 0);
 
     set(p, zlp::PLookAhead::kID, 5.f);
-    runSine(p, -20.f, .1);
+    runSine(p, -20.f, .6);
     pumpMessages();
     const auto lookahead = p.getLatencySamples();
     CHECK(std::abs(lookahead - 240) <= 1);
 
     set(p, zlp::POversample::kID, 1.f);
-    runSine(p, -20.f, .1);
+    runSine(p, -20.f, .6);
     pumpMessages();
     CHECK(p.getLatencySamples() > lookahead);
 
     // a negative lookahead delays the side chain instead, which costs no latency
     set(p, zlp::POversample::kID, 0.f);
     set(p, zlp::PLookAhead::kID, -5.f);
-    runSine(p, -20.f, .1);
+    runSine(p, -20.f, .6);
     pumpMessages();
     CHECK(p.getLatencySamples() == 0);
+}
+
+TEST_CASE("host blocks larger than the prepared size are processed in pieces", "[realtime]") {
+    // JUCE allows a host to send more than prepareToPlay announced; the engine's buffers only hold that much
+    const auto double_precision = GENERATE(false, true);
+    CAPTURE(double_precision);
+    const auto render = [&]<typename T>(T, const int host_block) {
+        PluginProcessor p;
+        makeBusy(p);
+        prepare(p, 256);
+        return run<T>(p, {bursts(), silence(), 0, false, {host_block}}, seconds(1.0));
+    };
+    if (double_precision) {
+        CHECK(worstDifference(render(0.0, 256), render(0.0, 1500)) < 1e-5f);
+    } else {
+        CHECK(worstDifference(render(0.f, 256), render(0.f, 1500)) < 1e-5f);
+    }
+}
+
+TEST_CASE("the output does not depend on the block size", "[realtime]") {
+    const auto render = [](const std::vector<int>& blocks) {
+        PluginProcessor p;
+        makeBusy(p);
+        prepare(p);
+        return run(p, {bursts(), silence(), 0, false, blocks}, seconds(1.0));
+    };
+    // the engine's vector code and its scalar tail round differently, so allow for the last bits
+    CHECK(worstDifference(render({kBlock}), render({1, 7, 64, 333, 512, 31})) < 1e-5f);
+}
+
+TEST_CASE("the audio thread does not allocate", "[realtime]") {
+    const auto double_precision = GENERATE(false, true);
+    CAPTURE(double_precision);
+    PluginProcessor p;
+    makeBusy(p);
+    prepare(p);
+    const auto measure = [&]<typename T>(T) {
+        juce::AudioBuffer<T> buffer(4, kBlock);
+        juce::MidiBuffer midi;
+        const auto signal = bursts();
+        size_t allocations = 0;
+        for (int b = 0; b < 400; ++b) {
+            for (int c = 0; c < 4; ++c) {
+                for (int i = 0; i < kBlock; ++i) {
+                    buffer.setSample(c, i, static_cast<T>(signal(b * kBlock + i)));
+                }
+            }
+            // settings change on the way, as automation would
+            if (b == 100) {
+                set(p, zlp::PLookAhead::kID, 8.f);
+                set(p, zlp::PCompStyle::kID, 2.f);
+                set(p, zlp::PFilterStatus::kID + juce::String(1), 2.f);
+                set(p, zlp::PSideOut::kID, 1.f);
+            }
+            if (b == 200) {
+                set(p, zlp::PSideOut::kID, 0.f);
+                set(p, zlp::PCompDirection::kID, 2.f);
+                p.getEqualizeController().setSoloBand(0);
+            }
+            if (b == 300) {
+                p.getEqualizeController().setSoloBand(zlp::kBandNum);
+                set(p, zlp::PCompDelta::kID, 1.f);
+            }
+            const alloc_counter::Scope scope;
+            if (b % 50 == 49) {
+                p.processBlockBypassed(buffer, midi);
+            } else {
+                p.processBlock(buffer, midi);
+            }
+            allocations += scope.count();
+        }
+        CHECK(allocations == 0);
+    };
+    if (double_precision) {
+        measure(0.0);
+    } else {
+        measure(0.f);
+    }
 }
 
 TEST_CASE("listening to a stereo side chain on a mono track", "[routing]") {
     // mono main, stereo aux: the output hears the mid of the external side chain
     PluginProcessor p;
-    auto layout = p.getBusesLayout();
-    layout.inputBuses.getReference(0) = juce::AudioChannelSet::mono();
-    layout.outputBuses.getReference(0) = juce::AudioChannelSet::mono();
-    layout.inputBuses.getReference(1) = juce::AudioChannelSet::stereo();
-    REQUIRE(p.setBusesLayout(layout));
+    setLayout(p, 1, 2);
     set(p, zlp::PExtSide::kID, 1.f);
     set(p, zlp::PSideOut::kID, 1.f);
     prepare(p);

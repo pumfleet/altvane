@@ -10,6 +10,7 @@
 
 #include "altvane_ui/shell/editor_shell.hpp"
 #include "altvane_ui/util/spring.hpp"
+#include "altvane_ui/widgets/help_balloon.hpp"
 
 #include "analysis/level_history.hpp"
 #include "analysis/side_spectrum.hpp"
@@ -35,6 +36,8 @@ namespace altvane::compressor {
      */
     class Editor final : public ui::EditorShell {
     public:
+        static constexpr auto kHelpSwitch = "help_balloons";
+
         explicit Editor(PluginProcessor& p);
 
         ~Editor() override;
@@ -48,6 +51,10 @@ namespace altvane::compressor {
         ControlCard& getCardForTesting() { return card_; }
 
         LevelHistory& getHistoryForTesting() { return history_; }
+
+        SideChainPanel& getSideChainForTesting() { return side_panel_; }
+
+        ui::HelpBalloon& getHelpForTesting() { return help_; }
 
     private:
         PluginProcessor& p_ref_;
@@ -64,6 +71,7 @@ namespace altvane::compressor {
         MeterRail rail_;
         SideChainPanel side_panel_;
         Footer footer_;
+        ui::HelpBalloon help_;
         ui::Fade side_fade_{.2f};
         juce::Rectangle<int> area_;
         bool knee_fits_{true};
@@ -72,6 +80,7 @@ namespace altvane::compressor {
         void layoutDisplay();
         void tick(double dt) override;
         void showingChanged(bool showing) override;
+        void settingsApplied() override;
         juce::Component* getDefaultFocus() override { return &level_; }
         bool isKneeOpen() const;
         bool isSideChainOpen() const;

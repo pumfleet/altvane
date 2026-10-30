@@ -43,15 +43,18 @@ namespace zlstate {
             return juce::Result::fail("Processor state is incomplete");
         }
 
-        auto* document = new juce::DynamicObject();
-        document->setProperty("format", kPresetFormat);
-        document->setProperty("version", 1);
-        document->setProperty("state", valueTreeToJson(state));
-
-        if (!file.replaceWithText(juce::JSON::toString(juce::var{document}, false))) {
+        if (!file.replaceWithText(toText(state))) {
             return juce::Result::fail("Preset file could not be written");
         }
         return juce::Result::ok();
+    }
+
+    juce::String PresetJson::toText(const juce::ValueTree& processor_state) {
+        auto* document = new juce::DynamicObject();
+        document->setProperty("format", kPresetFormat);
+        document->setProperty("version", 1);
+        document->setProperty("state", valueTreeToJson(processor_state));
+        return juce::JSON::toString(juce::var{document}, false);
     }
 
     juce::Result PresetJson::read(const juce::File& file, juce::MemoryBlock& processor_state) {
