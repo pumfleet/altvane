@@ -8,7 +8,9 @@ First release of Altvane EQ (developed as "Contour"), based on the ZL Equalizer 
 
 - New editor: full-bleed frequency graph, floating band panel, minimal header and footer
 - Response curves computed from the engine's filter coefficients in every processing mode, including complex sums
-  for the parallel structure; curves glide on undo, preset changes and typed values
+  for the parallel structure, and within 0.01 dB of the processed audio in the zero-latency modes (bands above
+  Nyquist and steep low-frequency bands at high sample rates included); curves glide on undo, preset changes and
+  typed values
 - Direct manipulation: node drag with fine and axis lock, Q handles, dynamic range handle, lasso and group moves,
   scroll for Q and gain, keyboard nudging and band cycling
 - Dynamic bands show their static, target and live responses; the side-chain detector is edited on the graph
@@ -18,6 +20,12 @@ First release of Altvane EQ (developed as "Contour"), based on the ZL Equalizer 
 - Output options: static gain compensation, phase invert, output channel, lookahead, loudness match
 - Settings: interface size, accent colour, reduce motion, drag and scroll speed
 - Keyboard focus and screen-reader support for every control; host parameter menus on right-click
+
+### Engine integration
+
+- Host blocks larger than the size announced in `prepareToPlay` are processed in pieces. ZL Equalizer 2 copied them
+  past the end of its buffers.
+- The processor no longer keeps pointers into the host's audio buffers between blocks (double precision).
 
 ### Compatibility
 
