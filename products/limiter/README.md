@@ -34,7 +34,9 @@ snapshot renderer `AltvaneLimiterSnapshot <out-dir> [scale] [music.wav]` (on Lin
 
 Releases are built by the `Release` workflow from `limiter-vX.Y.Z` tags.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the product is put together.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the product is put together, and
+[docs/BENCHMARK.md](docs/BENCHMARK.md) for its latency, how closely it holds the ceiling and how its loudness meter
+measures against the EBU's test signals.
 
 ## Relationship to ZL Limiter
 

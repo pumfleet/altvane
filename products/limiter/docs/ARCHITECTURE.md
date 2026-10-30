@@ -15,7 +15,11 @@ These files are listed under `WATCH` in `UPSTREAM`, so a sync reports upstream c
   - adds Altvane's parameters (`source/engine/params.hpp`) after upstream's layout;
   - runs the output stage around the engine (below);
   - replaces upstream's value-measurement transport tracking, which fed its editor-side meters, with the loudness
-    meter's: it counts while the host plays and starts over when playback starts.
+    meter's: it counts while the host plays and starts over when playback starts;
+  - applies oversampling changes itself, off the audio thread (below).
+- `source/engine/engine_attach.hpp` stands in for upstream's `zlp::LimiterAttach` (`source/zlp/limiter_attach.*`,
+  vendored but unused): it hands the engine every parameter but oversampling. `limiter_attach.cpp` is in `WATCH`, and
+  a test fails if an engine parameter is missing from `EngineAttach`.
 - `source/state/`:
   - `ui_state.*` and `property.*` are removed (they served upstream's GUI; the Altvane shell keeps its own settings).
   - `preset_json.*` moved here from upstream's preset browser, keeping the `"ZLLimiterPreset"` format, with a
@@ -31,15 +35,44 @@ input -> DC filter -> zlp::Controller (input gain, limiter, output gain / unity,
 ```
 
 - The DC filter (`engine/dc_filter.hpp`, first-order high-pass at 5 Hz) and dither (`engine/dither.hpp`) run only
-  while the limiter is heard: not in bypass, and dither not in delta. Dither is TPDF, ±1 LSB, onto the 24, 20 or
+  while the limiter is heard: not in bypass, and dither not in delta. The DC filter fades between the input and the
+  filtered signal over 50 ms when it is switched or bypassed, since the two differ by the offset and the low end's
+  phase. Dither is TPDF, ±1 LSB, onto the 24, 20 or
   16-bit grid; Shaped feeds the error back through Wannamaker's 9-tap F-weighted filter, at 44.1 kHz and up.
 - The loudness meter (`engine/loudness_meter.hpp`) runs on the audio thread and never allocates there: K-weighting
-  (the engine's `dsp/loudness/k_weighting_filter.hpp`) into 100 ms steps; momentary and short-term from the last 4 and
-  30 steps; integrated loudness and loudness range gated from histograms of 0.01 LU bins, so the gates are exact to
-  0.01 LU; true peak with the engine's 16× estimator. It publishes readings ten times a second through a
-  `ui::TriBuffer`.
+  (the engine's `dsp/loudness/k_weighting_filter.hpp`) into 10 ms slices; momentary and short-term from the last 40
+  and 300 slices, with their maxima taken every slice, so a burst is not under-read for falling between updates;
+  integrated loudness (400 ms blocks every 100 ms) and loudness range gated from histograms of 0.01 LU bins, so the
+  gates are exact to 0.01 LU; true peak with the engine's 16× estimator. It publishes readings ten times a second
+  through a `ui::TriBuffer`.
 - The engine's lookahead is a fixed 5 ms delay inside the limiter, so changing it never changes the latency;
   oversampling does.
+
+## Oversampling, off the audio thread
+
+`zlp::Controller` switches oversampling inside `process()` when it sees the parameter change, and then calls
+`triggerAsyncUpdate()` to report the new latency: it posts a message from the audio thread, which takes a lock and may
+allocate. Altvane does not let the parameter reach the engine there:
+
+- `EngineAttach` leaves oversampling out, so the controller only learns of it from `PluginProcessor`.
+- An edit on the message thread (the editor, a session or preset) is applied at once; a change from another thread
+  (host automation) is picked up by a 20 Hz timer. Either way the message thread hands the index to the controller
+  and re-prepares it, as a host's `prepareToPlay` would, which reports the latency there and posts nothing.
+- While it does, the audio thread plays silence for any block that arrives rather than wait (an atomic flag; the
+  audio thread never spins). The switch resets the engine, so a latency's worth of audio is lost with or without this.
+- In an offline render (`isNonRealtime()`) the render thread switches at once, so the change lands on the block it was
+  automated on; the engine then posts the latency change itself, which does not matter offline.
+
+## Known engine issues (to raise upstream)
+
+- The posting from the audio thread above. Worked around here; upstream could switch oversampling with a
+  pre-allocated, lock-free path and report the latency from the message thread (e.g. polled by a timer).
+- The engine's bypass (`PBypass`, and host bypass) switches between the limited and the delayed dry signal without a
+  cross-fade, so it clicks while the limiter is reducing gain.
+- Without oversampling, true peak mode lets the waveform through up to about 0.2 dB over the ceiling, as read by the
+  tests' independent 16× interpolation (0.17 dB at 96 kHz on the golden programme; see docs/BENCHMARK.md). That is
+  within a true-peak meter's tolerance (+0.2 dB in EBU Tech 3341) but worth knowing when the ceiling is tight; 2× and
+  up stay under 0.07 dB.
 
 ## How the editor talks to the engine
 
@@ -77,10 +110,17 @@ input -> DC filter -> zlp::Controller (input gain, limiter, output gain / unity,
   - state and presets: the round trip, ZL Limiter's tags and preset format;
   - the limiter: latency, the ceiling (sample and true peak, checked by an independent 16× interpolation), unity gain,
     delta, bypass (host and parameter), the order of the characters;
-  - the output stage: dither noise levels and grid, noise shaping, dither off in bypass and delta, the DC filter;
-  - loudness: EBU Tech 3341 (steady tones, gating) and Tech 3342 (loudness range) cases, block-size independence,
-    maxima and true peak, the transport reset;
-  - the audio thread does not allocate;
+  - the output stage: dither noise levels and grid, noise shaping, dither off in bypass and delta, the DC filter and
+    its fades (no step with an offset or heavy low end, switched or bypassed);
+  - loudness: EBU Tech 3341 cases 1–5 and 9–23 (steady tones, gating, momentary and short-term values and maxima,
+    true peak) and Tech 3342 cases 1–4 (loudness range), at 44.1, 48 and 96 kHz, synthesised from the specifications'
+    descriptions; block-size independence, the transport reset;
+  - golden behaviour of the vendored engine (`golden_tests.cpp`), since CI only checks its bytes: the ceiling (sample
+    and true peak) at every oversampling factor at 44.1 and 96 kHz, a gain-reduction fingerprint of a drum loop,
+    recovery time per character, and channel delta. A sync that changes the sound fails these; update the numbers
+    only for a change that is wanted;
+  - the audio thread does not allocate, including across oversampling changes; oversampling switches on the message
+    thread (offline: on the render thread); every engine parameter but oversampling is attached;
   - the editor: accessibility and undo of the controls, characters, the display's gain nudge, Match target, factory
     presets, panels following the session.
 - `AltvaneLimiterSnapshot` renders the editor through the real processor for visual review.
