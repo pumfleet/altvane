@@ -26,9 +26,7 @@
  * ZL Limiter's processor, adapted for Altvane Limiter: the Altvane editor and session, and an output stage
  * after the limiter (DC filter before it, dither and a loudness meter after it)
  */
-class PluginProcessor final : public juce::AudioProcessor,
-                              private juce::AudioProcessorValueTreeState::Listener,
-                              private juce::Timer {
+class PluginProcessor final : public juce::AudioProcessor, private juce::Timer {
 public:
     zlstate::DummyProcessor dummy_processor_;
     juce::AudioProcessorValueTreeState parameters_;
@@ -157,8 +155,6 @@ private:
     void unlockEngine();
 
     void applyOversampling();
-
-    void parameterChanged(const juce::String& parameter_id, float new_value) override;
 
     void timerCallback() override;
 

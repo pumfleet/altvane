@@ -63,14 +63,12 @@ PluginProcessor::PluginProcessor() :
     dither_shape_(raw(parameters_, altvane::limiter::params::PDitherShape::kID)),
     loudness_auto_reset_(raw(na_parameters_, zlstate::PLoudnessAutoReset::kID)),
     oversampling_(raw(parameters_, zlp::POversampling::kID)) {
-    parameters_.addParameterListener(zlp::POversampling::kID, this);
-    // a change from the host's automation arrives off the message thread: the timer picks it up
+    // oversampling changes are applied from here, on the message thread (see applyOversampling)
     startTimerHz(20);
 }
 
 PluginProcessor::~PluginProcessor() {
     stopTimer();
-    parameters_.removeParameterListener(zlp::POversampling::kID, this);
 }
 
 const juce::String PluginProcessor::getName() const {
@@ -225,9 +223,10 @@ void PluginProcessor::unlockEngine() {
 
 // Altvane: the engine switches oversampling inside its process() and then posts a message to report the latency,
 // which must not happen on the audio thread. EngineAttach keeps the parameter away from the engine; here the message
-// thread hands it over and re-prepares the engine, as a host's prepare does, which reports the latency from this
-// thread. The audio thread plays silence for any block that arrives meanwhile: switching resets the engine (and so
-// drops a latency's worth of audio) in any case
+// thread's timer hands it over and re-prepares the engine, as a host's prepare does, which reports the latency from
+// this thread. (Not from a parameter listener: those run under the parameter's listener lock, which a host thread
+// setting the same parameter would then wait on.) The audio thread plays silence for any block that arrives
+// meanwhile: switching resets the engine (and so drops a latency's worth of audio) in any case
 void PluginProcessor::applyOversampling() {
     // offline, the render thread switches (see processBlockInternal)
     if (isNonRealtime() || !prepared_.load(std::memory_order::acquire) ||
@@ -243,13 +242,6 @@ void PluginProcessor::applyOversampling() {
         applied_oversampling_.store(oversampling, std::memory_order::relaxed);
     }
     unlockEngine();
-}
-
-void PluginProcessor::parameterChanged(const juce::String&, float) {
-    // from the editor or a session: at once; from anywhere else, on the next timer tick
-    if (juce::MessageManager::existsAndIsCurrentThread()) {
-        applyOversampling();
-    }
 }
 
 void PluginProcessor::timerCallback() {

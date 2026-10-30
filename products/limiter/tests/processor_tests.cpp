@@ -111,7 +111,7 @@ TEST_CASE("latency is reported and grows with oversampling", "[latency]") {
 
     set(p, zlp::POversampling::kID, 2.f);
     run(p, sine(1000.0, -20.f), .05);
-    pumpMessages();
+    p.runTimerForTesting();
     CHECK(p.getLatencySamples() > base);
 }
 
@@ -431,8 +431,9 @@ TEST_CASE("the audio thread does not allocate", "[realtime]") {
     size_t allocations = 0;
     for (int b = 0; b < 600; ++b) {
         if (b == 150) {
-            // oversampling changed from the editor (the message thread)
+            // oversampling changed from the editor (the message thread), applied by the timer
             set(p, zlp::POversampling::kID, 2.f);
+            p.runTimerForTesting();
         } else if (b == 300) {
             // and as host automation: from another thread, picked up by the message thread's timer later
             std::thread([&p] {

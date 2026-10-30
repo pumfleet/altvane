@@ -55,9 +55,10 @@ input -> DC filter -> zlp::Controller (input gain, limiter, output gain / unity,
 allocate. Altvane does not let the parameter reach the engine there:
 
 - `EngineAttach` leaves oversampling out, so the controller only learns of it from `PluginProcessor`.
-- An edit on the message thread (the editor, a session or preset) is applied at once; a change from another thread
-  (host automation) is picked up by a 20 Hz timer. Either way the message thread hands the index to the controller
-  and re-prepares it, as a host's `prepareToPlay` would, which reports the latency there and posts nothing.
+- A 20 Hz timer picks up any change (the editor, a session or preset, host automation) and hands the index to the
+  controller on the message thread, re-preparing it as a host's `prepareToPlay` would, which reports the latency
+  there and posts nothing. Not from a parameter listener: those run under the parameter's listener lock, which a
+  host thread setting the same parameter would then wait on.
 - While it does, the audio thread plays silence for any block that arrives rather than wait (an atomic flag; the
   audio thread never spins). The switch resets the engine, so a latency's worth of audio is lost with or without this.
 - In an offline render (`isNonRealtime()`) the render thread switches at once, so the change lands on the block it was
