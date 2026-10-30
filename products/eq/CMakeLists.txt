@@ -21,6 +21,9 @@ target_compile_definitions(AltvaneEQ_Core INTERFACE ZL_EQ_BAND_NUM=${ALTVANE_EQ_
 
 if (ALTVANE_BUILD_TESTS)
     altvane_add_tests(AltvaneEQ "${CMAKE_CURRENT_SOURCE_DIR}/tests")
+    # ZL Equalizer 2 sessions and presets the state tests load
+    target_compile_definitions(AltvaneEQTests PRIVATE
+            ALTVANE_EQ_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
 endif ()
 
 if (ALTVANE_BUILD_TOOLS)
