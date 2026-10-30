@@ -639,7 +639,9 @@ namespace altvane::dialogue::dsp {
 
     void Engine::fallback(const std::array<const Spectrum*, 2>& delayed, const Listen listen,
                           std::array<Spectrum, 2>& mix, std::array<std::array<Spectrum, 2>, kNumStems>* stems) {
-        const auto gain = fallbackGain(listen, gains_[kVoice]);
+        // with no model, the engine passes the input through at unity (as the audio thread's fallback does then)
+        const auto voice = active_ >= 0 ? gains_[kVoice] : 1.f;
+        const auto gain = active_ >= 0 ? fallbackGain(listen, voice) : 1.f;
         for (size_t c = 0; c < static_cast<size_t>(num_channels_); ++c) {
             const auto& x = *delayed[c];
             for (size_t k = 0; k < kBins; ++k) {
@@ -647,7 +649,7 @@ namespace altvane::dialogue::dsp {
             }
             if (stems != nullptr) {
                 for (size_t k = 0; k < kBins; ++k) {
-                    (*stems)[kVoice][c][k] = gains_[kVoice] * x[k];
+                    (*stems)[kVoice][c][k] = voice * x[k];
                 }
                 (*stems)[kAmbience][c].fill({});
                 (*stems)[kReverb][c].fill({});
@@ -731,19 +733,22 @@ namespace altvane::dialogue::dsp {
             if (recovering_) {
                 // the fallback until the model is warm again, then a fade to its output
                 fallback(delayed, listen, output_fading_, stems_ ? &stem_spec_fading_ : nullptr);
-                const auto warm = active.isWarm();
-                const auto mix = warm ? static_cast<float>(++recovery_pos_) / static_cast<float>(kFadeFrames) : 0.f;
-                for (size_t c = 0; c < static_cast<size_t>(num_channels_); ++c) {
-                    crossfade(output_spec_[c], output_fading_[c], mix);
-                    if (stems_) {
-                        for (size_t s = 0; s < kNumStems; ++s) {
-                            crossfade(stem_spec_[s][c], stem_spec_fading_[s][c], mix);
+                // (cold, the fallback replaces the output outright: a non-finite one times zero would not vanish)
+                if (!active.isWarm()) {
+                    output_spec_ = output_fading_;
+                    stem_spec_ = stem_spec_fading_;
+                    metered = nullptr;
+                } else {
+                    const auto mix = static_cast<float>(++recovery_pos_) / static_cast<float>(kFadeFrames);
+                    for (size_t c = 0; c < static_cast<size_t>(num_channels_); ++c) {
+                        crossfade(output_spec_[c], output_fading_[c], mix);
+                        if (stems_) {
+                            for (size_t s = 0; s < kNumStems; ++s) {
+                                crossfade(stem_spec_[s][c], stem_spec_fading_[s][c], mix);
+                            }
                         }
                     }
-                }
-                recovering_ = recovery_pos_ < kFadeFrames;
-                if (!warm) {
-                    metered = nullptr;
+                    recovering_ = recovery_pos_ < kFadeFrames;
                 }
             }
             if (metered != nullptr) {

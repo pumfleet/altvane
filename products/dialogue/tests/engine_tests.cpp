@@ -680,13 +680,18 @@ TEST_CASE("input too loud for the model resets it rather than leaving it broken"
     }
     PluginProcessor p;
     setLevels(p, 0.f, params::kLevelOff, params::kLevelOff);
-    const auto r = run(p, input, 48000.0, {512}, false);
-    // a second later the model separates again: the output is finite and has had the ambience removed
+    const auto r = run(p, input, 48000.0, {512}, false, true);
+    // the output stays finite throughout, the burst included (the fallback replaces what overflowed)
+    for (int c = 0; c < r.output.getNumChannels(); ++c) {
+        for (int i = 0; i < r.output.getNumSamples(); ++i) {
+            REQUIRE(std::isfinite(r.output.getSample(c, i)));
+        }
+    }
+    // and a second later the model separates again: the ambience is removed
     double in_energy = 0.0, out_energy = 0.0;
     for (int c = 0; c < 2; ++c) {
         for (int i = 72000; i < 48000 * 3; ++i) {
             const auto y = r.output.getSample(c, i + r.latency);
-            REQUIRE(std::isfinite(y));
             in_energy += std::pow(input.getSample(c, i), 2.0);
             out_energy += std::pow(y, 2.0);
         }
