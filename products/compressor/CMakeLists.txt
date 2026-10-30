@@ -21,6 +21,9 @@ target_compile_definitions(AltvaneCompressor_Core INTERFACE ZL_MAX_OVERSAMPLE_RA
 
 if (ALTVANE_BUILD_TESTS)
     altvane_add_tests(AltvaneCompressor "${CMAKE_CURRENT_SOURCE_DIR}/tests")
+    # ZL Compressor sessions and presets the tests load
+    target_compile_definitions(AltvaneCompressorTests PRIVATE
+            ALTVANE_COMPRESSOR_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
 endif ()
 
 if (ALTVANE_BUILD_TOOLS)
