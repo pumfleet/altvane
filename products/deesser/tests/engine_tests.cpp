@@ -92,7 +92,7 @@ namespace {
 }
 
 TEST_CASE("with nothing to reduce the output is the input, delayed by the look-ahead", "[engine]") {
-    const auto rate = GENERATE(44100.0, 48000.0, 96000.0);
+    const auto rate = GENERATE(44100.0, 48000.0, 88200.0, 96000.0, 176400.0, 192000.0);
     const auto processing = GENERATE(dsp::Processing::kWide, dsp::Processing::kSplit);
     const auto shape = GENERATE(dsp::Shape::kShelf, dsp::Shape::kBell);
     const auto stereo = GENERATE(dsp::StereoMode::kStereo, dsp::StereoMode::kMid, dsp::StereoMode::kSide);
@@ -154,20 +154,21 @@ TEST_CASE("the reported latency is the look-ahead, and follows it", "[engine]") 
 }
 
 TEST_CASE("an ess above the threshold is brought down to it, never by more than the range", "[engine]") {
+    const auto rate = GENERATE(44100.0, 48000.0, 88200.0, 96000.0, 176400.0, 192000.0);
     const auto mode = GENERATE(dsp::Mode::kVocal, dsp::Mode::kAllround);
-    CAPTURE(static_cast<int>(mode));
-    const auto len = static_cast<int>(kRate * .6);
+    CAPTURE(rate, static_cast<int>(mode));
+    const auto len = static_cast<int>(rate * .6);
     juce::AudioBuffer<float> input(1, len);
     input.clear();
-    addEss(input, 0, 0, len, kRate, .3f);
+    addEss(input, 0, 0, len, rate, .3f);
 
     // the band level the detector sees
     dsp::Detector detector;
-    detector.prepare(kRate);
+    detector.prepare(rate);
     dsp::Detector::Filters filters;
-    filters.hp1 = dsp::SVFCoeffs::make(5500.0, dsp::kButterworth4Q1, kRate);
-    filters.hp2 = dsp::SVFCoeffs::make(5500.0, dsp::kButterworth4Q2, kRate);
-    filters.body = dsp::SVFCoeffs::make(5500.0, dsp::kButterworth2Q, kRate);
+    filters.hp1 = dsp::SVFCoeffs::make(5500.0, dsp::kButterworth4Q1, rate);
+    filters.hp2 = dsp::SVFCoeffs::make(5500.0, dsp::kButterworth4Q2, rate);
+    filters.body = dsp::SVFCoeffs::make(5500.0, dsp::kButterworth2Q, rate);
     std::vector<float> band_db;
     for (int i = 0; i < len; ++i) {
         band_db.push_back(dsp::gainToDb(detector.process(input.getSample(0, i), filters, mode).level));
@@ -182,15 +183,15 @@ TEST_CASE("an ess above the threshold is brought down to it, never by more than 
     c.threshold_db = typical - 12.f;
     c.range_db = 24.f;
     dsp::Engine engine;
-    auto out = runEngine(engine, c, input, kRate);
-    const auto latency = dsp::Engine::lookaheadSamples(c.lookahead_ms, kRate);
+    auto out = runEngine(engine, c, input, rate);
+    const auto latency = dsp::Engine::lookaheadSamples(c.lookahead_ms, rate);
     const auto start = len / 3, length = len / 3;
     const auto reduction = rmsDb(input, 0, start, length) - rmsDb(out, 0, start + latency, length);
     CHECK(reduction > 9.f);
     CHECK(reduction < 14.f);
 
     c.range_db = 4.f;
-    out = runEngine(engine, c, input, kRate);
+    out = runEngine(engine, c, input, rate);
     const auto limited = rmsDb(input, 0, start, length) - rmsDb(out, 0, start + latency, length);
     CHECK(limited > 3.f);
     CHECK(limited < 4.3f);
@@ -249,6 +250,37 @@ TEST_CASE("the bell turns down the band and spares what lies above it", "[engine
     c.shape = dsp::Shape::kShelf;
     out = runEngine(engine, c, input, kRate);
     CHECK(toneDb(out, 0, start + latency, length, kRate, 16000.0) < top - 6.f);
+}
+
+TEST_CASE("release is program dependent: 40 ms after a short ess, up to 120 ms after a long one", "[engine]") {
+    constexpr int kLookahead = 240;
+    // the time the reduction takes to fall to 1/e once the ess has passed out of the look-ahead window
+    const auto release = [](const double ess_seconds) {
+        dsp::GainComputer g;
+        g.prepare(kRate, kLookahead);
+        const auto ess = static_cast<int>(ess_seconds * kRate);
+        const auto passed = ess + kLookahead + 1;
+        float start = 0.f;
+        int fallen = -1;
+        for (int n = 0; n < passed + static_cast<int>(kRate) && fallen < 0; ++n) {
+            // the timing is set once per control period, as the engine does
+            if (n % 32 == 0) {
+                g.setTiming(kLookahead);
+            }
+            const auto r = g.process(n < ess ? 10.f : 0.f);
+            if (n == passed) {
+                start = r;
+            } else if (n > passed && r <= start / std::exp(1.f)) {
+                fallen = n - passed;
+            }
+        }
+        return static_cast<double>(fallen) / kRate;
+    };
+    const auto short_ess = release(.02);
+    const auto long_ess = release(.5);
+    CAPTURE(short_ess, long_ess);
+    CHECK(std::abs(short_ess - (.040 + .080 * .02 / .25)) < .003);
+    CHECK(std::abs(long_ess - .120) < .003);
 }
 
 TEST_CASE("Vocal mode lets a bright vowel through; Allround does not", "[engine]") {
@@ -463,6 +495,39 @@ TEST_CASE("mid processing leaves the side untouched", "[engine]") {
     CHECK(engine.takeReductionPeak() > 6.f);
 }
 
+TEST_CASE("side processing leaves the mid untouched", "[engine]") {
+    const auto len = static_cast<int>(kRate * .5);
+    juce::AudioBuffer<float> mid(1, len), side(1, len), input(2, len);
+    mid.clear();
+    side.clear();
+    addEss(mid, 0, 0, len, kRate, .2f, 8000.0, 99);
+    addEss(side, 0, 0, len, kRate, .3f);
+    for (int i = 0; i < len; ++i) {
+        input.setSample(0, i, mid.getSample(0, i) + side.getSample(0, i));
+        input.setSample(1, i, mid.getSample(0, i) - side.getSample(0, i));
+    }
+    dsp::Controls c;
+    c.mode = dsp::Mode::kAllround;
+    c.processing = dsp::Processing::kWide;
+    c.threshold_db = -40.f;
+    c.stereo = dsp::StereoMode::kSide;
+    dsp::Engine engine;
+    const auto out = runEngine(engine, c, input, kRate);
+    const auto latency = dsp::Engine::lookaheadSamples(c.lookahead_ms, kRate);
+    float worst_mid = 0.f;
+    juce::AudioBuffer<float> side_out(1, len);
+    for (int i = 0; i < len; ++i) {
+        const auto m = .5f * (out.getSample(0, i + latency) + out.getSample(1, i + latency));
+        worst_mid = std::max(worst_mid, std::abs(m - mid.getSample(0, i)));
+        side_out.setSample(0, i, .5f * (out.getSample(0, i + latency) - out.getSample(1, i + latency)));
+    }
+    CHECK(worst_mid < 1e-5f);
+    CHECK(engine.takeReductionPeak() > 6.f);
+    // and the side is what is turned down
+    const auto start = len / 3, length = len / 3;
+    CHECK(rmsDb(side_out, 0, start, length) < rmsDb(side, 0, start, length) - 6.f);
+}
+
 TEST_CASE("switching to mid and back starts the right channel afresh", "[engine]") {
     // the right channel's state must not survive an excursion into mid processing
     const auto len = static_cast<int>(kRate * .3);
@@ -586,29 +651,95 @@ TEST_CASE("the output does not depend on the block size", "[engine]") {
 }
 
 TEST_CASE("the audio thread does not allocate", "[engine]") {
+    // with the side chain, mid and side, look-ahead and listen changes, blocks larger than prepared, and bypassed
     PluginProcessor p;
+    auto layout = p.getBusesLayout();
+    layout.inputBuses.getReference(1) = juce::AudioChannelSet::stereo();
+    REQUIRE(p.setBusesLayout(layout));
     setParam(p, params::kThreshold, -40.f);
-    p.setPlayConfigDetails(2, 2, kRate, 512);
+    setParam(p, params::kSideChain, 1.f);
+    p.setRateAndBufferSizeDetails(kRate, 512);
     p.prepareToPlay(kRate, 512);
     p.getEngine().setFeedsActive(true);
-    juce::AudioBuffer<float> io(2, 512);
+    // main and side chain; the larger buffer is what a host may send beyond the prepared size
+    juce::AudioBuffer<float> io(4, 512), oversized(4, 2048);
     juce::MidiBuffer midi;
     const auto input = makePhrase(2, kRate);
+    const auto fill = [&](juce::AudioBuffer<float>& b, const int block) {
+        const auto from = (block * 512) % (input.getNumSamples() - b.getNumSamples());
+        for (int c = 0; c < 4; ++c) {
+            b.copyFrom(c, 0, input, c % 2, from, b.getNumSamples());
+        }
+    };
     size_t allocations = 0;
-    for (int block = 0; block < 180; ++block) {
-        io.copyFrom(0, 0, input, 0, (block * 512) % (input.getNumSamples() - 512), 512);
-        io.copyFrom(1, 0, input, 1, (block * 512) % (input.getNumSamples() - 512), 512);
-        if (block == 90) {
+    for (int block = 0; block < 300; ++block) {
+        if (block == 40) {
+            setParam(p, params::kStereoMode, static_cast<float>(dsp::StereoMode::kMid));
+        } else if (block == 80) {
+            setParam(p, params::kStereoMode, static_cast<float>(dsp::StereoMode::kSide));
+        } else if (block == 120) {
+            setParam(p, params::kStereoMode, static_cast<float>(dsp::StereoMode::kStereo));
+            setParam(p, params::kSideChain, 0.f);
             // look-ahead and listen changes too
             setParam(p, params::kLookahead, 12.f);
             p.setListen(dsp::Listen::kDelta);
         }
+        auto& buffer = block >= 160 && block < 200 ? oversized : io;
+        fill(buffer, block);
         const alloc_counter::Scope scope;
-        p.processBlock(io, midi);
+        if (block >= 240) {
+            p.processBlockBypassed(buffer, midi);
+        } else {
+            p.processBlock(buffer, midi);
+        }
         allocations += scope.count();
     }
     p.releaseResources();
     CHECK(allocations == 0);
+}
+
+TEST_CASE("bus layouts: mono or stereo in and out, the side chain off, mono or stereo", "[processor]") {
+    PluginProcessor p;
+    const auto mono = juce::AudioChannelSet::mono();
+    const auto stereo = juce::AudioChannelSet::stereo();
+    const auto off = juce::AudioChannelSet::disabled();
+    auto layout = [](const juce::AudioChannelSet& in, const juce::AudioChannelSet& side, const juce::AudioChannelSet& out) {
+        juce::AudioProcessor::BusesLayout l;
+        l.inputBuses.add(in);
+        l.inputBuses.add(side);
+        l.outputBuses.add(out);
+        return l;
+    };
+    for (const auto& main : {mono, stereo}) {
+        for (const auto& side : {off, mono, stereo}) {
+            CHECK(p.checkBusesLayoutSupported(layout(main, side, main)));
+        }
+    }
+    CHECK(!p.checkBusesLayoutSupported(layout(mono, off, stereo)));
+    CHECK(!p.checkBusesLayoutSupported(layout(stereo, off, mono)));
+    CHECK(!p.checkBusesLayoutSupported(layout(stereo, juce::AudioChannelSet::createLCR(), stereo)));
+    CHECK(!p.checkBusesLayoutSupported(layout(juce::AudioChannelSet::create5point1(), off,
+                                              juce::AudioChannelSet::create5point1())));
+    // and the processor runs in each supported one, the side chain's channels left silent in the output
+    for (const auto& main : {mono, stereo}) {
+        for (const auto& side : {off, mono, stereo}) {
+            CAPTURE(main.size(), side.size());
+            REQUIRE(p.setBusesLayout(layout(main, side, main)));
+            setParam(p, params::kSideChain, side.isDisabled() ? 0.f : 1.f);
+            p.prepareToPlay(kRate, 256);
+            juce::AudioBuffer<float> io(p.getTotalNumInputChannels(), 256);
+            io.clear();
+            for (int c = 0; c < io.getNumChannels(); ++c) {
+                addSine(io, c, 0, 256, kRate, 7000.0, .3f);
+            }
+            juce::MidiBuffer midi;
+            p.processBlock(io, midi);
+            for (int c = p.getTotalNumOutputChannels(); c < io.getNumChannels(); ++c) {
+                CHECK(io.getMagnitude(c, 0, 256) == 0.f);
+            }
+            p.releaseResources();
+        }
+    }
 }
 
 TEST_CASE("a host reset clears what the look-ahead held", "[engine]") {
@@ -757,7 +888,9 @@ TEST_CASE("the drawn response is what the engine does", "[engine]") {
     const auto c_ = GENERATE(Case{48000.0, dsp::Shape::kShelf, 5500.f, 20000.f, true},
                              Case{48000.0, dsp::Shape::kBell, 10000.f, 16000.f, false},
                              Case{44100.0, dsp::Shape::kBell, 5000.f, 8000.f, false},
-                             Case{96000.0, dsp::Shape::kShelf, 12000.f, 20000.f, true});
+                             Case{96000.0, dsp::Shape::kShelf, 12000.f, 20000.f, true},
+                             Case{192000.0, dsp::Shape::kBell, 5000.f, 8000.f, false},
+                             Case{176400.0, dsp::Shape::kShelf, 6000.f, 20000.f, true});
     CAPTURE(c_.rate, static_cast<int>(c_.shape), c_.low, c_.high);
     // a loud side chain holds the reduction at the range
     dsp::Controls c;

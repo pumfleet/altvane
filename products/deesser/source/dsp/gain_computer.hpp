@@ -36,6 +36,7 @@ namespace altvane::deesser::dsp {
             time_ = 0;
             reduction_ = 0.f;
             event_seconds_ = 0.f;
+            in_event_ = false;
         }
 
         /**
@@ -88,7 +89,14 @@ namespace altvane::deesser::dsp {
                 // settles to exactly nothing, so the output is the input again
                 reduction_ = 0.f;
             }
-            event_seconds_ = peak > .5f ? event_seconds_ + 1.f / static_cast<float>(sample_rate_) : 0.f;
+            // the length of the ess under way, or of the last one until the next begins, so the release after an
+            // ess follows how long it was
+            if (peak > .5f) {
+                event_seconds_ = (in_event_ ? event_seconds_ : 0.f) + 1.f / static_cast<float>(sample_rate_);
+                in_event_ = true;
+            } else {
+                in_event_ = false;
+            }
             return reduction_;
         }
 
@@ -102,6 +110,7 @@ namespace altvane::deesser::dsp {
         std::vector<int64_t> times_;
         std::vector<float> values_;
         float reduction_{0.f}, attack_{1.f}, release_{1.f}, event_seconds_{0.f};
+        bool in_event_{false};
 
         size_t back() const { return (head_ + size_ - 1) % capacity_; }
     };
