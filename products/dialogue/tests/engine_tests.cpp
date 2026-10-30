@@ -9,6 +9,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <functional>
+#include <limits>
 
 #include "PluginProcessor.hpp"
 #include "alloc_counter.hpp"
@@ -165,6 +166,74 @@ namespace {
         }
         return juce::Decibels::gainToDecibels(worst, -200.f);
     }
+
+    /**
+     * a test signal with nothing above about 1.5 kHz: smooth syllables of a harmonic voice over a steady rumble.
+     * its second differences are tiny, so a step in the output (a hard switch between two versions of it) stands out
+     */
+    juce::AudioBuffer<float> makeLowSignal(const int channels, const int length, const double rate, const int seed = 1) {
+        juce::AudioBuffer<float> buffer(channels, length);
+        juce::Random random(seed);
+        const auto pole = std::exp(-2.0 * juce::MathConstants<double>::pi * 300.0 / rate);
+        for (int c = 0; c < channels; ++c) {
+            auto* x = buffer.getWritePointer(c);
+            std::vector<double> rumble(static_cast<size_t>(length));
+            std::array<double, 4> lp{};
+            double energy = 0.0;
+            for (auto& r : rumble) {
+                double v = random.nextFloat() * 2.0 - 1.0;
+                for (auto& s : lp) {
+                    s = pole * s + (1.0 - pole) * v;
+                    v = s;
+                }
+                r = v;
+                energy += v * v;
+            }
+            const auto rumble_gain = .08 / std::sqrt(energy / length + 1e-30);
+            double phase = 0.0;
+            for (int i = 0; i < length; ++i) {
+                const auto t = static_cast<double>(i) / rate;
+                const auto syllable = std::pow(std::max(0.0, std::sin(2.0 * juce::MathConstants<double>::pi * 3.0 * t)), 2.0);
+                phase += (130.0 + 20.0 * std::sin(2.0 * juce::MathConstants<double>::pi * 1.3 * t)) / rate;
+                double voice = 0.0;
+                for (int h = 1; h <= 10; ++h) {
+                    voice += std::sin(2.0 * juce::MathConstants<double>::pi * phase * h) / h;
+                }
+                x[i] = static_cast<float>(.2 * syllable * voice + rumble_gain * rumble[static_cast<size_t>(i)]);
+            }
+        }
+        return buffer;
+    }
+
+    /**
+     * the largest second difference of a channel from `from` on: a step of size d shows as about d
+     */
+    float maxCurvature(const juce::AudioBuffer<float>& b, const int channel, const int from = 2) {
+        float worst = 0.f;
+        const auto* y = b.getReadPointer(channel);
+        for (int i = std::max(from, 2); i < b.getNumSamples(); ++i) {
+            worst = std::max(worst, std::abs(y[i] - 2.f * y[i - 1] + y[i - 2]));
+        }
+        return worst;
+    }
+
+    /**
+     * run in real time with the worker run by hand: before each block, unless `stalled` says it is stalled, the
+     * worker processes what the previous block delivered (as a worker that keeps up does before the next block)
+     */
+    Run runWithWorker(PluginProcessor& p, const juce::AudioBuffer<float>& input, const double rate, const int block,
+                      const bool stems, const std::function<bool(int)>& stalled = nullptr,
+                      const std::function<void(int)>& before_block = nullptr) {
+        p.getEngine().setWorkerThreadForTesting(false);
+        return run(p, input, rate, {block}, true, stems, [&](const int pos) {
+            if (!stalled || !stalled(pos)) {
+                p.getEngine().runWorkerForTesting();
+            }
+            if (before_block) {
+                before_block(pos);
+            }
+        });
+    }
 }
 
 TEST_CASE("with every level at unity the output is the input, delayed by the reported latency", "[engine]") {
@@ -186,6 +255,166 @@ TEST_CASE("the real-time path is transparent even when the model falls behind", 
     // calls back to back, far faster than real time: many hops arrive late and fall back to the delayed input
     const auto r = run(p, input, 48000.0, {256}, true);
     CHECK(nullResidualDb(r, input) < -90.f);
+}
+
+TEST_CASE("a worker that keeps up gives exactly the offline output, and offline never skips", "[engine][stems]") {
+    const auto input = makeSignal(2, 48000 * 4, 48000.0);
+    const std::vector<int> blocks{4096, 64, 1000};
+    // offline, with the worker thread there and blocks far faster than real time: the caller waits for every frame
+    PluginProcessor offline;
+    setLevels(offline, -3.f, params::kLevelOff, -20.f);
+    const auto a = run(offline, input, 48000.0, blocks, false, true);
+    CHECK(offline.getEngine().getSkippedFrames() == 0);
+    CHECK(offline.getEngine().getUnderruns() == 0);
+
+    PluginProcessor realtime;
+    setLevels(realtime, -3.f, params::kLevelOff, -20.f);
+    realtime.getEngine().setWorkerThreadForTesting(false);
+    const auto b = run(realtime, input, 48000.0, blocks, true, true, [&realtime](int) {
+        realtime.getEngine().runWorkerForTesting();
+    });
+    CHECK(realtime.getEngine().getSkippedFrames() == 0);
+    CHECK(realtime.getEngine().getUnderruns() == 0);
+    for (int c = 0; c < a.output.getNumChannels(); ++c) {
+        CAPTURE(c);
+        CHECK(differenceDb(a.output, c, b.output, c) < -200.f + 1.f);
+    }
+}
+
+TEST_CASE("late frames cross-fade into and out of the fallback, the input as voice at its level", "[engine][stems]") {
+    constexpr int kBlock = 256;
+    constexpr int kShortStall = 24000, kLongStall = 48000, kLongStallEnd = 72000;
+    constexpr float kVoiceDb = -3.f;
+    const auto input = makeLowSignal(2, 48000 * 3, 48000.0);
+    const auto configure = [](PluginProcessor& p) {
+        setLevels(p, kVoiceDb, params::kLevelOff, -20.f);
+    };
+    PluginProcessor on_time;
+    configure(on_time);
+    const auto ideal = runWithWorker(on_time, input, 48000.0, kBlock, true);
+    REQUIRE(on_time.getEngine().getUnderruns() == 0);
+
+    // a short stall, which the worker catches up on, and a long one, after which it skips ahead
+    PluginProcessor late;
+    configure(late);
+    const auto r = runWithWorker(late, input, 48000.0, kBlock, true, [](const int pos) {
+        return (pos >= kShortStall && pos < kShortStall + 3 * kBlock) || (pos >= kLongStall && pos < kLongStallEnd);
+    });
+    REQUIRE(late.getEngine().getUnderruns() > 0);
+    REQUIRE(late.getEngine().getSkippedFrames() > 0);
+    const auto latency = r.latency;
+
+    // a fallback that is all voice keeps the stems adding up to the mix
+    CHECK(stemSumResidualDb(r, 2) < -90.f);
+    // well into the long stall, the output is the input at the voice's level: never louder ambience than the mix
+    const auto voice = params::levelToGain(kVoiceDb);
+    float worst = 0.f, difference = 0.f;
+    int compared = 0;
+    for (int c = 0; c < 2; ++c) {
+        for (int i = kLongStall + 4 * dsp::kHop; i < kLongStallEnd; ++i) {
+            const auto fallback = voice * input.getSample(c, i - latency);
+            worst = std::max(worst, std::abs(r.output.getSample(c, i) - fallback));
+            difference += std::abs(ideal.output.getSample(c, i) - fallback);
+            ++compared;
+        }
+    }
+    CHECK(worst < 1e-6f);
+
+    // into the fallback and out of it, no step: the output is never less smooth than the processed output or the
+    // fallback themselves, whereas a hard switch between the two would step by their typical difference
+    for (int c = 0; c < 2; ++c) {
+        CAPTURE(c);
+        const auto allowed = std::max(maxCurvature(ideal.output, c, latency), voice * maxCurvature(input, c));
+        const auto typical_step = difference / static_cast<float>(compared);
+        CAPTURE(allowed, typical_step, maxCurvature(r.output, c, latency));
+        CHECK(typical_step > 4.f * allowed);
+        CHECK(maxCurvature(r.output, c, latency) < 1.5f * allowed);
+    }
+}
+
+TEST_CASE("after a stall the worker skips ahead and is back to processed output in a bounded time", "[engine]") {
+    const auto block = GENERATE(128, 1024);
+    CAPTURE(block);
+    constexpr int kStall = 48000, kStallEnd = 96000;
+    const auto input = makeSignal(2, 48000 * 4, 48000.0);
+    const auto configure = [](PluginProcessor& p) {
+        setLevels(p, 0.f, params::kLevelOff, params::kLevelOff);
+    };
+    PluginProcessor on_time;
+    configure(on_time);
+    const auto ideal = runWithWorker(on_time, input, 48000.0, block, false);
+
+    PluginProcessor late;
+    configure(late);
+    uint64_t underruns = 0;
+    int last_late_block = -1;
+    int64_t skipped_by_end = -1;
+    const auto r = runWithWorker(late, input, 48000.0, block, false, [](const int pos) {
+        return pos >= kStall && pos < kStallEnd;
+    }, [&](const int pos) {
+        if (const auto u = late.getEngine().getUnderruns(); u != underruns) {
+            underruns = u;
+            last_late_block = pos - block;
+        }
+        if (skipped_by_end < 0 && pos >= kStallEnd) {
+            skipped_by_end = static_cast<int64_t>(late.getEngine().getSkippedFrames());
+        }
+    });
+    // the worker skipped about the stall's worth of frames as soon as it ran again, and none after
+    CHECK(skipped_by_end > (kStallEnd - kStall) / dsp::kHop - 10);
+    CHECK(static_cast<int64_t>(late.getEngine().getSkippedFrames()) == skipped_by_end);
+    // the audio thread stops playing the fallback within a block of the worker running again...
+    CHECK(last_late_block <= kStallEnd + block);
+    // ...which plays its own fallback while the model re-warms (kModelLag hops) and then fades in (8 hops): after
+    // that, the output is processed again, as close to the uninterrupted output as the model's state allows
+    const auto back = kStallEnd + 14 * dsp::kHop;
+    for (int from = back; from + 4800 <= r.output.getNumSamples() - r.latency; from += 4800) {
+        CAPTURE(from);
+        double error = 0.0, removed = 0.0;
+        for (int c = 0; c < 2; ++c) {
+            for (int i = from; i < from + 4800; ++i) {
+                const auto y = ideal.output.getSample(c, i);
+                const auto x = input.getSample(c, i - r.latency);
+                error += std::pow(r.output.getSample(c, i) - y, 2.0);
+                removed += std::pow(x - y, 2.0);
+            }
+        }
+        // what the processing removes is there, and the stalled run removes nearly the same
+        CHECK(removed > 0.0);
+        CHECK(error < removed * .1);
+    }
+}
+
+TEST_CASE("the worker never reads input the audio thread may be overwriting", "[engine]") {
+    // a stall longer than the input ring (16384 samples), then stalls of random lengths
+    const auto block = GENERATE(64, 512, 2048);
+    CAPTURE(block);
+    const auto input = makeSignal(2, 48000 * 8, 48000.0);
+    PluginProcessor p;
+    setLevels(p, -3.f, -30.f, -12.f);
+    juce::Random random(7);
+    int stall_left = 0;
+    const auto r = runWithWorker(p, input, 48000.0, block, true, [&](const int pos) {
+        if (pos >= 48000 && pos < 48000 * 5 / 2) {
+            return true;
+        }
+        if (stall_left > 0) {
+            --stall_left;
+            return true;
+        }
+        if (pos > 48000 * 3 && random.nextInt(20) == 0) {
+            stall_left = random.nextInt(48000 / block);
+        }
+        return false;
+    });
+    CHECK(p.getEngine().getSkippedFrames() > 0);
+    CHECK(p.getEngine().getLeastInputMarginForTesting() >= 0);
+    CHECK(stemSumResidualDb(r, 2) < -90.f);
+    for (int c = 0; c < r.output.getNumChannels(); ++c) {
+        for (int i = 0; i < r.output.getNumSamples(); ++i) {
+            REQUIRE(std::isfinite(r.output.getSample(c, i)));
+        }
+    }
 }
 
 TEST_CASE("releasing does not wait for a backlog of hops", "[engine]") {
@@ -349,6 +578,126 @@ TEST_CASE("changing the stereo mode while playing stays transparent", "[engine][
     CHECK(nullResidualDb(r, input) < -90.f);
     // the stem outputs fade with the mix
     CHECK(stemSumResidualDb(r, 2) < -90.f);
+}
+
+TEST_CASE("changing the quality while playing stays transparent, and cross-fades at any level", "[engine][stems]") {
+    const auto stereo = GENERATE(0.f, 2.f);
+    CAPTURE(stereo);
+    // High, Eco, High, Eco: each change runs the new model beside the old one until it is warm, then fades
+    const auto change = [](PluginProcessor& p) {
+        return [&p](const int pos) {
+            constexpr std::array<std::pair<int, float>, 4> kChanges{{{0, 1.f}, {30, 0.f}, {60, 1.f}, {90, 0.f}}};
+            for (const auto& [block, quality] : kChanges) {
+                if (pos == block * 512) {
+                    setParam(p, params::kQuality, quality);
+                }
+            }
+        };
+    };
+    {
+        PluginProcessor p;
+        setParam(p, params::kStereo, stereo);
+        setLevels(p, 0.f, 0.f, 0.f);
+        const auto input = makeSignal(2, 48000 * 2, 48000.0);
+        const auto r = run(p, input, 48000.0, {512}, false, true, change(p));
+        CHECK(nullResidualDb(r, input) < -90.f);
+        CHECK(stemSumResidualDb(r, 2) < -90.f);
+    }
+
+    // with the levels apart, Eco and High give different outputs: the change between them has no step
+    const auto input = makeLowSignal(2, 48000 * 2, 48000.0);
+    const auto configure = [stereo](PluginProcessor& p, const float quality) {
+        setParam(p, params::kStereo, stereo);
+        setParam(p, params::kQuality, quality);
+        setLevels(p, 0.f, params::kLevelOff, -20.f);
+    };
+    PluginProcessor eco, high, switching;
+    configure(eco, 0.f);
+    configure(high, 1.f);
+    configure(switching, 1.f);
+    const auto a = run(eco, input, 48000.0, {512}, false);
+    const auto b = run(high, input, 48000.0, {512}, false);
+    const auto r = run(switching, input, 48000.0, {512}, false, true, change(switching));
+    CHECK(stemSumResidualDb(r, 2) < -90.f);
+    for (int c = 0; c < 2; ++c) {
+        CAPTURE(c);
+        const auto allowed = std::max(maxCurvature(a.output, c, a.latency), maxCurvature(b.output, c, b.latency));
+        CHECK(differenceDb(a.output, c, b.output, c) > -40.f);
+        CHECK(maxCurvature(r.output, c, r.latency) < 1.5f * allowed);
+    }
+}
+
+TEST_CASE("non-finite input does not poison the model", "[engine]") {
+    const auto rate = GENERATE(44100.0, 48000.0);
+    const auto bad = GENERATE(std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity(),
+                              -std::numeric_limits<float>::infinity());
+    CAPTURE(rate, bad);
+    const auto length = static_cast<int>(rate * 3);
+    const auto burst = static_cast<int>(rate / 2);
+    auto input = makeSignal(2, length, rate);
+    auto clean = input;
+    for (int c = 0; c < 2; ++c) {
+        for (int i = burst; i < burst + 2000; ++i) {
+            input.setSample(c, i, bad);
+            clean.setSample(c, i, 0.f);
+        }
+    }
+    PluginProcessor p;
+    setLevels(p, -3.f, -30.f, -12.f);
+    const auto r = run(p, input, rate, {512}, false, true);
+    const auto reference = run(p, clean, rate, {512}, false, true);
+    // the engine hears silence instead; only the rate conversion's residual carries the bad samples, briefly
+    const auto settled = burst + 2000 + r.latency + static_cast<int>(rate / 50);
+    const auto last_second = r.output.getNumSamples() - static_cast<int>(rate);
+    for (int c = 0; c < r.output.getNumChannels(); ++c) {
+        CAPTURE(c);
+        double error = 0.0, energy = 0.0;
+        for (int i = settled; i < r.output.getNumSamples(); ++i) {
+            REQUIRE(std::isfinite(r.output.getSample(c, i)));
+            if (i >= last_second) {
+                error += std::pow(r.output.getSample(c, i) - reference.output.getSample(c, i), 2.0);
+                energy += std::pow(reference.output.getSample(c, i), 2.0);
+            }
+        }
+        if (static_cast<int>(rate) == 48000) {
+            // with no rate conversion, the engine hears exactly the clean input with silence for the burst
+            CHECK(differenceDb(r.output, c, reference.output, c) < -200.f + 1.f);
+        } else {
+            // around the burst, the downsampler gives the engine slightly different samples than the clean run;
+            // the model carries that on for a while, but it fades rather than staying
+            CAPTURE(error, energy);
+            CHECK(error < energy * 1e-3);
+        }
+    }
+}
+
+TEST_CASE("input too loud for the model resets it rather than leaving it broken", "[engine]") {
+    auto input = makeSignal(2, 48000 * 3, 48000.0);
+    for (int c = 0; c < 2; ++c) {
+        for (int i = 24000; i < 26000; ++i) {
+            input.setSample(c, i, input.getSample(c, i) * 1e30f);
+        }
+    }
+    PluginProcessor p;
+    setLevels(p, 0.f, params::kLevelOff, params::kLevelOff);
+    const auto r = run(p, input, 48000.0, {512}, false, true);
+    // the output stays finite throughout, the burst included (the fallback replaces what overflowed)
+    for (int c = 0; c < r.output.getNumChannels(); ++c) {
+        for (int i = 0; i < r.output.getNumSamples(); ++i) {
+            REQUIRE(std::isfinite(r.output.getSample(c, i)));
+        }
+    }
+    // and a second later the model separates again: the ambience is removed
+    double in_energy = 0.0, out_energy = 0.0;
+    for (int c = 0; c < 2; ++c) {
+        for (int i = 72000; i < 48000 * 3; ++i) {
+            const auto y = r.output.getSample(c, i + r.latency);
+            in_energy += std::pow(input.getSample(c, i), 2.0);
+            out_energy += std::pow(y, 2.0);
+        }
+    }
+    CHECK(out_energy < in_energy * .9);
+    CHECK(out_energy > in_energy * .1);
 }
 
 TEST_CASE("offline output does not depend on the block size", "[engine]") {

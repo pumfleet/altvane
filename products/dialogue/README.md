@@ -19,8 +19,8 @@ Pull a voice out of a noisy location recording, dry out a reverberant room, or k
   channel on its own) or **Mid/Side** (the mid and the side each on their own, for centred dialogue in a wide
   ambience); 44.1–192 kHz, mono or stereo.
 - A fixed, reported latency (about 71 ms at 48 kHz, 60 ms of which is the model's frame and look-ahead), so hosts
-  compensate it exactly. Offline bounces wait for the model; in real time, a frame that would arrive late plays
-  unprocessed rather than dropping out.
+  compensate it exactly. Offline bounces wait for the model; in real time, where the model would be late the output
+  cross-fades to the input as voice, at the voice's level, rather than dropping out, and back once it catches up.
 - Presets with a factory set, A/B compare, undo/redo, adjustable interface size and accent colour, keyboard control,
   screen-reader support and host parameter menus.
 

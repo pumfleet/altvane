@@ -90,8 +90,8 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Cache downloaded models (macOS) # see products/dialogue/models
-        if: runner.os == 'macOS'
+      - name: Cache downloaded models # see products/dialogue/models; Dialogue doesn't build on Linux (its PLATFORMS)
+        if: runner.os != 'Linux'
         uses: actions/cache@v4
         with:
           path: build/deps/models/
