@@ -15,7 +15,13 @@ First release of Altvane Dialogue, for macOS 11 or newer (Apple silicon and Inte
   main output
 - Linked (mid), per-channel or mid/side stereo; mono and stereo buses; 44.1–192 kHz through an exact 48 kHz round
   trip
-- Fixed reported latency; offline renders wait for the model, real-time frames that would be late play unprocessed
+- Fixed reported latency; offline renders wait for the model and never skip a frame
+- In real time, where the model would be late the output cross-fades over 10 ms to the input as voice at the voice's
+  level (not the raw input, which brought the ambience back at full level), and back once the model catches up
+- After a long stall the model skips the frames nobody will hear, re-warms and fades back in within about 130 ms,
+  rather than working through the backlog
+- Non-finite input plays as silence instead of breaking the model for good; a model state overflowed by extreme input
+  is reset
 - Quality and stereo-mode changes cross-fade once the new model state is warm
 
 ### Interface

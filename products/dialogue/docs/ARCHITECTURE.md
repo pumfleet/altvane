@@ -8,7 +8,7 @@ and PFFFT.
 ```
 host rate ─► RateBridge: down to 48 kHz ─► Engine ─► up to the host rate ─► + g·(x_delayed − round trip)
                                             │
-             audio thread: copy into the input ring, copy out of the output ring (or the delayed input if late)
+             audio thread: copy into the input ring, copy out of the output ring (cross-fading to the fallback if late)
                                             │
              worker thread, per 10 ms hop:  STFT (960 Vorbis, 480 hop) ─► model ─► stem shares ─► transfer ─► iSTFT
 ```
@@ -50,16 +50,17 @@ the mid and the side), the stem spectra cross-fade with the mix's on a pipeline 
 each into its own output ring. Their sum is the mix's transfer, so the stem outputs add up to the main output (to
 float rounding, tested at 44.1–96 kHz and in Mid/Side). The `RateBridge` resamples each stem like the mix and adds
 the round trip's residual to the ambience at its level. A sample the model was late for, or a frame it could not
-separate, goes to the voice, as the mix plays it unprocessed. The processor applies the output gain and the bypass
+separate, goes to the voice, as the mix plays it as voice (see the fallback below). The processor applies the output gain and the bypass
 fade (to silence) to the stems; `listen` does not touch them. A stem the host left off is written to scratch.
 JUCE's AU wrapper enables every bus, so AU always computes the stems: three more inverse FFTs per channel and hop.
 
 ## Threads and latency
 
 The audio thread never waits in real time and never allocates (`tests` counts allocations). It writes its block into
-an input ring indexed by absolute sample time, wakes the worker (an atomic counter's notify), and reads its output
-`latency` samples back from an output ring. If the worker has not produced a sample yet, it reads the input ring
-instead, so a late frame plays unprocessed, aligned, rather than dropping out, and is counted (Settings shows it).
+an input ring indexed by absolute sample time (a non-finite sample as silence: it would stay in the model's running
+averages for good), wakes the worker (an atomic counter's notify), and reads its output `latency` samples back from an
+output ring. Where the worker has not produced a sample yet, the output plays the fallback instead, aligned, rather
+than dropping out, and the sample is counted (Settings shows it).
 
 The worker (`juce::Thread`, real-time options, joined to the host's audio workgroup; a high-priority ordinary thread
 where real-time scheduling is not allowed) analyses every hop as soon as its
@@ -80,11 +81,54 @@ in Stereo or Mid/Side mode while a quality change runs a second pipeline. The ol
 on top of a block that already covered it. The rest of the latency is the model's (`models/README.md`).
 
 Offline (`isNonRealtime`), the audio thread runs the pending hops itself under the worker's mutex, so a bounce never
-contains unprocessed frames and does not depend on the block size (tested to 1e-6).
+contains unprocessed frames, never skips one, and does not depend on the block size (tested to 1e-6). A real-time
+worker that keeps up gives exactly the offline output (tested).
+
+### Late frames
+
+**The fallback** is what a frame would give if it were all voice: the input at the voice's level in the mix (a voice
+solo at unity, the other solos silent, Removed the rest), the voice stem at its level and the other stems silent. The
+raw input is only transparent with every level at unity; with the ambience down it splices bursts of full noise into
+the output. The alternatives were worse: holding the last frame's transfer needs an FFT, which the audio thread cannot
+do when the worker itself has stalled, and it mutes a word that starts during the stall; a gain matched to the recent
+output does the same to speech after a pause. Voice at its level is a scalar, so the audio thread and the worker
+compute the same thing; it never drops the dialogue, and it is never louder than the voice level; with all three
+levels equal it is exactly the processed output; and every sum holds through it (the stem outputs add up to the main
+output, Removed is the input minus the mix). It is also what a frame the model could not separate already was. The
+audio thread smooths its gains like the worker's levels.
+
+**Into the fallback.** After each frame the worker also writes the frame's overlap-add tail (its second half, one hop
+past `produced`) to a tail ring. A late sample `t` in `[produced, produced + hop)` plays `tail(t) + g·x(t)·w²(t −
+produced)`, then `g·x(t)`: exactly the output if every later frame were the fallback, so the overlap-add's own window
+cross-fades from the processed output into the fallback over a hop, with no step. **Out of it.** Once the output has
+played past `produced`, a newer `produced` is not switched to: the output cross-fades from the continuation it was
+playing to the new one over a hop, with the same `w²` curve (both exist for every sample, so the fade never waits).
+
+**Skipping.** The audio thread reads no output before `heard = written − block − latency` any more, so frame `f`,
+which completes output up to `(f − 4)·hop`, is inaudible once that is not later. A few inaudible frames are still
+worth running, since they keep the model's state continuous (a 15 ms hiccup costs 15 ms of fallback). Once the next
+five are inaudible, re-warming costs fewer model runs than catching up, so the worker skips to the first hop the audio
+thread may still read: it analyses the frames that hop needs, overlap-adds the one before it as the fallback, and
+resumes the model there. The model keeps its recurrent state (to it, a splice in the input: its running
+normalisation is already adapted to the material, which a reset would throw away), but its next 4 estimates belong to
+frames before the skip, so the output stays the fallback until it is warm again and then fades in over 8 hops, as on a
+quality change. So after a stall of any length, the output is processed again about 13 hops (130 ms) after the worker
+runs again (tested within 140 ms), rather than after it has worked through the backlog. Offline never skips.
+
+**The ring invariant.** The audio thread may be writing input up to a block past `written`, so input before
+`written + block − ring` may be being overwritten. A frame the worker runs reads input at most two hops before
+`heard`, and the rings hold at least the latency, two blocks and four frames, so it never reads such input. The
+worker also checks it before each frame, skipping a frame whose input is gone (offline, that can only follow a switch
+from real time while the worker was far behind), and records the margin after reading; tests check that it stays
+positive across stalls longer than the ring.
+
+**Non-finite estimates.** Extreme but finite input can still overflow the model or the splitter. A pipeline whose
+estimate or transfer is not finite is reset, and the output recovers from the fallback as after a skip.
 
 Changing quality or stereo mode switches pipelines: the new one runs beside the old one until its estimates belong to
 frames it has seen (4 hops), then the output spectra cross-fade over 8 hops (the outputs rather than the transfers,
-since a left/right and a mid/side transfer do not apply to the same signals).
+since a left/right and a mid/side transfer do not apply to the same signals). A change waits while the engine
+recovers from a skip, and a skip ends a switch in progress.
 
 ## Editor
 
@@ -98,7 +142,10 @@ into `Presets/Factory`.
 ## Verification
 
 - `AltvaneDialogueTests` (Catch2): null tests at 44.1–192 kHz with irregular blocks, the real-time path while the model
-  falls behind, impulse latency, the 48 kHz round trip's alignment, solo stems summing to the input, stem outputs
+  falls behind, late frames with the levels apart (a test hook runs the worker by hand, so stalls are deterministic):
+  the fallback is the input at the voice's level, no step into or out of it, skipping after a stall and processing
+  again within the bound, the ring invariant across stalls longer than the ring, a worker that keeps up matching the
+  offline output, quality changes while playing, non-finite and overflowing input, impulse latency, the 48 kHz round trip's alignment, solo stems summing to the input, stem outputs
   summing to the main output and matching the solos at their levels (also late, bypassed, partly enabled and in
   Mid/Side), Mid/Side meters decoded from both streams, stereo-mode changes while playing, block-size independence,
   Removed being the input minus the mix, no allocation on the audio thread, frozen parameter IDs, state, text

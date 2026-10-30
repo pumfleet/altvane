@@ -187,8 +187,9 @@ namespace altvane::dialogue {
                 const auto gain = output_gain_.getNextValue();
                 for (int c = 0; c < channels; ++c) {
                     auto* y = chunk.getWritePointer(c);
-                    const auto dry = bridge_.getDelayedDry(c)[i];
-                    y[i] = y[i] * gain * (1.f - mix) + dry * mix;
+                    // not bypassed, the dry input stays out entirely (a non-finite sample times zero is not zero)
+                    const auto dry = mix > 0.f ? bridge_.getDelayedDry(c)[i] * mix : 0.f;
+                    y[i] = y[i] * gain * (1.f - mix) + dry;
                 }
                 // bypassed, the main output carries the input and the stem outputs fall silent
                 if (stem_outputs_) {

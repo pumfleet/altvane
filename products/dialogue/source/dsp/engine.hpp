@@ -75,8 +75,10 @@ namespace altvane::dialogue::dsp {
      *
      * the audio thread only copies samples in and out of two rings indexed by absolute sample time;
      * a worker thread analyses each hop, runs the model, applies the stem levels and overlap-adds the result.
-     * the output is the input processed and delayed by getLatency(); a sample the worker has not delivered in time
-     * is replaced by the delayed input, so the output never drops out
+     * the output is the input processed and delayed by getLatency(); where the worker has not delivered in time,
+     * the output cross-fades to the delayed input as if it were all voice (at the voice's level), so it never drops
+     * out, and back once the worker catches up. a worker that has fallen behind skips the frames nobody will hear
+     * and re-warms the model before fading back in; offline, the caller waits for every frame
      *
      * with stems, each stem at its level is synthesised too, and the stems add up to the mix (Listen::kMix);
      * a late sample, and a frame the model could not separate, count as voice
@@ -122,6 +124,11 @@ namespace altvane::dialogue::dsp {
          */
         uint64_t getUnderruns() const { return underruns_.load(std::memory_order::relaxed); }
 
+        /**
+         * frames the worker skipped because it had fallen too far behind to deliver them in time
+         */
+        uint64_t getSkippedFrames() const { return skipped_.load(std::memory_order::relaxed); }
+
         bool isModelReady() const { return model_ready_.load(std::memory_order::relaxed); }
 
         /**
@@ -130,9 +137,21 @@ namespace altvane::dialogue::dsp {
         void setWorkgroup(const juce::AudioWorkgroup& workgroup);
 
         /**
-         * run every available hop on the calling thread (tests)
+         * tests: whether prepare() starts the worker thread; without it, real-time frames are only processed by
+         * runWorkerForTesting(), so a test decides exactly when the worker runs and when it stalls
          */
-        void processPendingForTesting();
+        void setWorkerThreadForTesting(bool enabled) { worker_thread_ = enabled; }
+
+        /**
+         * tests: what the worker thread would do now, on the calling thread (skipping frames it is too late for)
+         */
+        void runWorkerForTesting();
+
+        /**
+         * tests: the least margin, in samples, by which the input the worker has read since prepare() was clear of
+         * what the audio thread may overwrite (negative if it read input the audio thread could be overwriting)
+         */
+        int64_t getLeastInputMarginForTesting() const { return least_input_margin_.load(std::memory_order::relaxed); }
 
     private:
         class Pipeline;
@@ -148,16 +167,36 @@ namespace altvane::dialogue::dsp {
         int num_channels_{0}, max_block_{0}, latency_{0};
         bool stems_{false};
         int64_t ring_mask_{0};
-        std::array<std::vector<float>, 2> in_ring_, out_ring_;
-        std::array<std::array<std::vector<float>, 2>, kNumStems> stem_ring_;
+        // the output up to produced_, and past it the newest frame's overlap-add tail (one hop, the frame's second
+        // half), which the audio thread completes with the fallback if the next frame is late
+        std::array<std::vector<float>, 2> in_ring_, out_ring_, tail_ring_;
+        std::array<std::array<std::vector<float>, 2>, kNumStems> stem_ring_, stem_tail_ring_;
         alignas(64) std::atomic<int64_t> written_{0};
         alignas(64) std::atomic<int64_t> produced_{0};
         alignas(64) std::atomic<uint64_t> underruns_{0};
+        std::atomic<uint64_t> skipped_{0};
+        std::atomic<int64_t> least_input_margin_{0};
         std::atomic<bool> model_ready_{false};
+        // whether the host last called process() in real time, so the worker may skip frames
+        std::atomic<bool> realtime_{false};
+        // the squared Vorbis window's rising half: the overlap-add's own cross-fade over a hop
+        std::array<float, kHop> fade_curve_{};
+
+        // audio-thread state: the output follows the continuation of `follow_` (the output ring before it, then
+        // its tail and the fallback); `committed_` once it has played past `follow_`, after which a newer
+        // produced_ is faded to from the continuation of `follow_from_` over a hop (follow_fade_ < 0: no fade)
+        int64_t follow_{0}, follow_from_{0};
+        int follow_fade_{-1};
+        bool committed_{false};
+        // the fallback's gains, smoothed like the worker's levels: the mix, and the voice stem
+        float fallback_gain_{1.f}, fallback_voice_gain_{1.f}, fallback_smoothing_{0.f};
 
         // worker state, guarded by hop_mutex_ (never taken by the real-time audio thread)
         std::mutex hop_mutex_;
         int64_t next_frame_{0};
+        // after a skip (or a model reset), the output is the fallback until the model is warm again, then fades in
+        bool recovering_{false};
+        int recovery_pos_{0};
         Fft fft_;
         std::array<float, kFftSize> frame_{};
         std::array<std::array<Spectrum, kHistory>, 2> history_{};
@@ -185,17 +224,38 @@ namespace altvane::dialogue::dsp {
         std::vector<BandWeight> band_weights_;
 
         std::unique_ptr<Worker> worker_;
+        bool worker_thread_{true};
         std::mutex workgroup_mutex_;
         juce::AudioWorkgroup workgroup_;
         std::atomic<bool> workgroup_changed_{false};
 
         /**
          * run every hop whose input has arrived
+         * @param realtime whether frames nobody will hear any more are skipped (never offline)
          * @param worker the worker thread, which stops early when it should exit; nullptr runs them all
          */
-        void processAvailable(const juce::Thread* worker = nullptr);
+        void processAvailable(bool realtime, const juce::Thread* worker = nullptr);
+        /**
+         * skip to the first output hop the audio thread may still read
+         * @param heard the audio thread reads no output before this from now on
+         */
+        void skipTo(int64_t heard);
+        void analyse(int64_t frame);
         void processFrame(int64_t frame);
-        void synthesise(const Spectrum& y, std::array<float, kFftSize>& ola, std::vector<float>& ring, int64_t out_begin);
+        /**
+         * the input as if it were all voice, at the levels: what plays when the model has nothing in time
+         */
+        void fallback(const std::array<const Spectrum*, 2>& delayed, Listen listen, std::array<Spectrum, 2>& mix,
+                      std::array<std::array<Spectrum, 2>, kNumStems>* stems);
+        /**
+         * @param write false to only overlap-add, leaving the rings alone
+         */
+        void synthesise(const Spectrum& y, std::array<float, kFftSize>& ola, std::vector<float>& ring,
+                        std::vector<float>& tail, int64_t out_begin, bool write = true);
+        /**
+         * the first input sample the audio thread cannot be overwriting, given what it has written
+         */
+        int64_t intactFrom(int64_t written) const { return written + max_block_ - (ring_mask_ + 1); }
         int selectPipeline() const;
         void updateControls();
         void publishAnalysis(const Spectrum& input, const std::array<Spectrum, kNumStems>& stems,
