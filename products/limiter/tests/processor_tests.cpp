@@ -6,6 +6,8 @@
 // Altvane Limiter is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 //
 // You should have received a copy of the GNU Affero General Public License along with Altvane Limiter. If not, see <https://www.gnu.org/licenses/>.
+#include <thread>
+
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
@@ -111,6 +113,54 @@ TEST_CASE("latency is reported and grows with oversampling", "[latency]") {
     run(p, sine(1000.0, -20.f), .05);
     pumpMessages();
     CHECK(p.getLatencySamples() > base);
+}
+
+TEST_CASE("oversampling switches on the message thread, never on the audio thread", "[latency]") {
+    PluginProcessor p;
+    prepare(p);
+    const auto base = p.getLatencySamples();
+    const auto setFromHost = [&p](const float index) {
+        // as host automation does: off the message thread
+        std::thread([&p, index] {
+            auto* para = p.parameters_.getParameter(zlp::POversampling::kID);
+            para->setValueNotifyingHost(para->convertTo0to1(index));
+        }).join();
+    };
+    // the engine keeps running as it was until the message thread's timer hands the change over, which switches
+    // and reports the latency there and then
+    setFromHost(2.f);
+    run(p, sine(1000.0, -20.f), .05);
+    CHECK(p.getLatencySamples() == base);
+    p.runTimerForTesting();
+    CHECK(p.getLatencySamples() > base);
+
+    // offline, the render thread switches at once, so the change lands on the block it was automated on
+    p.setNonRealtime(true);
+    setFromHost(0.f);
+    run(p, sine(1000.0, -20.f), .05);
+    pumpMessages();
+    CHECK(p.getLatencySamples() == base);
+    p.setNonRealtime(false);
+}
+
+TEST_CASE("every engine parameter but oversampling reaches the engine through Altvane's attachment", "[state]") {
+    // EngineAttach stands in for upstream's LimiterAttach: a parameter added upstream must be added there too
+    PluginProcessor p;
+    juce::StringArray engine, attached;
+    for (const auto* para : p.getParameters()) {
+        const auto* ranged = dynamic_cast<const juce::RangedAudioParameter*>(para);
+        REQUIRE(ranged != nullptr);
+        const auto id = ranged->getParameterID();
+        if (!id.startsWith("altvane_") && id != zlp::POversampling::kID) {
+            engine.add(id);
+        }
+    }
+    for (const auto* id : altvane::limiter::EngineAttach::kIDs) {
+        attached.add(id);
+    }
+    engine.sort(false);
+    attached.sort(false);
+    CHECK(engine == attached);
 }
 
 TEST_CASE("the output never passes the ceiling", "[limiter]") {
@@ -295,6 +345,57 @@ TEST_CASE("the DC filter removes an offset", "[output]") {
     CHECK(std::abs(mean / 48000.0) < 1e-3);
 }
 
+TEST_CASE("the DC filter fades in and out, and with bypass, without a step", "[output]") {
+    // the filter takes out an offset and turns the low end's phase, so the filtered signal and the input differ by
+    // far more than one sample of either changes: switched hard, the output would step
+    const auto low = sine(1000.0, -30.f);
+    const std::array<std::pair<const char*, Generator>, 2> signals{
+        {
+            {"offset", [&](const int64_t n) {
+                const auto v = .25f + low(n).first;
+                return std::pair{v, v};
+            }},
+            {"low end", [](const int64_t n) {
+                const auto t = static_cast<double>(n) / kSampleRate;
+                const auto v = static_cast<float>(.45 * std::sin(2.0 * std::numbers::pi * 30.0 * t) +
+                                                  .2 * std::sin(2.0 * std::numbers::pi * 45.0 * t + 1.0));
+                return std::pair{v, -v};
+            }},
+        }
+    };
+    for (const auto& [name, signal] : signals) {
+        INFO(name);
+        PluginProcessor p;
+        prepare(p);
+        // on, bypass on and off, off
+        const auto at = [](const double seconds) { return static_cast<int64_t>(seconds * kSampleRate) / kBlock * kBlock; };
+        const auto out = run(p, signal, 3.0, false, kBlock, [&](const int64_t start) {
+            if (start == at(.5)) {
+                set(p, params::PDCFilter::kID, 1.f);
+            } else if (start == at(1.2)) {
+                set(p, zlp::PBypass::kID, 1.f);
+            } else if (start == at(1.9)) {
+                set(p, zlp::PBypass::kID, 0.f);
+            } else if (start == at(2.4)) {
+                set(p, params::PDCFilter::kID, 0.f);
+            }
+        });
+        float input_step = 0.f;
+        for (int64_t n = 1; n < static_cast<int64_t>(out[0].size()); ++n) {
+            input_step = std::max(input_step, std::abs(signal(n).first - signal(n - 1).first));
+        }
+        // from after the signal has started (its own first sample is a step)
+        float worst = 0.f;
+        for (size_t c = 0; c < 2; ++c) {
+            for (auto n = static_cast<size_t>(p.getLatencySamples()) + 4800; n < out[c].size(); ++n) {
+                worst = std::max(worst, std::abs(out[c][n] - out[c][n - 1]));
+            }
+        }
+        CAPTURE(input_step, worst);
+        CHECK(worst < input_step * 1.2f + 2e-4f);
+    }
+}
+
 TEST_CASE("host blocks larger than the prepared size are processed in pieces", "[realtime]") {
     // JUCE allows a host to send more than prepareToPlay announced; the engine's buffers only hold that much
     const auto render = [](const int host_block) {
@@ -322,8 +423,21 @@ TEST_CASE("the audio thread does not allocate", "[realtime]") {
     juce::AudioBuffer<float> buffer(2, kBlock);
     juce::MidiBuffer midi;
     const auto signal = sine(440.0, -3.f);
+    const auto latency = p.getLatencySamples();
     size_t allocations = 0;
-    for (int b = 0; b < 400; ++b) {
+    for (int b = 0; b < 600; ++b) {
+        if (b == 150) {
+            // oversampling changed from the editor (the message thread)
+            set(p, zlp::POversampling::kID, 2.f);
+        } else if (b == 300) {
+            // and as host automation: from another thread, picked up by the message thread's timer later
+            std::thread([&p] {
+                auto* para = p.parameters_.getParameter(zlp::POversampling::kID);
+                para->setValueNotifyingHost(para->convertTo0to1(4.f));
+            }).join();
+        } else if (b == 450) {
+            p.runTimerForTesting();
+        }
         for (int i = 0; i < kBlock; ++i) {
             const auto v = signal(b * kBlock + i).first;
             buffer.setSample(0, i, v);
@@ -334,6 +448,7 @@ TEST_CASE("the audio thread does not allocate", "[realtime]") {
         allocations += scope.count();
     }
     CHECK(allocations == 0);
+    CHECK(p.getLatencySamples() > latency);
 }
 
 TEST_CASE("characters run from gentle to loud", "[limiter]") {

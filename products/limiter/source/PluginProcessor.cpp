@@ -11,6 +11,7 @@
 #include "PluginProcessor.hpp"
 
 #include <array>
+#include <thread>
 
 #include "ui/editor.hpp"
 
@@ -54,16 +55,23 @@ PluginProcessor::PluginProcessor() :
                    juce::Identifier(zlstate::schema::kNonAutomatableState),
                    zlstate::getNAParameterLayout()),
     controller_(*this),
-    limiter_attach_(*this, parameters_, controller_),
+    engine_attach_(parameters_, controller_),
     bypass_(raw(parameters_, zlp::PBypass::kID)),
     delta_(raw(parameters_, zlp::PDelta::kID)),
     dc_filter_on_(raw(parameters_, altvane::limiter::params::PDCFilter::kID)),
     dither_bits_(raw(parameters_, altvane::limiter::params::PDitherBits::kID)),
     dither_shape_(raw(parameters_, altvane::limiter::params::PDitherShape::kID)),
-    loudness_auto_reset_(raw(na_parameters_, zlstate::PLoudnessAutoReset::kID)) {
+    loudness_auto_reset_(raw(na_parameters_, zlstate::PLoudnessAutoReset::kID)),
+    oversampling_(raw(parameters_, zlp::POversampling::kID)) {
+    parameters_.addParameterListener(zlp::POversampling::kID, this);
+    // a change from the host's automation arrives off the message thread: the timer picks it up
+    startTimerHz(20);
 }
 
-PluginProcessor::~PluginProcessor() = default;
+PluginProcessor::~PluginProcessor() {
+    stopTimer();
+    parameters_.removeParameterListener(zlp::POversampling::kID, this);
+}
 
 const juce::String PluginProcessor::getName() const {
     return JucePlugin_Name;
@@ -110,8 +118,12 @@ void PluginProcessor::prepareToPlay(const double sample_rate, const int samples_
     const juce::PluginHostType host_type;
     update_channel_layout_per_call_ = host_type.isMaschine();
 
+    lockEngine();
     max_block_size_ = static_cast<size_t>(std::max(1, samples_per_block));
+    const auto oversampling = wantedOversampling();
+    controller_.setOversamplingIndex(oversampling);
     controller_.prepare(sample_rate, max_block_size_);
+    applied_oversampling_.store(oversampling, std::memory_order::relaxed);
 
     const auto channels = static_cast<size_t>(std::max(1, getMainBusNumInputChannels()));
     dc_filter_.prepare(sample_rate);
@@ -119,14 +131,21 @@ void PluginProcessor::prepareToPlay(const double sample_rate, const int samples_
     loudness_meter_.prepare(sample_rate, channels, max_block_size_);
 
     updateChannelLayout();
+    prepared_.store(true, std::memory_order::release);
+    unlockEngine();
 }
 
 void PluginProcessor::releaseResources() {
+    prepared_.store(false, std::memory_order::release);
     was_playing_ = false;
 }
 
 void PluginProcessor::reset() {
-    controller_.reset();
+    // a reset that meets the message thread re-preparing the engine leaves it to that, which resets it anyway
+    if (!engine_busy_.exchange(true, std::memory_order::acquire)) {
+        controller_.reset();
+        unlockEngine();
+    }
     dc_filter_.reset();
     dither_.reset();
     was_playing_ = false;
@@ -188,6 +207,54 @@ void PluginProcessor::setStateInformation(const void* data, const int size_in_by
     na_parameters_.replaceState(withDefaults(non_automatable_state, na_parameters_, dummy_processor_));
 }
 
+int PluginProcessor::wantedOversampling() const {
+    return std::clamp(static_cast<int>(std::lround(oversampling_.load(std::memory_order::relaxed))), 0,
+                      zlp::POversampling::kChoices.size() - 1);
+}
+
+void PluginProcessor::lockEngine() {
+    // the audio thread holds it for one block at most
+    while (engine_busy_.exchange(true, std::memory_order::acquire)) {
+        std::this_thread::yield();
+    }
+}
+
+void PluginProcessor::unlockEngine() {
+    engine_busy_.store(false, std::memory_order::release);
+}
+
+// Altvane: the engine switches oversampling inside its process() and then posts a message to report the latency,
+// which must not happen on the audio thread. EngineAttach keeps the parameter away from the engine; here the message
+// thread hands it over and re-prepares the engine, as a host's prepare does, which reports the latency from this
+// thread. The audio thread plays silence for any block that arrives meanwhile: switching resets the engine (and so
+// drops a latency's worth of audio) in any case
+void PluginProcessor::applyOversampling() {
+    if (!prepared_.load(std::memory_order::acquire) ||
+        wantedOversampling() == applied_oversampling_.load(std::memory_order::relaxed)) {
+        return;
+    }
+    lockEngine();
+    if (const auto oversampling = wantedOversampling();
+        prepared_.load(std::memory_order::acquire) &&
+        oversampling != applied_oversampling_.load(std::memory_order::relaxed)) {
+        controller_.setOversamplingIndex(oversampling);
+        controller_.prepare(sample_rate_.load(std::memory_order::relaxed), max_block_size_);
+        applied_oversampling_.store(oversampling, std::memory_order::relaxed);
+    }
+    unlockEngine();
+}
+
+void PluginProcessor::parameterChanged(const juce::String&, float) {
+    // from the editor or a session: at once; from anywhere else, on the next timer tick
+    if (juce::MessageManager::existsAndIsCurrentThread()) {
+        applyOversampling();
+    }
+}
+
+void PluginProcessor::timerCallback() {
+    applyOversampling();
+}
+
 void PluginProcessor::updateChannelLayout() {
     const auto* main_bus = getBus(true, 0);
     channel_layout_ = kInvalid;
@@ -227,6 +294,24 @@ void PluginProcessor::processBlockInternal(juce::AudioBuffer<float>& buffer, con
     if (buffer.getNumSamples() == 0) {
         return; // ignore empty blocks
     }
+    // the message thread is switching the engine's oversampling: play silence rather than wait
+    if (engine_busy_.exchange(true, std::memory_order::acquire)) {
+        buffer.clear();
+        return;
+    }
+    const struct Leave {
+        PluginProcessor& p;
+        ~Leave() { p.unlockEngine(); }
+    } leave{*this};
+    if (isNonRealtime()) {
+        // an offline render has no deadline, and the message thread may not run between its blocks: switch here, so
+        // the change lands on this block (the engine then reports the latency through its own message)
+        if (const auto oversampling = wantedOversampling();
+            oversampling != applied_oversampling_.load(std::memory_order::relaxed)) {
+            controller_.setOversamplingIndex(oversampling);
+            applied_oversampling_.store(oversampling, std::memory_order::relaxed);
+        }
+    }
     if (update_channel_layout_per_call_) {
         updateChannelLayout();
     }
@@ -255,14 +340,9 @@ void PluginProcessor::processPiece(const std::span<float*> main, const size_t nu
     const auto bypassed = bypass || bypass_.load(std::memory_order::relaxed) > .5f;
     const auto processing = !bypassed && delta_.load(std::memory_order::relaxed) < .5f;
 
-    const auto dc_on = !bypassed && dc_filter_on_.load(std::memory_order::relaxed) > .5f;
-    if (dc_on != dc_filter_was_on_) {
-        dc_filter_.reset();
-        dc_filter_was_on_ = dc_on;
-    }
-    if (dc_on) {
-        dc_filter_.process(main, num_samples);
-    }
+    // the DC filter while the limiter is heard, faded in and out (bypass included)
+    dc_filter_.setOn(!bypassed && dc_filter_on_.load(std::memory_order::relaxed) > .5f);
+    dc_filter_.process(main, num_samples);
 
     // when Audition turns on while the engine's delayed copy of the gained input is idle (editor closed), the engine
     // plays the limited signal until that delay has filled, one latency; keep the output silent until the
