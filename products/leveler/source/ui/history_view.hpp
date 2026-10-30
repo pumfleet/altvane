@@ -53,6 +53,11 @@ namespace altvane::leveler {
 
         size_t getColumnCountForTesting() const { return ring_.size(); }
 
+        /**
+         * where the floor line is drawn, for tests
+         */
+        float getFloorYForTesting() const { return level_.dbToY(floorDb()); }
+
     private:
         enum class Line { kNone, kTarget, kFloor };
 

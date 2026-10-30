@@ -35,10 +35,12 @@ music ──► K-weighting ─► 400 ms ────┘   (target offset)
   - **History:** each hop's levels and state are kept until the delayed audio they describe reaches the output.
     `Column`s are then lined up with the audio the gain was applied to, and pushed to a `ui::SpscQueue` while the
     editor shows them.
-  - **Learn** accumulates the energy of voiced hops.
+  - **Learn** accumulates the energy of voiced hops. Only the audio thread writes the totals: `startLearn` asks for
+    a new take, which the audio thread starts at its next hop, and `stopLearn` reports nothing until it has.
 - `PluginProcessor`: parameters, state, buses, output gain, the bypass cross-fade to the delayed input, the output
   meter, and the automation write.
-  - **Parameters** (`params.hpp`): the IDs are frozen, and `tests` checks them.
+  - **Parameters** (`params.hpp`): the IDs are frozen, and `tests` checks them. Lookahead is not automatable: it
+    changes the latency, which hosts only take from the message thread.
   - **Buses:** Input and Output are mono or stereo; Music is an optional side chain, disabled, mono or stereo.
 
 ## The rider fader, presets and automation
@@ -52,7 +54,9 @@ built.
   doesn't reset it and its moves don't mark the preset as modified. The codec writes presets without the state's
   `Session` element.
 - **Session state.** That `Session` element holds the automation mode and the fader's value. A session restores them;
-  a preset (which has no `Session` element) leaves them alone.
+  a preset (which has no `Session` element) leaves them alone. The fader is restored with `setValue`, which does not
+  notify the host: a notification outside a gesture can be recorded as an automation write. The engine reads the
+  fader every block, and the editor shows the engine's gain.
 
 **Write** happens on the message thread, from the processor's 60 Hz timer:
 
@@ -60,6 +64,10 @@ built.
   0.05 dB or more, and closes the gesture when the transport stops.
 - This is how a hand on a control surface is recorded, so write, touch and latch all work.
 - JUCE's VST3 wrapper ignores gestures that come from the audio thread, so the audio thread can't do this.
+- So the written lane is not sample-accurate: the host stamps each move when it arrives, up to a timer tick, the
+  lookahead and a host buffer or two after the audio it belongs to. A sample-accurate write would need parameter
+  output from the audio thread (VST3's output parameter changes), which JUCE's wrappers don't expose for this, and AU
+  has no equivalent; the README says what to expect instead.
 - The same timer reports a lookahead change to the host (`setLatencySamples`).
 
 **Read** applies the fader's value to each hop instead of the rider's.
@@ -92,11 +100,14 @@ and frame loop.
 
 - **`AltvaneLevelerTests`** (Catch2):
   - Engine: riding onto the target at 44.1–192 kHz in mono and stereo; range limits; hold and idle; breaths and
-    sibilants under the guard; the music key; latency and impulse delay; onset with and without lookahead; nulls
-    with nothing to ride and in bypass; block-size independence; Read mode; no allocation on the audio thread.
-  - Processor: frozen IDs, session state, presets and A/B leaving the fader alone, the Write pass and its gestures
-    with a test play head, manual ride, latency changes, bus layouts, learn.
-  - Editor: accessibility, undo, the host menu, the mode chips, learn and history, factory presets.
+    sibilants under the guard; the speed range (1.5 s to 40 ms) and cuts twice as fast as boosts; the music key, mono
+    and stereo; latency and impulse delay; onset with and without lookahead; nulls with nothing to ride and in
+    bypass; block-size independence; Read mode; no allocation on the audio thread.
+  - Processor: frozen IDs, session state (restored without notifying the host), presets and A/B leaving the fader
+    alone, the Write pass and its gestures with a test play head, manual ride, latency changes, lookahead not
+    automatable, bus layouts, learn (and learn started and stopped while another thread plays).
+  - Editor: accessibility, undo, the host menu, the mode chips, dragging the floor line, learn and history, factory
+    presets.
 - **Tools:** `AltvaneLevelerRender` for listening, the gain curve and CPU; `AltvaneLevelerSnapshot` for visual review.
 - **Validation:** `auval -v aufx AvLv Altv`, and pluginval at strictness 10.
 - `docs/BENCHMARK.md` records how even the result is, the onset error and CPU.

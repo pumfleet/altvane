@@ -9,6 +9,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <optional>
 #include <vector>
 #include <altvane_ui/util/spsc_queue.hpp>
@@ -153,7 +154,11 @@ namespace altvane::leveler::dsp {
         std::atomic<bool> publishing_{false};
         ui::SpscQueue<Column, kColumns> columns_;
 
+        // Learn: the message thread starts and stops it; only the audio thread writes the totals, so a start asks for
+        // a new take (learn_take_), which the audio thread starts at its next hop (learn_take_started_)
         std::atomic<bool> learning_{false};
+        std::atomic<uint32_t> learn_take_{0}, learn_take_started_{0};
+        uint32_t learn_take_seen_{0};
         std::atomic<double> learn_energy_{0.0};
         std::atomic<int> learn_hops_{0};
 

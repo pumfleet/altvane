@@ -48,7 +48,10 @@ namespace altvane::leveler::params {
         addFloat(layout, kRangeMin, "Range Min", -kRangeLimit, 0.f, .1f, -6.f, dbAttributes());
         addFloat(layout, kRangeMax, "Range Max", 0.f, kRangeLimit, .1f, 6.f, dbAttributes());
         addFloat(layout, kIdle, "Idle", -kRangeLimit, kRangeLimit, .1f, 0.f, dbAttributes());
-        layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{kLookahead, kVersion}, "Lookahead", true));
+        // it sets the latency, which hosts only take from the message thread: not something to automate
+        layout.add(std::make_unique<juce::AudioParameterBool>(
+            juce::ParameterID{kLookahead, kVersion}, "Lookahead", true,
+            juce::AudioParameterBoolAttributes().withAutomatable(false)));
         addFloat(layout, kOutput, "Output", -24.f, 24.f, .1f, 0.f, dbAttributes());
         layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{kBypass, kVersion}, "Bypass", false));
         return layout;
