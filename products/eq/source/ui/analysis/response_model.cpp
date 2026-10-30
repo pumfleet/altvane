@@ -23,7 +23,7 @@ namespace altvane::eq {
         }
         freqs_.resize(num_points);
         ws_.resize(num_points);
-        for (auto* v : {&cos1_, &cos2_, &sin1_, &sin2_, &scratch_re_, &scratch_im_}) {
+        for (auto* v : {&phi_, &sin1_, &sin2_, &scratch_re_, &scratch_im_}) {
             v->resize(num_points);
         }
         for (size_t i = 0; i < num_points; ++i) {
@@ -45,9 +45,9 @@ namespace altvane::eq {
     }
 
     zldsp::filter::FilterParameters ResponseModel::getParas(const BandSnapshot& b, const float gain) const {
+        // the engine designs bands above Nyquist as they are (up to the parameter's maximum), so no clamp here
         return {
-            b.type, b.getOrder(),
-            std::min(static_cast<double>(b.freq), 0.49964 * sample_rate_),
+            b.type, b.getOrder(), static_cast<double>(b.freq),
             static_cast<double>(gain), static_cast<double>(b.q)
         };
     }
@@ -74,16 +74,20 @@ namespace altvane::eq {
         const auto num = zldsp::filter::FilterDesign::updateCoeffs<zldsp::filter::IvantsovCoeff>(
             para.filter_type, para.order, para.freq, sample_rate_, para.gain, para.q, coeffs_);
         for (size_t i = 0; i < out.size(); ++i) {
-            const auto c1 = cos1_[i], c2 = cos2_[i];
+            // |b0 + b1 z^-1 + b2 z^-2|^2 in terms of phi = sin^2(w / 2): the expansion in cos w and cos 2w cancels
+            // badly where the poles sit close to z = 1 (steep low-frequency bands at high sample rates)
+            const auto phi = phi_[i];
             double mag_sqr = 1.0;
             for (size_t k = 0; k < num; ++k) {
                 // coefficient layout: a1, a2, b0, b1, b2 (a0 = 1)
                 const auto& c = coeffs_[k];
-                const auto num_sqr = c[2] * c[2] + c[3] * c[3] + c[4] * c[4]
-                    + 2.0 * (c[2] * c[3] + c[3] * c[4]) * c1 + 2.0 * c[2] * c[4] * c2;
-                const auto den_sqr = 1.0 + c[0] * c[0] + c[1] * c[1]
-                    + 2.0 * (c[0] + c[0] * c[1]) * c1 + 2.0 * c[1] * c2;
-                mag_sqr *= num_sqr / std::max(den_sqr, 1e-300);
+                const auto b_sum = c[2] + c[3] + c[4];
+                const auto a_sum = 1.0 + c[0] + c[1];
+                const auto num_sqr = b_sum * b_sum - 4.0 * (c[2] * c[3] + 4.0 * c[2] * c[4] + c[3] * c[4]) * phi
+                    + 16.0 * c[2] * c[4] * phi * phi;
+                const auto den_sqr = a_sum * a_sum - 4.0 * (c[0] + 4.0 * c[1] + c[0] * c[1]) * phi
+                    + 16.0 * c[1] * phi * phi;
+                mag_sqr *= std::max(num_sqr, 0.0) / std::max(den_sqr, 1e-300);
             }
             out[i] = static_cast<float>(10.0 * std::log10(std::max(mag_sqr, 1e-30)));
         }
@@ -99,14 +103,16 @@ namespace altvane::eq {
         auto& re = branch_re_[band];
         auto& im = branch_im_[band];
         for (size_t i = 0; i < re.size(); ++i) {
-            // z^-1 = cos w - j sin w
-            const auto c1 = cos1_[i], c2 = cos2_[i], s1 = sin1_[i], s2 = sin2_[i];
+            // z^-1 = cos w - j sin w, with cos w = 1 - 2 phi and cos 2w = 1 - 8 phi (1 - phi) to keep the real parts
+            // accurate near w = 0
+            const auto phi = phi_[i], s1 = sin1_[i], s2 = sin2_[i];
+            const auto d1 = 2.0 * phi, d2 = 8.0 * phi * (1.0 - phi);
             double h_re = 1.0, h_im = 0.0;
             for (size_t k = 0; k < num; ++k) {
                 const auto& c = coeffs_[k];
-                const auto n_re = c[2] + c[3] * c1 + c[4] * c2;
+                const auto n_re = (c[2] + c[3] + c[4]) - c[3] * d1 - c[4] * d2;
                 const auto n_im = -(c[3] * s1 + c[4] * s2);
-                const auto d_re = 1.0 + c[0] * c1 + c[1] * c2;
+                const auto d_re = (1.0 + c[0] + c[1]) - c[0] * d1 - c[1] * d2;
                 const auto d_im = -(c[0] * s1 + c[1] * s2);
                 const auto d_mag = std::max(d_re * d_re + d_im * d_im, 1e-300);
                 const auto q_re = (n_re * d_re + n_im * d_im) / d_mag;
@@ -183,8 +189,8 @@ namespace altvane::eq {
                 ws_[i] = static_cast<float>(freqs_[i] * scale);
                 // a digital filter has no response above Nyquist; hold the value at Nyquist
                 const auto w = std::min(freqs_[i] * scale, std::numbers::pi);
-                cos1_[i] = std::cos(w);
-                cos2_[i] = std::cos(2.0 * w);
+                const auto half_sin = std::sin(.5 * w);
+                phi_[i] = half_sin * half_sin;
                 sin1_[i] = std::sin(w);
                 sin2_[i] = std::sin(2.0 * w);
             }
