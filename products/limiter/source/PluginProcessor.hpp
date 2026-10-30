@@ -18,6 +18,7 @@
 #include "state/state.hpp"
 #include "engine/dc_filter.hpp"
 #include "engine/dither.hpp"
+#include "engine/engine_attach.hpp"
 #include "engine/loudness_meter.hpp"
 #include "engine/params.hpp"
 
@@ -25,7 +26,7 @@
  * ZL Limiter's processor, adapted for Altvane Limiter: the Altvane editor and session, and an output stage
  * after the limiter (DC filter before it, dither and a loudness meter after it)
  */
-class PluginProcessor final : public juce::AudioProcessor {
+class PluginProcessor final : public juce::AudioProcessor, private juce::Timer {
 public:
     zlstate::DummyProcessor dummy_processor_;
     juce::AudioProcessorValueTreeState parameters_;
@@ -104,9 +105,15 @@ public:
      */
     bool isHostBypassed() const { return host_bypassed_.load(std::memory_order::relaxed); }
 
+    /**
+     * the message-thread work the timer does (applying an oversampling change), for tests
+     */
+    void runTimerForTesting() { timerCallback(); }
+
 private:
     zlp::Controller controller_;
-    zlp::LimiterAttach limiter_attach_;
+    // upstream's LimiterAttach without oversampling, which applyOversampling() hands to the engine instead
+    altvane::limiter::EngineAttach engine_attach_;
 
     std::atomic<double> sample_rate_{48000.0};
 
@@ -126,12 +133,30 @@ private:
     altvane::limiter::Dither dither_;
     altvane::limiter::LoudnessMeter loudness_meter_;
     std::atomic<float> &bypass_, &delta_, &dc_filter_on_, &dither_bits_, &dither_shape_, &loudness_auto_reset_;
-    bool dc_filter_was_on_{false};
+    std::atomic<float>& oversampling_;
     // a host reset or prepare counts as a stop: the next playing block is a playback start
     bool was_playing_{false};
     // Audition: samples left before the engine's delta signal is aligned (see processPiece)
     bool delta_was_on_{false};
     size_t audition_warmup_{0};
+
+    // Altvane: the engine switches oversampling off the audio thread (see applyOversampling). Whoever holds
+    // engine_busy_ may use the engine: the audio thread for one block, without waiting; the message thread while it
+    // re-prepares the engine
+    std::atomic<bool> engine_busy_{false};
+    std::atomic<bool> prepared_{false};
+    // the oversampling the engine runs at, -1 before the first prepare
+    std::atomic<int> applied_oversampling_{-1};
+
+    int wantedOversampling() const;
+
+    void lockEngine();
+
+    void unlockEngine();
+
+    void applyOversampling();
+
+    void timerCallback() override;
 
     void updateChannelLayout();
 

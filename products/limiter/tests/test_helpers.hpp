@@ -55,10 +55,11 @@ namespace test {
     }
 
     /**
-     * run the processor and collect both output channels
+     * run the processor and collect both output channels; `before_block` sees the index of each block's first sample
      */
     inline std::array<std::vector<float>, 2> run(PluginProcessor& p, const Generator& gen, const double seconds,
-                                                 const bool host_bypass = false, const int block = kBlock) {
+                                                 const bool host_bypass = false, const int block = kBlock,
+                                                 const std::function<void(int64_t)>& before_block = {}) {
         const auto total = static_cast<int64_t>(seconds * kSampleRate);
         std::array<std::vector<float>, 2> out;
         out[0].reserve(static_cast<size_t>(total));
@@ -67,6 +68,9 @@ namespace test {
         juce::MidiBuffer midi;
         for (int64_t start = 0; start < total; start += block) {
             const auto n = static_cast<int>(std::min<int64_t>(block, total - start));
+            if (before_block) {
+                before_block(start);
+            }
             buffer.setSize(2, n, false, false, true);
             for (int i = 0; i < n; ++i) {
                 const auto [l, r] = gen(start + i);
