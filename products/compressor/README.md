@@ -3,8 +3,10 @@
 A compressor, upward compressor and expander built on the audio engine of
 [ZL Compressor](https://github.com/ZL-Audio/ZLCompressor).
 
-**Status: in development.** The engine, editor, build, tests and packaging are in place. The editor follows the
-approved mock in [docs/design/mock.html](docs/design/mock.html):
+![Altvane Compressor](docs/screenshot.png)
+
+**Status: 0.1.0, the first release.** The editor follows the approved mock in
+[docs/design/mock.html](docs/design/mock.html):
 
 - a scrolling level display (input, output and gain change) with a threshold line you can drag;
 - a knee display with the engine's exact transfer curve, lit up to the detector level, with handles for threshold,
@@ -22,6 +24,13 @@ approved mock in [docs/design/mock.html](docs/design/mock.html):
   with band solo.
 - **Lookahead** of up to 20 ms, or negative to delay the side chain instead. **Oversampling** goes up to 8×, plus a
   soft clipper, wet mix and a delta listen.
+- **Side-chain EQ:** double-click to add a band and drag it, or use the keyboard (Return adds a band, 1 to 8 select
+  one, the arrows move it, hold S to solo it). The selected band's shape, frequency, gain and Q can be typed along the
+  top, and Solo plays the side chain in the band's range.
+- **Presets and sessions** use ZL Compressor's format, and loading a preset keeps the display as it is. Eight factory
+  presets (Drum Smash, Drum Bus Glue, Vocal Leveler, Mix Bus Gentle, Bass Control, Parallel Smash, Upward Inflate,
+  Gate-ish Expander) are installed with the plug-in. A/B, undo and redo, help balloons (Settings, Help) and interface
+  scaling come from the shared Altvane editor shell.
 
 ## Build from source
 
@@ -42,6 +51,9 @@ With `ALTVANE_BUILD_TESTS=ON` the build also produces `AltvaneCompressorTests`:
 ```console
 build/mac-arm64-debug/products/compressor/AltvaneCompressorTests
 ```
+
+With `ALTVANE_BUILD_TOOLS=ON` it also builds the snapshot renderer `AltvaneCompressorSnapshot <out-dir> [scale]` (on
+Linux, run it under `xvfb-run`); `docs/screenshot.png` is its `00_screenshot.png` at scale 2.
 
 Releases are built by the `Release` workflow from `compressor-vX.Y.Z` tags.
 
