@@ -28,7 +28,7 @@ altvane_add_plugin(AltvaneDialogue
         AU_MAIN_TYPE kAudioUnitType_Effect
         VST3_CATEGORIES Fx Restoration
         AAX_CATEGORY AAX_ePlugInCategory_NoiseReduction
-        LV2_TAGS util
+        LV2_TAGS utility
         LINK_LIBRARIES altvane_dialogue_models pffft ${dialogue_blas}
 )
 
