@@ -321,6 +321,14 @@ TEST_CASE("renaming only the case of a preset's name works", "[presets][rename]"
     CHECK(t.presets.getCurrentName() == "Bass");
 }
 
+TEST_CASE("renaming a preset to its own name succeeds and changes nothing", "[presets][rename]") {
+    Presets t;
+    REQUIRE(t.presets.save(t.file("Bass")));
+    CHECK(t.presets.rename(t.file("Bass"), "Bass"));
+    CHECK(t.names() == juce::StringArray{"Bass"});
+    CHECK(t.presets.getCurrentName() == "Bass");
+}
+
 TEST_CASE("renaming to an empty or illegal name", "[presets][rename]") {
     Presets t;
     REQUIRE(t.presets.save(t.file("Keep")));
@@ -333,6 +341,45 @@ TEST_CASE("renaming to an empty or illegal name", "[presets][rename]") {
     REQUIRE(t.presets.scan().size() == 1);
     CHECK(t.presets.scan()[0].group.isEmpty());
     CHECK(t.presets.getCurrentFile().existsAsFile());
+}
+
+TEST_CASE("removing a preset forgets it as current and favourite", "[presets][remove]") {
+    Presets t;
+    REQUIRE(t.presets.save(t.file("Doomed")));
+    t.presets.setFavourite(t.file("Doomed"), true);
+    REQUIRE(t.presets.save(t.file("Kept")));
+    REQUIRE(t.presets.load(t.file("Doomed")));
+
+    REQUIRE(t.presets.remove(t.file("Doomed")));
+    CHECK_FALSE(t.file("Doomed").exists());
+    CHECK(t.presets.getCurrentFile() == juce::File());
+    CHECK(t.presets.getCurrentName() == "Default");
+    CHECK(t.settings->getValue("favourite_presets").isEmpty());
+    CHECK(t.names() == juce::StringArray{"Kept"});
+}
+
+TEST_CASE("a preset that can't be removed stays current and favourite", "[presets][remove]") {
+#if JUCE_LINUX || JUCE_MAC
+    Presets t;
+    const auto locked = Presets::dir().getChildFile("Locked");
+    REQUIRE(t.presets.save(t.file("Locked/Stuck")));
+    t.presets.setFavourite(t.file("Locked/Stuck"), true);
+    REQUIRE(chmod(locked.getFullPathName().toRawUTF8(), 0555) == 0);
+    struct Unlock {
+        juce::File dir;
+        ~Unlock() { chmod(dir.getFullPathName().toRawUTF8(), 0755); }
+    } unlock{locked};
+    if (locked.getChildFile("probe").create().wasOk()) {
+        SKIP("this user can write to a read-only folder (root?)");
+    }
+
+    CHECK_FALSE(t.presets.remove(t.file("Locked/Stuck")));
+    CHECK(t.file("Locked/Stuck").existsAsFile());
+    CHECK(t.presets.getCurrentFile() == t.file("Locked/Stuck"));
+    CHECK(t.presets.isFavourite(t.file("Locked/Stuck")));
+#else
+    SKIP("needs POSIX permissions to make a folder read-only");
+#endif
 }
 
 TEST_CASE("presets list in natural order with their groups and favourites", "[presets]") {

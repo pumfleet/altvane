@@ -206,7 +206,8 @@ namespace altvane::ui {
             return false;
         }
         const auto target = file.getSiblingFile(name + kExtension);
-        if (target.exists() || !file.moveFileTo(target)) {
+        // on case-insensitive file systems a new case of the same name is this file, not another preset
+        if ((target.exists() && target != file) || !file.moveFileTo(target)) {
             return false;
         }
         if (isFavourite(file)) {
@@ -220,11 +221,15 @@ namespace altvane::ui {
     }
 
     bool PresetManager::remove(const juce::File& file) {
+        // a preset that stays (no trash, no permission) stays current and favourite
+        if (!file.moveToTrash()) {
+            return false;
+        }
         setFavourite(file, false);
         if (getCurrentFile() == file) {
             session_.current_preset = juce::File();
         }
-        return file.moveToTrash();
+        return true;
     }
 
     juce::File PresetManager::createGroup(const juce::String& name) const {
