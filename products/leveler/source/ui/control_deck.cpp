@@ -39,8 +39,8 @@ namespace altvane::leveler {
             if (b.percent) {
                 b.knob.format = [](const float v) { return params::formatPercent(v); };
                 b.knob.parse = [](const juce::String& t) -> std::optional<float> {
-                    const auto clean = t.retainCharacters("+-.0123456789");
-                    return clean.containsAnyOf("0123456789") ? std::optional<float>(clean.getFloatValue() / 100.f) : std::nullopt;
+                    const auto value = ui::format::parseLenient(t);
+                    return value ? std::optional<float>(static_cast<float>(*value) / 100.f) : std::nullopt;
                 };
             } else {
                 b.knob.format = [](const float v) { return params::formatDb(v); };
