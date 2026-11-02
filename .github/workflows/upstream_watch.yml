@@ -1,0 +1,105 @@
+name: Upstream Watch
+
+# How far each vendored engine (products/*/UPSTREAM) is behind its upstream repository's main branch.
+# Keeps a single tracking issue (labelled upstream-watch) up to date and closes it once every engine is current.
+# It only reports: it never changes code or opens pull requests (moving a pin is scripts/sync_upstream.sh's job).
+
+on:
+  schedule:
+    - cron: "17 6 * * 1" # Mondays, 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  ISSUE_LABEL: upstream-watch
+  ISSUE_TITLE: Vendored engines are behind upstream
+
+jobs:
+  report:
+    name: Compare pins with upstream
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: List upstream commits since each pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          marker="" behind_total=0 table="" details=""
+          for pin in products/*/UPSTREAM; do
+            product=$(basename "$(dirname "$pin")")
+            repo=$(bash -c 'source "$1"; echo "${REPO%.git}"' _ "$pin")
+            commit=$(bash -c 'source "$1"; echo "$COMMIT"' _ "$pin")
+            scripts/upstream_behind.sh "$product" > "behind-$product.tsv"
+            count=$(wc -l < "behind-$product.tsv" | tr -d ' ')
+            behind_total=$((behind_total + count))
+            marker+=" $product=$count"
+            if [ "$count" -eq 0 ]; then
+              behind="current"
+            else
+              noun=$([ "$count" -eq 1 ] && echo commit || echo commits)
+              behind="[$count $noun]($repo/compare/$commit...main)"
+              details+=$'\n'"<details><summary>$product: $count $noun</summary>"$'\n\n'
+              # subjects go in code spans so upstream's @mentions and #numbers don't ping or link anything here
+              while IFS=$'\t' read -r sha date subject; do
+                subject=$(printf '%s' "$subject" | tr '`' "'")
+                details+="- [\`${sha:0:7}\`]($repo/commit/$sha) $date \`$subject\`"$'\n'
+              done < "behind-$product.tsv"
+              details+=$'\n'"</details>"$'\n'
+            fi
+            table+="| $product | [${repo#https://github.com/}]($repo) | [\`${commit:0:7}\`]($repo/commit/$commit) | $behind |"$'\n'
+          done
+          {
+            echo "<!-- upstream-watch:$marker -->"
+            echo "Commits on each vendored engine's upstream \`main\` since its pin in \`products/<product>/UPSTREAM\`,"
+            echo "as of $(date -u +%Y-%m-%d) ([run]($run_url))."
+            echo
+            echo "| Product | Upstream | Pinned at | Behind |"
+            echo "|---|---|---|---|"
+            printf '%s' "$table"
+            printf '%s' "$details"
+            echo
+            echo "To take them: \`scripts/sync_upstream.sh <product>\`, port the changes it lists to the files the product"
+            echo "adapted, then build and test. This issue is updated weekly by the Upstream Watch workflow and closed once"
+            echo "every engine is current."
+          } > report.md
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+          echo "BEHIND_TOTAL=$behind_total" >> "$GITHUB_ENV"
+
+      - name: Update the tracking issue
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          number=$(gh issue list --label "$ISSUE_LABEL" --state open --limit 1 --json number --jq '.[0].number // empty')
+          if [ "$BEHIND_TOTAL" -eq 0 ]; then
+            if [ -n "$number" ]; then
+              gh issue close "$number" --comment "All vendored engines are current with upstream as of $(date -u +%Y-%m-%d)."
+            fi
+            echo "All vendored engines are current with upstream."
+            exit 0
+          fi
+          if [ -z "$number" ]; then
+            gh label create "$ISSUE_LABEL" --color FBCA04 --description "Vendored engines behind upstream" --force
+            gh issue create --title "$ISSUE_TITLE" --label "$ISSUE_LABEL" --body-file report.md
+            exit 0
+          fi
+          previous=$(gh issue view "$number" --json body --jq '.body' | head -n 1 | tr -d '\r')
+          current=$(head -n 1 report.md)
+          gh issue edit "$number" --title "$ISSUE_TITLE" --body-file report.md
+          # a comment (which notifies) only when the counts changed, not every week
+          if [ "$previous" != "$current" ]; then
+            counts=$(echo "$current" | sed -E 's/<!-- upstream-watch: (.*) -->/\1/')
+            gh issue comment "$number" --body "Upstream moved: now behind by $counts. The table above is updated."
+          fi
