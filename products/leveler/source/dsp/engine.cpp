@@ -175,10 +175,19 @@ namespace altvane::leveler::dsp {
             }
         }
         const auto voiced_db = voiced_hops > 0 ? loudnessDb(voiced_energy / voiced_hops) : kSilenceDb;
-        if (state == HopState::kVoiced && learning_.load(std::memory_order::relaxed)) {
+        // Learn: only this thread writes the totals; startLearn asks for a fresh take, which starts here (learning is
+        // read first, so a start seen here comes with its request)
+        const auto learning = learning_.load(std::memory_order::acquire);
+        if (const auto take = learn_take_.load(std::memory_order::acquire); take != learn_take_seen_) {
+            learn_energy_.store(0.0, std::memory_order::relaxed);
+            learn_hops_.store(0, std::memory_order::relaxed);
+            learn_take_seen_ = take;
+            learn_take_started_.store(take, std::memory_order::release);
+        }
+        if (state == HopState::kVoiced && learning) {
             learn_energy_.store(learn_energy_.load(std::memory_order::relaxed) + energies_[level_slot_],
                                 std::memory_order::relaxed);
-            learn_hops_.fetch_add(1, std::memory_order::relaxed);
+            learn_hops_.store(learn_hops_.load(std::memory_order::relaxed) + 1, std::memory_order::relaxed);
         }
         level_slot_ = (level_slot_ + 1) % kLevelHops;
         hop_energy_ = 0.0;
@@ -251,17 +260,21 @@ namespace altvane::leveler::dsp {
     }
 
     void Engine::startLearn() {
-        learn_energy_.store(0.0);
-        learn_hops_.store(0);
-        learning_.store(true);
+        // the audio thread clears the totals at its next hop, before it adds to them again
+        learn_take_.fetch_add(1, std::memory_order::release);
+        learning_.store(true, std::memory_order::release);
     }
 
     std::optional<float> Engine::stopLearn() {
-        learning_.store(false);
-        const auto hops = learn_hops_.load();
+        learning_.store(false, std::memory_order::release);
+        // no hop since the start: the totals still hold the last take
+        if (learn_take_started_.load(std::memory_order::acquire) != learn_take_.load(std::memory_order::relaxed)) {
+            return std::nullopt;
+        }
+        const auto hops = learn_hops_.load(std::memory_order::relaxed);
         if (hops < 20) {
             return std::nullopt;
         }
-        return loudnessDb(learn_energy_.load() / hops);
+        return loudnessDb(learn_energy_.load(std::memory_order::relaxed) / hops);
     }
 }

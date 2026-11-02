@@ -87,10 +87,11 @@ Learn waits for an edit in progress to finish before setting the threshold.
 
 ## Verification
 
-- `tests/engine_tests.cpp` — exact null at rest in every mode at 44.1/48/96 kHz, latency and its changes, reduction
-  to the threshold and within the range, split vs wide, bell vs shelf, Vocal vs Allround, delta + output = input,
-  trigger band-limiting, link, mid only, external side chain, block-size independence, no allocations, bypass,
-  Learn's events, frozen IDs, state and text round trips.
+- `tests/engine_tests.cpp` — exact null at rest in every mode at 44.1 to 192 kHz, latency and its changes, reduction
+  to the threshold and within the range at 44.1 to 192 kHz, program-dependent release, split vs wide, bell vs shelf,
+  Vocal vs Allround, delta + output = input, trigger band-limiting, link, mid only and side only, external side
+  chain, block-size independence, no allocations (side chain, mid and side, oversized blocks, bypassed), bypass, bus
+  layouts, Learn's events, frozen IDs, state and text round trips.
 - `tests/analysis_tests.cpp` — the finder lands within a sixth of an octave of the esses (4.5, 7 and 9.5 kHz at 44.1
   and 96 kHz); the spectrum reads a tone at its level and frequency.
 - `tests/editor_tests.cpp` — accessibility and text entry, one undo step per threshold drag, band drag, finder fit

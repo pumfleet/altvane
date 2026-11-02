@@ -8,7 +8,7 @@ the moves to your host's automation and edit them there.
 
 - **Moves before the phrase, not after it.** With lookahead (30 ms, reported to the host), the gain is already in
   place when a phrase starts. Riders that react after the fact leave the first syllable too quiet. Turn lookahead
-  off for zero latency when tracking or live.
+  off for zero latency when tracking or live (it changes the latency, so it is not automatable).
 - **Hears the voice, not just the level.** A pitch detector tells sung and spoken voice apart from breaths,
   sibilants, noise and drum spill. **Guard** sets how firmly those are kept from moving the fader, so a breath before
   a quiet phrase is not boosted 10 dB.
@@ -42,8 +42,11 @@ the moves to your host's automation and edit them there.
 | Undo / redo | Cmd+Z / Shift+Cmd+Z |
 
 The rider fader is its own parameter. Presets and A/B never move it, and loading a preset never changes the
-automation mode. In Write mode the host records the fader like a hand on a control surface. The recorded moves land
-one buffer after the audio they belong to, as with any fader written live.
+automation mode. In Write mode the host records the fader like a hand on a control surface: the plug-in sends the
+fader's position from its interface about 60 times a second, and the host stamps each move when it arrives. So the
+written lane is not sample-accurate. It lags the audio it belongs to by up to the lookahead (30 ms) plus a host
+buffer or two, less in hosts that compensate automation for the plug-in's latency. Nudge the lane earlier if a move
+must land exactly on a syllable.
 
 ## How it works
 

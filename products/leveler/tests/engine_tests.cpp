@@ -136,9 +136,11 @@ TEST_CASE("breaths and sibilants do not move the gain", "[engine]") {
     CHECK(unguarded > 4.f);
 }
 
-TEST_CASE("the target follows the music key", "[engine]") {
+TEST_CASE("the target follows the music key, mono or stereo", "[engine]") {
+    const auto key_channels = GENERATE(1, 2);
+    CAPTURE(key_channels);
     constexpr double rate = 48000.0;
-    juce::AudioBuffer<float> input(2, samples(rate, 12.0)), key(2, samples(rate, 12.0));
+    juce::AudioBuffer<float> input(2, samples(rate, 12.0)), key(key_channels, samples(rate, 12.0));
     input.clear();
     key.clear();
     addVoice(input, rate, 0, input.getNumSamples(), -24.f, false);
@@ -161,6 +163,68 @@ TEST_CASE("the target follows the music key", "[engine]") {
     CHECK(full < 6.f);
     CHECK(std::abs(half - full * .5f) < .1f);
     CHECK(std::abs(lift(0.f)) < .01f);
+}
+
+TEST_CASE("speed runs from 1.5 s to 40 ms, and cuts are twice as fast as boosts", "[engine]") {
+    CHECK(std::abs(dsp::Rider::boostTime(0.f) - 1.5) < 1e-9);
+    CHECK(std::abs(dsp::Rider::boostTime(1.f) - .04) < 1e-9);
+    for (int i = 0; i < 10; ++i) {
+        CHECK(dsp::Rider::boostTime(static_cast<float>(i + 1) * .1f) < dsp::Rider::boostTime(static_cast<float>(i) * .1f));
+    }
+    // the time the rider takes to cover 63 % of a level change (one time constant), hop by hop
+    constexpr double kHop = .005;
+    const auto timeConstant = [](const float speed, const float change_db) {
+        dsp::Rider rider;
+        rider.prepare(kHop);
+        rider.reset(0.f);
+        dsp::Rider::Settings s;
+        s.speed = speed;
+        s.target_db = -20.f;
+        s.range_min = -12.f;
+        s.range_max = 12.f;
+        // a phrase at the target, long enough for the phrase-start catch-up to be over
+        for (int i = 0; i < 200; ++i) {
+            rider.update(dsp::HopState::kVoiced, -20.f, -20.f, s);
+        }
+        REQUIRE(std::abs(rider.getGain()) < 1e-3f);
+        // then the voice moves: the gain has to follow by change_db
+        const auto level = -20.f - change_db;
+        int hops = 0;
+        while (std::abs(rider.getGain()) < std::abs(change_db) * (1.f - std::exp(-1.f)) && hops < 100000) {
+            rider.update(dsp::HopState::kVoiced, level, level, s);
+            ++hops;
+        }
+        return hops * kHop;
+    };
+    for (const auto speed : {0.f, .5f, 1.f}) {
+        CAPTURE(speed);
+        const auto boost = timeConstant(speed, 6.f);
+        const auto cut = timeConstant(speed, -6.f);
+        CAPTURE(boost, cut);
+        CHECK(std::abs(boost - dsp::Rider::boostTime(speed)) <= kHop * 1.01);
+        CHECK(std::abs(cut - dsp::Rider::boostTime(speed) * .5) <= kHop * 1.01);
+    }
+}
+
+TEST_CASE("the speed control reaches the rider", "[engine]") {
+    constexpr double rate = 48000.0;
+    // a phrase that drops 10 dB: how far the gain has followed 200 ms later
+    juce::AudioBuffer<float> input(1, samples(rate, 4.0));
+    input.clear();
+    addVoice(input, rate, 0, samples(rate, 2.0), -20.f, false);
+    addVoice(input, rate, samples(rate, 2.0), samples(rate, 4.0), -30.f, false);
+    auto followed = [&](const float speed) {
+        PluginProcessor p;
+        defaults(p);
+        setParam(p, params::kSpeed, speed);
+        const auto r = run(p, input, rate);
+        return columnAt(r, rate, 2.2).gain_db - columnAt(r, rate, 1.9).gain_db;
+    };
+    const auto slow = followed(0.f);
+    const auto fast = followed(1.f);
+    CAPTURE(slow, fast);
+    CHECK(fast > 9.f);
+    CHECK(slow < 3.f);
 }
 
 TEST_CASE("the reported latency is the lookahead and the delay of an impulse", "[engine]") {

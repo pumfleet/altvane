@@ -265,7 +265,12 @@ namespace altvane::leveler {
         // presets carry no session part: a preset never switches a track into Write or moves the fader
         if (const auto* session = xml->getChildByName(kSessionTag)) {
             engine_.getControls().mode.store(std::clamp(session->getIntAttribute(kModeProperty), 0, 2));
-            *ride_ = static_cast<float>(session->getDoubleAttribute(kRideProperty));
+            // restored, not moved: setValue() leaves the host out (assigning would notify it, outside any gesture,
+            // which hosts can record as an automation write). The engine reads the fader every block, and the
+            // editor follows the engine
+            auto& ride = static_cast<juce::AudioProcessorParameter&>(*ride_);
+            ride.setValue(ride_->convertTo0to1(static_cast<float>(session->getDoubleAttribute(kRideProperty))));
+            engine_.getControls().ride.store(ride_->get(), std::memory_order::relaxed);
             xml->removeChildElement(xml->getChildByName(kSessionTag), true);
         }
         parameters_.replaceState(juce::ValueTree::fromXml(*xml));

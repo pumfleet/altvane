@@ -142,6 +142,40 @@ TEST_CASE("closing the editor in the middle of a ride hands the fader back", "[e
     }
 }
 
+TEST_CASE("dragging the floor line sets the sensitivity in one undo step, and leaves the target", "[editor]") {
+    Fixture f;
+    auto& history = f.editor->getHistoryForTesting();
+    REQUIRE(history.getWidth() > 0);
+    f.p.session_.undo_manager.clearUndoHistory();
+    const auto mouse = [&history](const juce::Point<float> at, const juce::Point<float> down, const bool dragged) {
+        const auto now = juce::Time::getCurrentTime();
+        return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(), at, {},
+                                juce::MouseInputSource::defaultPressure, 0.f, 0.f, 0.f, 0.f, &history, &history, now,
+                                down, now, 1, dragged);
+    };
+    const auto x = static_cast<float>(history.getWidth()) * .5f;
+    const auto y = history.getFloorYForTesting();
+    const juce::Point down{x, y};
+    history.mouseMove(mouse(down, down, false));
+    // hovering the line hands the host the sensitivity
+    CHECK(f.editor->getControlParameterIndex(history) ==
+          f.p.parameters_.getParameter(params::kSensitivity)->getParameterIndex());
+    // down by 40 pixels: a lower floor, so more sensitivity
+    history.mouseDown(mouse(down, down, false));
+    history.mouseDrag(mouse({x, y + 20.f}, down, true));
+    history.mouseDrag(mouse({x, y + 40.f}, down, true));
+    history.mouseUp(mouse({x, y + 40.f}, down, true));
+    const auto sensitivity = f.p.parameters_.getRawParameterValue(params::kSensitivity)->load();
+    CHECK(sensitivity > 1.f);
+    // the line ends up under the mouse, and the target has not moved
+    CHECK(std::abs(history.getFloorYForTesting() - (y + 40.f)) < 1.f);
+    CHECK(std::abs(f.p.parameters_.getRawParameterValue(params::kTarget)->load() - params::kTargetDefault) < .01f);
+    REQUIRE(f.p.session_.undo_manager.canUndo());
+    f.p.session_.undo_manager.undo();
+    CHECK(std::abs(f.p.parameters_.getRawParameterValue(params::kSensitivity)->load()) < .01f);
+    CHECK(!f.p.session_.undo_manager.canUndo());
+}
+
 TEST_CASE("the mode chips switch the automation mode", "[editor]") {
     Fixture f;
     auto& rider = f.editor->getRiderForTesting();

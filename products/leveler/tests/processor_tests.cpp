@@ -6,6 +6,8 @@
 // Altvane Leveler is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 //
 // You should have received a copy of the GNU Affero General Public License along with Altvane Leveler. If not, see <https://www.gnu.org/licenses/>.
+#include <thread>
+
 #include <catch2/catch_test_macros.hpp>
 
 #include "presets.hpp"
@@ -90,6 +92,45 @@ TEST_CASE("the session state keeps the parameters, the automation mode and the r
     CHECK(std::abs(other.getRide()->get() - 3.25f) < .01f);
     // the session part never ends up in the parameter tree
     CHECK(!other.parameters_.state.getChildWithName("Session").isValid());
+}
+
+TEST_CASE("restoring a session moves the rider fader without writing automation", "[processor]") {
+    PluginProcessor source;
+    source.setMode(dsp::Mode::kRead);
+    *source.getRide() = -6.5f;
+    const auto state = stateOf(source);
+
+    PluginProcessor p;
+    struct HostListener final : juce::AudioProcessorListener {
+        int changes{0}, gestures{0};
+        void audioProcessorParameterChanged(juce::AudioProcessor*, int, float) override { ++changes; }
+        void audioProcessorChanged(juce::AudioProcessor*, const ChangeDetails&) override {}
+        void audioProcessorParameterChangeGestureBegin(juce::AudioProcessor*, int) override { ++gestures; }
+    } host;
+    p.addListener(&host);
+    p.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+    p.removeListener(&host);
+    // the host was not told of a change it could record as automation (a session load is no edit)
+    CHECK(host.changes == 0);
+    CHECK(host.gestures == 0);
+    CHECK(std::abs(p.getRide()->get() + 6.5f) < .01f);
+
+    // and the engine follows it in Read: the restored value is applied to the audio
+    constexpr double rate = 48000.0;
+    p.setRateAndBufferSizeDetails(rate, 480);
+    p.prepareToPlay(rate, 480);
+    juce::AudioBuffer<float> input(2, samples(rate, .2));
+    input.clear();
+    addVoice(input, rate, 0, input.getNumSamples(), -20.f, false);
+    process(p, input, rate, 480);
+    CHECK(std::abs(p.getEngine().getGainDb() + 6.5f) < .01f);
+    p.releaseResources();
+}
+
+TEST_CASE("lookahead, which sets the latency, is not automatable", "[processor]") {
+    PluginProcessor p;
+    CHECK_FALSE(p.parameters_.getParameter(params::kLookahead)->isAutomatable());
+    CHECK(p.parameters_.getParameter(params::kTarget)->isAutomatable());
 }
 
 TEST_CASE("a preset never switches the automation mode or moves the rider fader", "[processor]") {
@@ -316,5 +357,60 @@ TEST_CASE("learn measures the voiced loudness", "[processor]") {
     silence.clear();
     process(p, silence, rate, 480);
     CHECK(!p.getEngine().stopLearn().has_value());
+    // nor does a take with no audio at all: the totals of the last take are not reported again
+    process(p, input, rate, 480);
+    p.getEngine().startLearn();
+    CHECK(!p.getEngine().stopLearn().has_value());
+    p.releaseResources();
+}
+
+TEST_CASE("learn starts and stops on the message thread while the audio thread plays", "[processor]") {
+    // startLearn only asks the audio thread to start a new take; it never writes the totals the audio thread adds to,
+    // so no take mixes in what came before it
+    PluginProcessor p;
+    constexpr double rate = 48000.0;
+    p.setRateAndBufferSizeDetails(rate, 480);
+    p.prepareToPlay(rate, 480);
+    juce::AudioBuffer<float> loud(2, samples(rate, 2.0)), quiet(2, samples(rate, 2.0));
+    loud.clear();
+    quiet.clear();
+    addVoice(loud, rate, 0, loud.getNumSamples(), -12.f, false);
+    addVoice(quiet, rate, 0, quiet.getNumSamples(), -32.f, false);
+    std::atomic<bool> quiet_now{false}, stop{false};
+    std::atomic<int> blocks{0};
+    std::thread audio([&] {
+        juce::AudioBuffer<float> io(2, 480);
+        juce::MidiBuffer midi;
+        for (int pos = 0; !stop.load(); pos = (pos + 480) % (loud.getNumSamples() - 480)) {
+            const auto& from = quiet_now.load() ? quiet : loud;
+            for (int c = 0; c < 2; ++c) {
+                io.copyFrom(c, 0, from, c, pos, 480);
+            }
+            p.processBlock(io, midi);
+            blocks.fetch_add(1);
+        }
+    });
+    const auto waitBlocks = [&](const int n) {
+        const auto until = blocks.load() + n;
+        while (blocks.load() < until) {
+            std::this_thread::yield();
+        }
+    };
+    for (int take = 0; take < 20; ++take) {
+        CAPTURE(take);
+        // a loud take, then a quiet one started while the loud voice is still playing: once the quiet voice has
+        // played for a while, the take reads the quiet voice
+        quiet_now = false;
+        waitBlocks(100);
+        quiet_now = true;
+        waitBlocks(30);
+        p.getEngine().startLearn();
+        waitBlocks(120);
+        const auto learned = p.getEngine().stopLearn();
+        REQUIRE(learned.has_value());
+        CHECK(std::abs(*learned + 32.f) < 1.f);
+    }
+    stop = true;
+    audio.join();
     p.releaseResources();
 }

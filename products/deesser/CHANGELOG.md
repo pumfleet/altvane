@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Program-dependent release: after an ess the reduction now releases in 40 ms after a short one, up to 120 ms after a
+  long one (0.25 s or more), as intended. The length of the ess was forgotten as soon as it ended, so every release
+  took 40 ms.
+
 ## 0.1.0
 
 First release of Altvane De-Esser.
