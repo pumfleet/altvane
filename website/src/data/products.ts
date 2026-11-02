@@ -26,6 +26,7 @@ export const products: Product[] = [
     name: "Altvane EQ",
     short: "EQ",
     kind: "Parametric and dynamic equalizer",
+    version: "0.1.0",
     platforms: ["macOS", "Windows", "Linux"],
     summary:
       "An equalizer that draws the curve it applies. Every curve on screen is computed from the filter coefficients and tested against the processed audio.",
@@ -47,6 +48,7 @@ export const products: Product[] = [
     name: "Altvane Dialogue",
     short: "Dialogue",
     kind: "Neural dialogue isolation",
+    version: "0.1.0",
     platforms: ["macOS", "Windows"],
     platformNote: "macOS 11+ and Windows x64 for now",
     summary:
@@ -69,6 +71,7 @@ export const products: Product[] = [
     name: "Altvane Compressor",
     short: "Compressor",
     kind: "Compressor, upward compressor and expander",
+    version: "0.1.0",
     platforms: ["macOS", "Windows", "Linux"],
     summary:
       "Compress, inflate, expand or shape, with one soft knee, four styles and a side chain with its own 8-band EQ.",
@@ -84,7 +87,7 @@ export const products: Product[] = [
     name: "Altvane Limiter",
     short: "Limiter",
     kind: "True-peak limiter and loudness meter",
-    version: "0.1.0",
+    version: "0.1.1",
     platforms: ["macOS", "Windows", "Linux"],
     summary:
       "As loud as the delivery allows, and not a hair over the ceiling. True-peak limiting with a loudness meter that keeps counting with the editor closed, the delivery targets on screen, and Match target to land on one in a step.",
@@ -106,7 +109,7 @@ export const products: Product[] = [
     name: "Altvane De-Esser",
     short: "De-Esser",
     kind: "De-esser and sibilance finder",
-    version: "0.1.0",
+    version: "0.1.1",
     platforms: ["macOS", "Windows", "Linux"],
     summary:
       "A de-esser that knows an ess from a bright vowel. It shows what it takes from each ess, finds where a voice's sibilance lives, and with nothing to reduce, its output is the input, sample for sample.",
@@ -128,6 +131,7 @@ export const products: Product[] = [
     name: "Altvane Leveler",
     short: "Leveler",
     kind: "Automatic vocal rider",
+    version: "0.1.0",
     platforms: ["macOS", "Windows", "Linux"],
     summary:
       "A fader that rides the vocal for you. It lifts the quiet phrases, pulls back the loud ones and leaves breaths, sibilants and silence alone; with lookahead, each move is in place before its phrase starts.",
