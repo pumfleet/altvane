@@ -9,6 +9,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <vector>
 
 #include "filters.hpp"
@@ -43,17 +44,17 @@ namespace altvane::leveler::dsp {
         Result analyse();
 
     private:
-        static constexpr size_t kRingSize = 1024;
-        static constexpr size_t kEnergyHops = 4;
+        static constexpr std::size_t kRingSize = 1024;
+        static constexpr std::size_t kEnergyHops = 4;
 
         Biquad anti_alias_a_, anti_alias_b_, high_;
         bool has_high_band_{true};
         int decimation_{6}, phase_{0};
-        size_t write_{0}, window_{240}, min_lag_{10}, max_lag_{133};
+        std::size_t write_{0}, window_{240}, min_lag_{10}, max_lag_{133};
         std::array<float, kRingSize> ring_{};
         std::vector<float> frame_, diff_;
         std::array<double, kEnergyHops> high_energy_{}, total_energy_{};
-        size_t energy_slot_{0};
+        std::size_t energy_slot_{0};
         double hop_high_{0.0}, hop_total_{0.0};
     };
 }
