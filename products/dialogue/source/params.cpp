@@ -48,7 +48,7 @@ namespace altvane::dialogue::params {
                                                 return formatSensitivity(v);
                                             })
                                             .withValueFromStringFunction([](const juce::String& t) {
-                                                return t.retainCharacters("+-.0123456789").getFloatValue() / 100.f;
+                                                return static_cast<float>(ui::format::parseLenient(t).value_or(0.0)) / 100.f;
                                             });
         for (size_t s = 0; s < dsp::kNumStems; ++s) {
             for (size_t n = 0; n < dsp::kSensitivityNodes; ++n) {

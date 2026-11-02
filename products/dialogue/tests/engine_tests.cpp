@@ -1003,3 +1003,15 @@ TEST_CASE("level text round-trips, with Off at the bottom", "[params]") {
     const auto shown = voice->getText(voice->convertTo0to1(-6.f), 32);
     CHECK(std::abs(voice->convertFrom0to1(voice->getValueForText(shown)) + 6.f) < .05f);
 }
+
+TEST_CASE("sensitivity text reads either minus sign", "[params]") {
+    PluginProcessor p;
+    auto* sensitivity = p.parameters_.getParameter(params::sensitivityID(0, 0));
+    for (const auto* text : {"-50%", "\u221250%", "\u2212 50 %"}) {
+        CHECK(std::abs(sensitivity->convertFrom0to1(sensitivity->getValueForText(juce::CharPointer_UTF8(text))) + .5f) < 1e-4f);
+    }
+    CHECK(std::abs(sensitivity->convertFrom0to1(sensitivity->getValueForText("+25%")) - .25f) < 1e-4f);
+    // what the interface shows reads back
+    const auto shown = sensitivity->getText(sensitivity->convertTo0to1(-.4f), 32);
+    CHECK(std::abs(sensitivity->convertFrom0to1(sensitivity->getValueForText(shown)) + .4f) < 1e-4f);
+}
