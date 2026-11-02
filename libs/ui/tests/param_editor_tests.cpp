@@ -314,6 +314,16 @@ TEST_CASE("typing junk changes nothing and leaves no undo step", "[param_editor]
     CHECK_FALSE(b.p.session_.undo_manager.canUndo());
 }
 
+TEST_CASE("typing junk before a number changes nothing", "[param_editor][typing]") {
+    // it used to set the parameter to 0, as an undoable edit
+    BoundKnob b;
+    b.p.setPlain(ids::kGain, 3.f);
+    b.type("x5");
+    CHECK_THAT(b.p.plain(ids::kGain), WithinAbs(3.0, 1e-4));
+    CHECK(b.gestures.begins == 0);
+    CHECK_FALSE(b.p.session_.undo_manager.canUndo());
+}
+
 TEST_CASE("escape closes the text entry without a change", "[param_editor][typing]") {
     BoundKnob b;
     b.type("12", juce::KeyPress::escapeKey);

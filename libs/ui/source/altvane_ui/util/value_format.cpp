@@ -19,6 +19,15 @@ namespace altvane::ui::format {
             return text.trim().replace(kMinus, "-").replace(",", ".").toLowerCase();
         }
 
+        /**
+         * whether v, shown with this many decimals, reads below limit: picks a format by the number as shown,
+         * so a value that rounds up to a boundary (99.97 Hz) reads like the boundary ("100 Hz", not "100.0 Hz")
+         */
+        bool showsBelow(const double v, const double limit, const int decimals) {
+            const auto scale = std::pow(10.0, decimals);
+            return std::round(v * scale) / scale < limit;
+        }
+
         juce::String signedNumber(const double v, const int decimals, const bool force_sign) {
             const auto rounded = std::round(v * std::pow(10.0, decimals)) / std::pow(10.0, decimals);
             const auto magnitude = juce::String(std::abs(rounded), decimals);
@@ -35,13 +44,13 @@ namespace altvane::ui::format {
     juce::String freq(const double hz, const bool with_unit) {
         juce::String s;
         juce::String unit;
-        if (hz < 100.0) {
+        if (showsBelow(hz, 100.0, 1)) {
             s = juce::String(hz, 1);
             unit = " Hz";
-        } else if (hz < 1000.0) {
+        } else if (showsBelow(hz, 1000.0, 0)) {
             s = juce::String(juce::roundToInt(hz));
             unit = " Hz";
-        } else if (hz < 10000.0) {
+        } else if (showsBelow(hz / 1000.0, 10.0, 2)) {
             s = juce::String(hz / 1000.0, 2);
             unit = " kHz";
         } else {
@@ -52,19 +61,20 @@ namespace altvane::ui::format {
     }
 
     juce::String gain(const double db, const bool with_unit, const bool force_sign) {
-        const auto s = signedNumber(db, std::abs(db) < 10.0 ? 2 : 1, force_sign);
+        const auto s = signedNumber(db, showsBelow(std::abs(db), 10.0, 2) ? 2 : 1, force_sign);
         return with_unit ? s + " dB" : s;
     }
 
     juce::String q(const double q) {
-        return juce::String(q, q < 10.0 ? 2 : 1);
+        return juce::String(q, showsBelow(q, 10.0, 2) ? 2 : 1);
     }
 
     juce::String ms(const double ms) {
-        if (ms >= 1000.0) {
+        if (!showsBelow(ms, 1000.0, 0)) {
             return juce::String(ms / 1000.0, 2) + " s";
         }
-        return juce::String(ms, ms < 100.0 ? 1 : 0) + " ms";
+        // juce::String(v, 0) prints every decimal, so whole milliseconds are rounded here
+        return (showsBelow(ms, 100.0, 1) ? juce::String(ms, 1) : juce::String(juce::roundToInt(ms))) + " ms";
     }
 
     juce::String percent(const double p) {
@@ -90,7 +100,10 @@ namespace altvane::ui::format {
 
     std::optional<double> parseNumber(const juce::String& text) {
         const auto t = normalise(text).removeCharacters(" db%");
-        if (t.isEmpty() || !t.containsAnyOf("0123456789")) {
+        // the number comes first ("-3", "+.5"); text after it, such as a unit, is the caller's
+        const auto unsigned_part = t.startsWithChar('-') || t.startsWithChar('+') ? t.substring(1) : t;
+        const auto digits = unsigned_part.startsWithChar('.') ? unsigned_part.substring(1) : unsigned_part;
+        if (!juce::CharacterFunctions::isDigit(digits[0])) {
             return std::nullopt;
         }
         const auto v = t.getDoubleValue();
@@ -135,7 +148,7 @@ namespace altvane::ui::format {
             t = t.replaceCharacter('k', '.');
             scale = 1000.0;
         }
-        if (!t.containsAnyOf("0123456789") || !t.containsOnly("0123456789.")) {
+        if (!t.containsAnyOf("0123456789") || !t.containsOnly("0123456789.") || t.indexOfChar('.') != t.lastIndexOfChar('.')) {
             return std::nullopt;
         }
         const auto v = t.getDoubleValue() * scale;

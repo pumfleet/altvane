@@ -68,6 +68,13 @@ TEST_CASE("frequencies read in Hz below 1 kHz and kHz above", "[format]") {
     CHECK(format::freq(440.0, false) == "440");
 }
 
+TEST_CASE("frequencies that round up to a range boundary read as the next range", "[format]") {
+    // as shown, never "100.0 Hz", "1000 Hz" or "10.00 kHz": the same frequency must not have two spellings
+    CHECK(format::freq(99.97) == "100 Hz");
+    CHECK(format::freq(999.7) == "1.00 kHz");
+    CHECK(format::freq(9999.7) == "10.0 kHz");
+}
+
 TEST_CASE("gains have a sign, a typographic minus and fewer decimals from 10 dB", "[format]") {
     CHECK(format::gain(3.0) == "+3.00 dB");
     CHECK(format::gain(-3.0) == kMinus + "3.00 dB");
@@ -84,10 +91,24 @@ TEST_CASE("a gain that rounds to zero has no sign", "[format]") {
     CHECK(format::gain(0.004) == "0.00 dB");
 }
 
+TEST_CASE("a gain that rounds up to 10 dB reads with the decimals of 10 dB", "[format]") {
+    CHECK(format::gain(9.996) == "+10.0 dB");
+    CHECK(format::gain(-9.996) == kMinus + "10.0 dB");
+    CHECK(format::q(9.996) == "10.0");
+}
+
 TEST_CASE("an infinite gain reads as inf", "[format]") {
     const auto inf = std::numeric_limits<double>::infinity();
     CHECK(format::gain(-inf) == kMinus + "inf dB");
     CHECK(format::gain(inf) == "+inf dB");
+}
+
+TEST_CASE("times from 100 ms read in whole milliseconds, and from 1 s in seconds", "[format]") {
+    CHECK(format::ms(250.4) == "250 ms");
+    CHECK(format::ms(333.333) == "333 ms");
+    // as shown: never "100.0 ms" or "1000 ms"
+    CHECK(format::ms(99.97) == "100 ms");
+    CHECK(format::ms(999.7) == "1.00 s");
 }
 
 TEST_CASE("q, times, percentages and notes", "[format]") {
@@ -138,6 +159,14 @@ TEST_CASE("text without a leading number does not parse", "[format][parse]") {
     }
 }
 
+TEST_CASE("a number after junk does not parse", "[format][parse]") {
+    // rather than reading as 0
+    for (const auto* junk : {"x5", "--3", "+-3", "gain 3"}) {
+        INFO("text: '" << junk << "'");
+        CHECK_FALSE(format::parseNumber(junk).has_value());
+    }
+}
+
 TEST_CASE("infinities do not parse as numbers", "[format][parse]") {
     // parameters have finite ranges: "-inf" is a product's word for its minimum, not a number
     CHECK_FALSE(format::parseNumber("-inf").has_value());
@@ -172,6 +201,13 @@ TEST_CASE("frequencies parse from note names", "[format][parse]") {
 TEST_CASE("frequencies that are not positive numbers or notes do not parse", "[format][parse]") {
     for (const auto* junk : {"", "hz", "khz", "k", "-100", "0", "0 Hz", "abc", "12x", "x12", "h4", "a", "c#", "bb",
                              "1e3", "A4 Hz"}) {
+        INFO("text: '" << junk << "'");
+        CHECK_FALSE(format::parseFreq(junk).has_value());
+    }
+}
+
+TEST_CASE("a frequency with two decimal points does not parse", "[format][parse]") {
+    for (const auto* junk : {"1.2.3", "1..2", "1.2.3k", "1.5k2"}) {
         INFO("text: '" << junk << "'");
         CHECK_FALSE(format::parseFreq(junk).has_value());
     }
