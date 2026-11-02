@@ -264,4 +264,9 @@ jobs:
             installers/*/*.dmg
 
       - name: Create Release
-        run: gh release create ${{ github.ref_name }} --prerelease installers/*/*.msi installers/*/*.zip installers/*/*.dmg
+        # a product that doesn't build on every platform has no installers of some kinds (Dialogue: no Linux zips)
+        run: |
+          shopt -s nullglob
+          tag="${{ github.ref_name }}"
+          python3 scripts/release_notes.py "${tag%-v*}" "${tag##*-v}" > notes.md
+          gh release create "$tag" --prerelease --notes-file notes.md installers/*/*.msi installers/*/*.zip installers/*/*.dmg
