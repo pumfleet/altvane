@@ -9,7 +9,6 @@
 #pragma once
 
 #include <altvane_ui/session/param_editor.hpp>
-#include <altvane_ui/widgets/level_meter.hpp>
 #include <altvane_ui/widgets/widgets.hpp>
 
 #include "../PluginProcessor.hpp"
@@ -35,26 +34,5 @@ namespace altvane::leveler {
         ui::IconButton bypass_{ui::icons::Icon::kPower};
         juce::Rectangle<float> key_area_, latency_area_;
         juce::String key_text_, latency_text_;
-    };
-
-    /**
-     * right rail: the output meter
-     */
-    class OutputRail final : public juce::Component {
-    public:
-        explicit OutputRail(PluginProcessor& p);
-
-        void tick(double dt);
-
-        void paint(juce::Graphics& g) override;
-
-        void resized() override;
-
-        void mouseUp(const juce::MouseEvent& e) override;
-
-    private:
-        PluginProcessor& p_ref_;
-        ui::LevelMeter meter_;
-        juce::Rectangle<float> label_area_, meter_area_, peak_area_;
     };
 }

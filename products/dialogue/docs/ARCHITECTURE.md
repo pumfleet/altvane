@@ -135,9 +135,9 @@ recovers from a skip, and a skip ends a switch in progress.
 `ui/editor` derives from `altvane::ui::EditorShell` (header, presets, A/B, undo, settings, scale and frame loop are
 shared with Altvane EQ). `ui/visualiser` draws the engine's `AnalysisFrame`s (64 log bands, weighted by how much of each
 bin a band covers, published through a `TriBuffer`) as stacked layers, and edits sensitivity nodes through
-`ui::ParamEditor`. `ui/control_deck` holds the three stem cards; `ui/chrome` the footer and output rail;
-`ui/theme/dialogue_tokens.hpp` the stem colours and sizes. Factory presets (`ui/factory_presets`) are installed once
-into `Presets/Factory`.
+`ui::ParamEditor`. `ui/control_deck` holds the three stem cards; `ui/chrome` the footer (the output rail is the shared
+`ui::OutputRail`); `ui/theme/dialogue_tokens.hpp` the stem colours and sizes. Factory presets (`ui/factory_presets`) are
+installed once into `Presets/Factory`.
 
 ## Verification
 

@@ -9,6 +9,7 @@
 #pragma once
 
 #include <altvane_ui/shell/editor_shell.hpp>
+#include <altvane_ui/widgets/output_rail.hpp>
 
 #include "chrome.hpp"
 #include "control_deck.hpp"
@@ -40,7 +41,7 @@ namespace altvane::dialogue {
         Visualiser visualiser_;
         ControlDeck deck_;
         Footer footer_;
-        OutputRail rail_;
+        ui::OutputRail rail_;
         uint64_t underruns_shown_{~uint64_t{0}};
 
         void layout(juce::Rectangle<int> area) override;

@@ -85,45 +85,4 @@ namespace altvane::leveler {
         drawCaptioned(g, key_area_, "MUSIC KEY", key_text_, juce::Justification::centredLeft);
         drawCaptioned(g, latency_area_, "LATENCY", latency_text_, juce::Justification::centredRight);
     }
-
-    // ---------------------------------------------------------------- OutputRail
-
-    OutputRail::OutputRail(PluginProcessor& p) : p_ref_(p) {
-        setTitle("Output meter");
-    }
-
-    void OutputRail::resized() {
-        auto b = getLocalBounds().toFloat().reduced(6.f, 8.f);
-        label_area_ = b.removeFromTop(16.f);
-        b.removeFromTop(8.f);
-        peak_area_ = b.removeFromBottom(16.f);
-        b.removeFromBottom(6.f);
-        meter_area_ = b.withSizeKeepingCentre(14.f, b.getHeight());
-    }
-
-    void OutputRail::tick(const double dt) {
-        const auto peaks = p_ref_.takeOutputPeaks();
-        if (meter_.tick(dt, peaks[0], p_ref_.getTotalNumOutputChannels() > 1 ? peaks[1] : peaks[0])) {
-            repaint();
-        }
-    }
-
-    void OutputRail::paint(juce::Graphics& g) {
-        const auto b = getLocalBounds().toFloat();
-        g.setColour(colour::kWindow);
-        g.fillRect(b);
-        g.setColour(colour::kHairline);
-        g.fillRect(juce::Rectangle<float>(0.f, 0.f, 1.f, b.getHeight()));
-        g.setFont(captionFont());
-        g.setColour(colour::kTextTertiary);
-        g.drawText("OUT", label_area_, juce::Justification::centred);
-        meter_.paint(g, meter_area_, peak_area_);
-    }
-
-    void OutputRail::mouseUp(const juce::MouseEvent& e) {
-        if (meter_area_.expanded(8.f, 0.f).contains(e.position) || peak_area_.contains(e.position)) {
-            meter_.resetPeak();
-            repaint();
-        }
-    }
 }

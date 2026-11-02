@@ -35,7 +35,7 @@ namespace altvane::dialogue {
         visualiser_(p, param_editor_),
         deck_(p, param_editor_),
         footer_(p, param_editor_),
-        rail_(p) {
+        rail_(p, [&p] { return p.takeOutputPeaks(); }) {
         presets_.installFactoryPresets(factoryPresets(), kFactoryPresetsVersion);
         root_.addAndMakeVisible(visualiser_);
         root_.addAndMakeVisible(deck_);

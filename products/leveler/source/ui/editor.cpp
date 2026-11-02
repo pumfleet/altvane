@@ -37,7 +37,7 @@ namespace altvane::leveler {
         rider_(p, param_editor_),
         deck_(p, param_editor_),
         footer_(p, param_editor_),
-        rail_(p) {
+        rail_(p, [&p] { return p.takeOutputPeaks(); }) {
         presets_.installFactoryPresets(factoryPresets(), kFactoryPresetsVersion);
         for (auto* c : std::initializer_list<juce::Component*>{&history_, &rider_, &deck_, &footer_, &rail_}) {
             root_.addAndMakeVisible(c);
