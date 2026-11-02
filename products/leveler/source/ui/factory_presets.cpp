@@ -9,8 +9,9 @@
 #include "factory_presets.hpp"
 
 #include <altvane_ui/session/preset_manager.hpp>
+#include <altvane_ui/session/state_schema.hpp>
 
-#include "../params.hpp"
+#include "../PluginProcessor.hpp"
 
 namespace altvane::leveler {
     namespace {
@@ -38,6 +39,8 @@ namespace altvane::leveler {
             add(params::kLookahead, preset.lookahead ? 1.f : 0.f);
             add(params::kOutput, 0.f);
             add(params::kBypass, 0.f);
+            // written in this build's layout, so it says so
+            ui::state_schema::write(state, PluginProcessor::kStateVersion);
             return ui::PresetCodec::toJsonText(state);
         }
     }

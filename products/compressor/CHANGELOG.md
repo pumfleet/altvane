@@ -32,6 +32,11 @@ First version of Altvane Compressor, based on the ZL Compressor engine (forked a
 ### Compatibility
 
 - Same parameters and state format as ZL Compressor: presets and sessions load unchanged.
+- Sessions and presets record the layout of the state they were saved in (`schema_version="1"` on the state's root),
+  so a later version can upgrade them. A state without it, saved before, loads as it always has; one saved by a
+  newer version loads every setting this version has and leaves the rest.
+- Restoring a session or preset puts each switch exactly where it was saved. One a host had left between on and off
+  (0.4 is off) went on reporting that value to the host.
 - Installs alongside ZL Compressor (different plug-in codes and bundle identifier).
 
 The upstream changelog is kept in [docs/UPSTREAM_CHANGELOG.md](docs/UPSTREAM_CHANGELOG.md).

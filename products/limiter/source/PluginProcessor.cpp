@@ -13,9 +13,15 @@
 #include <array>
 #include <thread>
 
+#include <altvane_ui/session/state_schema.hpp>
+
 #include "ui/editor.hpp"
 
 namespace {
+    // Altvane: upgrades for states older than kStateVersion, in order (version 0, which ZL's releases and Altvane's
+    // before versions wrote, is version 1)
+    constexpr std::array<altvane::ui::state_schema::Migration, 0> kStateMigrations{};
+
     std::atomic<float>& raw(juce::AudioProcessorValueTreeState& tree, const char* id) {
         return *tree.getRawParameterValue(id);
     }
@@ -182,6 +188,7 @@ void PluginProcessor::getStateInformation(juce::MemoryBlock& dest_data) {
     temp_tree.appendChild(parameters_.copyState(), nullptr);
     temp_tree.appendChild(na_parameters_.copyState(), nullptr);
     const std::unique_ptr<juce::XmlElement> xml(temp_tree.createXml());
+    altvane::ui::state_schema::write(*xml, kStateVersion);
     copyXmlToBinary(*xml, dest_data);
 }
 
@@ -191,6 +198,7 @@ void PluginProcessor::setStateInformation(const void* data, const int size_in_by
         return;
     }
 
+    const auto version = altvane::ui::state_schema::upgrade(*xml_state, kStateVersion, kStateMigrations);
     const auto temp_tree = juce::ValueTree::fromXml(*xml_state);
     const auto parameter_state = temp_tree.getChildWithName(
         juce::Identifier(zlstate::schema::kParameterState));
@@ -201,8 +209,14 @@ void PluginProcessor::setStateInformation(const void* data, const int size_in_by
         return;
     }
 
-    parameters_.replaceState(withDefaults(parameter_state, parameters_, *this));
-    na_parameters_.replaceState(withDefaults(non_automatable_state, na_parameters_, dummy_processor_));
+    // from a newer build: only the parameters this one has
+    const auto known = [version](const juce::ValueTree& saved, const juce::AudioProcessorValueTreeState& tree) {
+        return version > kStateVersion ? altvane::ui::state_schema::knownParameters(saved, tree) : saved;
+    };
+    parameters_.replaceState(withDefaults(known(parameter_state, parameters_), parameters_, *this));
+    na_parameters_.replaceState(withDefaults(known(non_automatable_state, na_parameters_), na_parameters_,
+                                             dummy_processor_));
+    altvane::ui::state_schema::settleSwitches(*this);
 }
 
 int PluginProcessor::wantedOversampling() const {

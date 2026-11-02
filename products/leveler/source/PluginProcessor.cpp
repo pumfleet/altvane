@@ -8,6 +8,8 @@
 // You should have received a copy of the GNU Affero General Public License along with Altvane Leveler. If not, see <https://www.gnu.org/licenses/>.
 #include "PluginProcessor.hpp"
 
+#include <altvane_ui/session/state_schema.hpp>
+
 #include "ui/editor.hpp"
 
 namespace altvane::leveler {
@@ -16,6 +18,9 @@ namespace altvane::leveler {
         const juce::Identifier kSessionTag{"Session"};
         const juce::Identifier kModeProperty{"mode"};
         const juce::Identifier kRideProperty{"ride"};
+
+        // upgrades for states older than kStateVersion, in order (version 0, from before versions, is version 1)
+        constexpr std::array<ui::state_schema::Migration, 0> kStateMigrations{};
     }
 
     PluginProcessor::PluginProcessor() :
@@ -236,9 +241,13 @@ namespace altvane::leveler {
         auto state = parameters_.copyState();
         state.setProperty("version", VERSION, nullptr);
         if (const auto xml = state.createXml()) {
+            ui::state_schema::write(*xml, kStateVersion);
             auto* session = xml->createNewChildElement(kSessionTag.toString());
             session->setAttribute(kModeProperty, static_cast<int>(getMode()));
-            session->setAttribute(kRideProperty, static_cast<double>(ride_->get()));
+            // as the parameter tree stores its parameters: the value its normalised position gives, which restores to
+            // itself (the default, 0, is not one: a set value is the range's start plus a whole number of steps)
+            const auto ride = ride_->convertFrom0to1(ride_->convertTo0to1(ride_->get()));
+            session->setAttribute(kRideProperty, static_cast<double>(ride));
             copyXmlToBinary(*xml, dest_data);
         }
     }
@@ -248,6 +257,7 @@ namespace altvane::leveler {
         if (xml == nullptr || !xml->hasTagName(parameters_.state.getType())) {
             return;
         }
+        const auto version = ui::state_schema::upgrade(*xml, kStateVersion, kStateMigrations);
         // presets carry no session part: a preset never switches a track into Write or moves the fader
         if (const auto* session = xml->getChildByName(kSessionTag)) {
             engine_.getControls().mode.store(std::clamp(session->getIntAttribute(kModeProperty), 0, 2));
@@ -259,7 +269,11 @@ namespace altvane::leveler {
             engine_.getControls().ride.store(ride_->get(), std::memory_order::relaxed);
             xml->removeChildElement(xml->getChildByName(kSessionTag), true);
         }
-        parameters_.replaceState(juce::ValueTree::fromXml(*xml));
+        const auto state = juce::ValueTree::fromXml(*xml);
+        // from a newer build: only the parameters this one has
+        parameters_.replaceState(version > kStateVersion ? ui::state_schema::knownParameters(state, parameters_)
+                                                         : state);
+        ui::state_schema::settleSwitches(*this);
     }
 
     juce::AudioProcessorEditor* PluginProcessor::createEditor() {

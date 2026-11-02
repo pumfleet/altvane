@@ -8,9 +8,16 @@
 // You should have received a copy of the GNU Affero General Public License along with ZLCompressor. If not, see <https://www.gnu.org/licenses/>.
 
 #include "PluginProcessor.hpp"
+
+#include <altvane_ui/session/state_schema.hpp>
+
 #include "ui/editor.hpp"
 
 namespace {
+    // Altvane: upgrades for states older than kStateVersion, in order (version 0, which ZL's releases and Altvane's
+    // before versions wrote, is version 1)
+    constexpr std::array<altvane::ui::state_schema::Migration, 0> kStateMigrations{};
+
     juce::ValueTree copyWithType(const juce::ValueTree& source, const juce::Identifier& type) {
         if (!source.isValid()) {
             return {};
@@ -587,6 +594,7 @@ void PluginProcessor::getStateInformation(juce::MemoryBlock& dest_data) {
     temp_tree.appendChild(parameters_.copyState(), nullptr);
     temp_tree.appendChild(na_parameters_.copyState(), nullptr);
     const std::unique_ptr<juce::XmlElement> xml(temp_tree.createXml());
+    altvane::ui::state_schema::write(*xml, kStateVersion);
     copyXmlToBinary(*xml, dest_data);
 }
 
@@ -598,6 +606,7 @@ void PluginProcessor::setStateInformation(const void* data, int size_in_bytes) {
         return;
     }
 
+    const auto version = altvane::ui::state_schema::upgrade(*xml_state, kStateVersion, kStateMigrations);
     const auto temp_tree = juce::ValueTree::fromXml(*xml_state);
     const auto parameter_state = getChildWithLegacyFallback(
         temp_tree,
@@ -611,10 +620,15 @@ void PluginProcessor::setStateInformation(const void* data, int size_in_bytes) {
         return;
     }
 
-    parameters_.replaceState(copyWithType(parameter_state,
+    // Altvane: from a newer build, only the parameters this one has
+    const auto known = [version](const juce::ValueTree& saved, const juce::AudioProcessorValueTreeState& tree) {
+        return version > kStateVersion ? altvane::ui::state_schema::knownParameters(saved, tree) : saved;
+    };
+    parameters_.replaceState(copyWithType(known(parameter_state, parameters_),
                                           juce::Identifier(zlstate::schema::kParameterState)));
-    na_parameters_.replaceState(copyWithType(non_automatable_state,
+    na_parameters_.replaceState(copyWithType(known(non_automatable_state, na_parameters_),
                                              juce::Identifier(zlstate::schema::kNonAutomatableState)));
+    altvane::ui::state_schema::settleSwitches(*this);
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE

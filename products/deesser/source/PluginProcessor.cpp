@@ -8,10 +8,15 @@
 // You should have received a copy of the GNU Affero General Public License along with Altvane De-Esser. If not, see <https://www.gnu.org/licenses/>.
 #include "PluginProcessor.hpp"
 
+#include <altvane_ui/session/state_schema.hpp>
+
 #include "ui/editor.hpp"
 
 namespace altvane::deesser {
     namespace {
+        // upgrades for states older than kStateVersion, in order (version 0, from before versions, is version 1)
+        constexpr std::array<ui::state_schema::Migration, 0> kStateMigrations{};
+
         int choice(const std::atomic<float>* value) {
             return juce::roundToInt(value->load(std::memory_order::relaxed));
         }
@@ -162,16 +167,22 @@ namespace altvane::deesser {
         auto state = parameters_.copyState();
         state.setProperty("version", VERSION, nullptr);
         if (const auto xml = state.createXml()) {
+            ui::state_schema::write(*xml, kStateVersion);
             copyXmlToBinary(*xml, dest_data);
         }
     }
 
     void PluginProcessor::setStateInformation(const void* data, const int size_in_bytes) {
-        if (const auto xml = getXmlFromBinary(data, size_in_bytes)) {
-            if (xml->hasTagName(parameters_.state.getType())) {
-                parameters_.replaceState(juce::ValueTree::fromXml(*xml));
-            }
+        const auto xml = getXmlFromBinary(data, size_in_bytes);
+        if (xml == nullptr || !xml->hasTagName(parameters_.state.getType())) {
+            return;
         }
+        const auto version = ui::state_schema::upgrade(*xml, kStateVersion, kStateMigrations);
+        const auto state = juce::ValueTree::fromXml(*xml);
+        // from a newer build: only the parameters this one has
+        parameters_.replaceState(version > kStateVersion ? ui::state_schema::knownParameters(state, parameters_)
+                                                         : state);
+        ui::state_schema::settleSwitches(*this);
     }
 
     juce::AudioProcessorEditor* PluginProcessor::createEditor() {

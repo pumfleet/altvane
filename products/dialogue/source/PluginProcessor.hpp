@@ -19,6 +19,12 @@ namespace altvane::dialogue {
     class PluginProcessor final : public juce::AudioProcessor {
     public:
         /**
+         * the layout of the saved state, sessions and presets alike: raise it only with a migration in
+         * PluginProcessor.cpp (see altvane_ui/session/state_schema.hpp)
+         */
+        static constexpr int kStateVersion = 1;
+
+        /**
          * output buses 1-3 carry the voice, ambience and reverb, each at its level and the output gain, so together
          * they add up to the main output; off until the host enables them
          */

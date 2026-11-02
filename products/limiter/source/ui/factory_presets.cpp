@@ -9,6 +9,8 @@
 
 #include "factory_presets.hpp"
 
+#include <altvane_ui/session/state_schema.hpp>
+
 #include "../PluginProcessor.hpp"
 #include "common.hpp"
 #include "model/character.hpp"
@@ -132,6 +134,8 @@ namespace altvane::limiter {
             juce::ValueTree state(zlstate::schema::kProcessorState);
             state.appendChild(parameters, nullptr);
             state.appendChild(session, nullptr);
+            // written in this build's layout, so it says so
+            state.setProperty(altvane::ui::state_schema::kAttribute, PluginProcessor::kStateVersion, nullptr);
             result.emplace_back(juce::String("Factory/") + preset.name, zlstate::PresetJson::toText(state));
         }
         return result;
