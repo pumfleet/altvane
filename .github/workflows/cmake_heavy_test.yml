@@ -1,6 +1,8 @@
 name: macOS/Windows/Linux Heavy Test
 
 on:
+  schedule:
+    - cron: "23 2 * * 0" # Sundays, 02:23 UTC, every product (see the products job)
   workflow_dispatch:
     inputs:
       product:
@@ -8,9 +10,10 @@ on:
         required: true
         default: eq
 
-# When pushing new commits, cancel any running builds on that branch
+# When pushing new commits, cancel any running builds on that branch (of this workflow: the scheduled run on main must
+# not cancel, or be cancelled by, another workflow's run there)
 concurrency:
-  group: ${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -29,12 +32,66 @@ env:
   CMAKE_CXX_COMPILER_LAUNCHER: sccache
 
 jobs:
+  products:
+    # what to test: the product asked for or, on the schedule, every product; minus the runners a product can't build
+    # on (products/<product>/PLATFORMS, read as the top-level CMakeLists.txt does)
+    name: Products
+    runs-on: ubuntu-latest
+    outputs:
+      products: ${{ steps.list.outputs.products }}
+      names: ${{ steps.list.outputs.names }}
+      exclude: ${{ steps.list.outputs.exclude }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: List products and runners
+        id: list
+        shell: bash
+        env:
+          PRODUCT: ${{ inputs.product }}
+          # each build_and_test entry's name and the platform it builds on, as <CMAKE_SYSTEM_NAME>-<arch>
+          RUNNERS: '{"Linux": "Linux-x86_64", "macOS": "Darwin-arm64", "Windows": "Windows-AMD64"}'
+        run: |
+          python3 - <<'EOF'
+          import json, os, pathlib
+          runners = json.loads(os.environ["RUNNERS"])
+          if os.environ["PRODUCT"]:
+              products = [os.environ["PRODUCT"]]
+          else:
+              products = sorted(p.parent.name for p in pathlib.Path("products").glob("*/CMakeLists.txt"))
+          exclude = []
+          for product in products:
+              platforms_file = pathlib.Path("products", product, "PLATFORMS")
+              if platforms_file.exists():
+                  lines = [line.strip() for line in platforms_file.read_text().splitlines()]
+                  platforms = {line for line in lines if line and not line.startswith("#")}
+                  exclude += [{"product": product, "name": name} for name, platform in runners.items()
+                              if platform not in platforms]
+          # a runner must keep a product: matrix include would turn an entry whose name is left in no combination
+          # into a job of its own, with no product (e.g. dispatching dialogue). Such a runner builds what was asked.
+          for name in runners:
+              skipped = [e for e in exclude if e["name"] == name]
+              if len(skipped) == len(products):
+                  print(f"::warning::{products} not supported on {name} ({runners[name]}); building it there anyway")
+                  exclude = [e for e in exclude if e["name"] != name]
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"products={json.dumps(products)}\n")
+              out.write(f"names={json.dumps(list(runners))}\n")
+              out.write(f"exclude={json.dumps(exclude)}\n")
+          print("products:", products, "\nskipped:", exclude)
+          EOF
+
   build_and_test:
-    name: ${{ matrix.name }}
+    name: ${{ matrix.name }} (${{ matrix.product }})
+    needs: products
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        product: ${{ fromJSON(needs.products.outputs.products) }}
+        name: ${{ fromJSON(needs.products.outputs.names) }}
+        exclude: ${{ fromJSON(needs.products.outputs.exclude) }}
         include:
           - name: Linux
             os: ubuntu-latest
@@ -80,7 +137,7 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} -DALTVANE_PRODUCTS=${{ inputs.product }} ${{ matrix.cmake_extra_flags }} .
+          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} -DALTVANE_PRODUCTS=${{ matrix.product }} ${{ matrix.cmake_extra_flags }} .
           cmake --build ${{ env.BUILD_DIR }} --config ${{ env.BUILD_TYPE }}
 
       - name: Configure and Build (Windows)
@@ -89,7 +146,7 @@ jobs:
         run: |
           for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath`) do set VS_PATH=%%i
           call "%VS_PATH%\VC\Auxiliary\Build\${{ matrix.vcvars_script }}"
-          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} -DALTVANE_PRODUCTS=${{ inputs.product }} ${{ matrix.cmake_extra_flags }} .
+          cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}} -DALTVANE_PRODUCTS=${{ matrix.product }} ${{ matrix.cmake_extra_flags }} .
           cmake --build ${{ env.BUILD_DIR }} --config ${{ env.BUILD_TYPE }}
 
       - name: Compiler cache stats
@@ -99,8 +156,8 @@ jobs:
       - name: Read in the product's .env from CMake # written by altvane_add_plugin
         shell: bash
         run: |
-          cat "${{ env.BUILD_DIR }}/${{ inputs.product }}.env" # show us the config
-          cat "${{ env.BUILD_DIR }}/${{ inputs.product }}.env" >> $GITHUB_ENV # pull in our PRODUCT_NAME, etc
+          cat "${{ env.BUILD_DIR }}/${{ matrix.product }}.env" # show us the config
+          cat "${{ env.BUILD_DIR }}/${{ matrix.product }}.env" >> $GITHUB_ENV # pull in our PRODUCT_NAME, etc
 
       - name: Pluginval setup
         shell: bash

@@ -19,3 +19,7 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/source" PREFIX "" FILES ${ui_file
 target_include_directories(altvane_ui INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/source")
 target_compile_features(altvane_ui INTERFACE cxx_std_20)
 target_link_libraries(altvane_ui INTERFACE altvane_ui_assets juce_gui_basics juce_audio_processors)
+
+if (ALTVANE_BUILD_TESTS)
+    add_subdirectory(tests)
+endif ()

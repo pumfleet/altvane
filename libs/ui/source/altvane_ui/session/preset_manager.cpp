@@ -84,9 +84,23 @@ namespace altvane::ui {
         captureReference();
     }
 
+    namespace {
+        juce::File& directoryOverride() {
+            static juce::File dir;
+            return dir;
+        }
+    }
+
     juce::File PresetManager::getDirectory() {
+        if (directoryOverride() != juce::File()) {
+            return directoryOverride();
+        }
         return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
                .getChildFile(JucePlugin_Manufacturer).getChildFile(JucePlugin_Name).getChildFile("Presets");
+    }
+
+    void PresetManager::setDirectoryOverride(const juce::File& dir) {
+        directoryOverride() = dir;
     }
 
     void PresetManager::installFactoryPresets(const std::vector<std::pair<juce::String, juce::String>>& presets,
@@ -192,7 +206,25 @@ namespace altvane::ui {
             return false;
         }
         const auto target = file.getSiblingFile(name + kExtension);
-        if (target.exists() || !file.moveFileTo(target)) {
+        // on a case-insensitive file system a new case of the same name is this file, not another preset; ask the
+        // file system (File's == ignores case on every macOS volume, case-sensitive ones too)
+        const auto id = file.getFileIdentifier();
+        const auto same_file = id != 0 && target.getFileIdentifier() == id;
+        if (target.exists() && !same_file) {
+            return false;
+        }
+        if (same_file && target.getFullPathName() != file.getFullPathName()) {
+            // only the case changes: go through a temporary name, as moveFileTo deletes an existing target first
+            // where JUCE takes names as case-sensitive (Linux, which can still have case-insensitive folders)
+            const auto temp = file.getSiblingFile(juce::String(".rename") + kExtension).getNonexistentSibling();
+            if (!file.moveFileTo(temp)) {
+                return false;
+            }
+            if (!temp.moveFileTo(target)) {
+                temp.moveFileTo(file);
+                return false;
+            }
+        } else if (!file.moveFileTo(target)) {
             return false;
         }
         if (isFavourite(file)) {
@@ -206,11 +238,15 @@ namespace altvane::ui {
     }
 
     bool PresetManager::remove(const juce::File& file) {
+        // a preset that stays (no trash, no permission) stays current and favourite
+        if (!file.moveToTrash()) {
+            return false;
+        }
         setFavourite(file, false);
         if (getCurrentFile() == file) {
             session_.current_preset = juce::File();
         }
-        return file.moveToTrash();
+        return true;
     }
 
     juce::File PresetManager::createGroup(const juce::String& name) const {
