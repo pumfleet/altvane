@@ -210,7 +210,21 @@ namespace altvane::ui {
         // file system (File's == ignores case on every macOS volume, case-sensitive ones too)
         const auto id = file.getFileIdentifier();
         const auto same_file = id != 0 && target.getFileIdentifier() == id;
-        if ((target.exists() && !same_file) || !file.moveFileTo(target)) {
+        if (target.exists() && !same_file) {
+            return false;
+        }
+        if (same_file && target.getFullPathName() != file.getFullPathName()) {
+            // only the case changes: go through a temporary name, as moveFileTo deletes an existing target first
+            // where JUCE takes names as case-sensitive (Linux, which can still have case-insensitive folders)
+            const auto temp = file.getSiblingFile(juce::String(".rename") + kExtension).getNonexistentSibling();
+            if (!file.moveFileTo(temp)) {
+                return false;
+            }
+            if (!temp.moveFileTo(target)) {
+                temp.moveFileTo(file);
+                return false;
+            }
+        } else if (!file.moveFileTo(target)) {
             return false;
         }
         if (isFavourite(file)) {
