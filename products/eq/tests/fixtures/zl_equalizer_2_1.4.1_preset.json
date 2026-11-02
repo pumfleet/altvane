@@ -1,0 +1,5017 @@
+{
+  "format": "ZLEqualizerPreset",
+  "version": 1,
+  "state": {
+    "type": "ParaState",
+    "properties": {
+    },
+    "children": [
+      {
+        "type": "Para",
+        "properties": {
+        },
+        "children": [
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack0",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack1",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack10",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack11",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack12",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack13",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack14",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack15",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack16",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack17",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack18",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack19",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack2",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack20",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack21",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack22",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack23",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack3",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack4",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack5",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack6",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack7",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack8",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "attack9",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass0",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass1",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass10",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass11",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass12",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass13",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass14",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass15",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass16",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass17",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass18",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass19",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass2",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass20",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass21",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass22",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass23",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass3",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass4",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass5",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass6",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass7",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass8",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_bypass9",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn0",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn1",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn10",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn11",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn12",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn13",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn14",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn15",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn16",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn17",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn18",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn19",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn2",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn20",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn21",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn22",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn23",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn3",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn4",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn5",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn6",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn7",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn8",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_learn9",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on0",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on1",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on10",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on11",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on12",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on13",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on14",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on15",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on16",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on17",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on18",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on19",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on2",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on20",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on21",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on22",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on23",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on3",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on4",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on5",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on6",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on7",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on8",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_on9",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative0",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative1",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative10",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative11",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative12",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative13",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative14",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative15",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative16",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative17",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative18",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative19",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative2",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative20",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative21",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative22",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative23",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative3",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative4",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative5",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative6",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative7",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative8",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_relative9",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length0",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length1",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length10",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length11",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length12",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length13",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length14",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length15",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length16",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length17",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length18",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length19",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length2",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length20",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length21",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length22",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length23",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length3",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length4",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length5",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length6",
+              "value": "10.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length7",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length8",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_length9",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix0",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix1",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix10",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix11",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix12",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix13",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix14",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix15",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix16",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix17",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix18",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix19",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix2",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix20",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix21",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix22",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix23",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix3",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix4",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix5",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix6",
+              "value": "30.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix7",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix8",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_rms_mix9",
+              "value": "50.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth0",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth1",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth10",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth11",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth12",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth13",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth14",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth15",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth16",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth17",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth18",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth19",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth2",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth20",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth21",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth22",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth23",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth3",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth4",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth5",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth6",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth7",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth8",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "dynamic_smooth9",
+              "value": "100.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status0",
+              "value": "2.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status1",
+              "value": "2.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status10",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status11",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status12",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status13",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status14",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status15",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status16",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status17",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status18",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status19",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status2",
+              "value": "2.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status20",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status21",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status22",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status23",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status3",
+              "value": "2.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status4",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status5",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status6",
+              "value": "2.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status7",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status8",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_status9",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type0",
+              "value": "2.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type1",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type10",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type11",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type12",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type13",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type14",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type15",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type16",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type17",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type18",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type19",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type2",
+              "value": "10.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type20",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type21",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type22",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type23",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type3",
+              "value": "7.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type4",
+              "value": "5.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type5",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type6",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type7",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type8",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "filter_type9",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq0",
+              "value": "16000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq1",
+              "value": "180.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq10",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq11",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq12",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq13",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq14",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq15",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq16",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq17",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq18",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq19",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq2",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq20",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq21",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq22",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq23",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq3",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq4",
+              "value": "60.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq5",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq6",
+              "value": "3000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq7",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq8",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "freq9",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain0",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain1",
+              "value": "-4.000000476837158"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain10",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain11",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain12",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain13",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain14",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain15",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain16",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain17",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain18",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain19",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain2",
+              "value": "-1.000000596046448"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain20",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain21",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain22",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain23",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain3",
+              "value": "1.999999284744263"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain4",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain5",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain6",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain7",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain8",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "gain9",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width0",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width1",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width10",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width11",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width12",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width13",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width14",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width15",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width16",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width17",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width18",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width19",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width2",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width20",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width21",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width22",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width23",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width3",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width4",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width5",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width6",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width7",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width8",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "knee_width9",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode0",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode1",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode10",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode11",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode12",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode13",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode14",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode15",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode16",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode17",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode18",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode19",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode2",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode20",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode21",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode22",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode23",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode3",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode4",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode5",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode6",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode7",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode8",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "lr_mode9",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order0",
+              "value": "2.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order1",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order10",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order11",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order12",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order13",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order14",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order15",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order16",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order17",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order18",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order19",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order2",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order20",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order21",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order22",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order23",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order3",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order4",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order5",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order6",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order7",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order8",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "order9",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q0",
+              "value": "0.9000000357627869"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q1",
+              "value": "0.9000000357627869"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q10",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q11",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q12",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q13",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q14",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q15",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q16",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q17",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q18",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q19",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q2",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q20",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q21",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q22",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q23",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q3",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q4",
+              "value": "8.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q5",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q6",
+              "value": "2.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q7",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q8",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "q9",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release0",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release1",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release10",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release11",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release12",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release13",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release14",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release15",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release16",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release17",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release18",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release19",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release2",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release20",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release21",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release22",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release23",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release3",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release4",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release5",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release6",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release7",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release8",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "release9",
+              "value": "500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type0",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type1",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type10",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type11",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type12",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type13",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type14",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type15",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type16",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type17",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type18",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type19",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type2",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type20",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type21",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type22",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type23",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type3",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type4",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type5",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type6",
+              "value": "2.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type7",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type8",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_filter_type9",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq0",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq1",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq10",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq11",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq12",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq13",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq14",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq15",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq16",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq17",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq18",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq19",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq2",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq20",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq21",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq22",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq23",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq3",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq4",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq5",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq6",
+              "value": "2500.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq7",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq8",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_freq9",
+              "value": "1000.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link0",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link1",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link10",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link11",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link12",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link13",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link14",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link15",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link16",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link17",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link18",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link19",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link2",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link20",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link21",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link22",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link23",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link3",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link4",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link5",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link6",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link7",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link8",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_link9",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order0",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order1",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order10",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order11",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order12",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order13",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order14",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order15",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order16",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order17",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order18",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order19",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order2",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order20",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order21",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order22",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order23",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order3",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order4",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order5",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order6",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order7",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order8",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_order9",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q0",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q1",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q10",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q11",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q12",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q13",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q14",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q15",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q16",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q17",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q18",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q19",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q2",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q20",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q21",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q22",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q23",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q3",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q4",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q5",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q6",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q7",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q8",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_q9",
+              "value": "0.7070000171661377"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap0",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap1",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap10",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap11",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap12",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap13",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap14",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap15",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap16",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap17",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap18",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap19",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap2",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap20",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap21",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap22",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap23",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap3",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap4",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap5",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap6",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap7",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap8",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "side_swap9",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain0",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain1",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain10",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain11",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain12",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain13",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain14",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain15",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain16",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain17",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain18",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain19",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain2",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain20",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain21",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain22",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain23",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain3",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain4",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain5",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain6",
+              "value": "-5.000000476837158"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain7",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain8",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "target_gain9",
+              "value": "-6.705522537231445e-7"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold0",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold1",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold10",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold11",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold12",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold13",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold14",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold15",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold16",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold17",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold18",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold19",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold2",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold20",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold21",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold22",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold23",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold3",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold4",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold5",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold6",
+              "value": "-24.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold7",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold8",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "threshold9",
+              "value": "-40.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "total_auto_gain",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "total_bypass",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "total_external_side",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "total_filter_structure",
+              "value": "4.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "total_gain_scale",
+              "value": "100.0000076293945"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "total_lookahead",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "total_output_gain",
+              "value": "1.999999284744263"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "total_phase_flip",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "total_static_gain",
+              "value": "0.0"
+            },
+            "children": []
+          }
+        ]
+      },
+      {
+        "type": "State",
+        "properties": {
+        },
+        "children": [
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "collision_on",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "collision_strength",
+              "value": "0.5"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "eq_max_db",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "fft_freeze_on",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "fft_min_db",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "fft_post_on",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "fft_pre_on",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "fft_side_on",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "fft_smooth_erb_value",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "fft_smooth_oct_value",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "fft_smooth_type",
+              "value": "1.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "fft_speed",
+              "value": "3.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "fft_stereo",
+              "value": "0.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "fft_tilt",
+              "value": "3.0"
+            },
+            "children": []
+          },
+          {
+            "type": "PARAM",
+            "properties": {
+              "id": "fft_top_db",
+              "value": "1.0"
+            },
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+}

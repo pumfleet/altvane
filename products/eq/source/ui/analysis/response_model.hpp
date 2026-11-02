@@ -66,7 +66,8 @@ namespace altvane::eq {
         Mode mode_{Mode::kDigital};
         std::vector<double> freqs_;
         std::vector<float> ws_;
-        std::vector<double> cos1_, cos2_, sin1_, sin2_;
+        // sin^2(w / 2), sin w and sin 2w at each point, w held at Nyquist above it
+        std::vector<double> phi_, sin1_, sin2_;
 
         std::array<IdealFilter, kBandNum> ideal_{};
         Coeffs coeffs_{};
