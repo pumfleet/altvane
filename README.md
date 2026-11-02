@@ -20,6 +20,7 @@ CMakePresets.json     mac-arm64-debug / mac-arm64-release
 cmake/                AltvanePlugin.cmake (altvane_add_plugin), AltvaneVersion.cmake, AltvaneTests.cmake, ...
 third_party/          JUCE, highway, nlopt (git submodules)
 libs/ui/              altvane::ui: design tokens, fonts, look-and-feel, brand mark, widgets, editor shell, presets
+libs/testing/         what every product's tests link: alloc_counter, JUCE set up for the whole test run
 products/<code>/      one directory per product: CMakeLists.txt, source/, tests/, tools/, packaging/, docs/
 packaging/            installer scripts shared by every product
 tools/icons/          renders each product's app icon and installer art

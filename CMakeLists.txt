@@ -127,6 +127,9 @@ if (ALTVANE_BUILD_TESTS)
 endif ()
 
 add_subdirectory(libs/ui)
+if (ALTVANE_BUILD_TESTS)
+    add_subdirectory(libs/testing)
+endif ()
 
 foreach (product ${ALTVANE_PRODUCTS})
     if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/products/${product}/CMakeLists.txt")
