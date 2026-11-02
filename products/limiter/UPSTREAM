@@ -16,4 +16,5 @@ SUBMODULES=""
 SHARED_SUBMODULES="JUCE highway"
 
 # upstream files Altvane Limiter adapted rather than vendored: sync lists their upstream changes for porting by hand
-WATCH="source/PluginProcessor.cpp source/PluginProcessor.hpp source/state CMakeLists.txt"
+# (source/zlp/limiter_attach.cpp is vendored, but source/engine/engine_attach.hpp stands in for it)
+WATCH="source/PluginProcessor.cpp source/PluginProcessor.hpp source/state CMakeLists.txt source/zlp/limiter_attach.cpp"

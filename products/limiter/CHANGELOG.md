@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- The DC filter fades in and out over 50 ms when it is switched on or off and when the limiter is bypassed. It
+  switched hard before, which stepped by the DC offset (or by the phase difference in heavy low end).
+- Changing oversampling no longer posts a message from the audio thread: the switch (and the latency report) happens
+  on the message thread, or on the render thread in offline renders. See docs/ARCHITECTURE.md.
+- The loudness meter's maximum momentary and short-term loudness are measured every 10 ms instead of every 100 ms. A
+  burst that fell between updates read up to 0.45 LU low (EBU Tech 3341 cases 13 and 14); the momentary and
+  short-term readouts still update ten times a second.
+
+### Tests
+
+- Golden-behaviour tests for the vendored engine (ceiling at every oversampling factor, a gain-reduction fingerprint,
+  recovery per character, channel delta), so an engine sync that changes the sound fails CI.
+- The loudness meter against EBU Tech 3341 cases 1–5 and 9–23 and Tech 3342 cases 1–4, at 44.1, 48 and 96 kHz.
+
 ## 0.1.0
 
 First release of Altvane Limiter, based on the ZL Limiter engine (upstream commit `412c844`, a work in progress

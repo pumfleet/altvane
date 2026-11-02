@@ -51,15 +51,17 @@ namespace altvane::limiter {
      * an ITU-R BS.1770-4 / EBU R128 loudness meter that runs on the audio thread, so the measurement goes on
      * while the editor is closed and in offline renders
      *
-     * momentary (400 ms) and short-term (3 s) loudness come from 100 ms steps of K-weighted energy; integrated
-     * loudness and loudness range are gated from histograms of the block loudness with 0.01 LU bins, which are
-     * allocated in prepare(), so process() never allocates
+     * momentary (400 ms) and short-term (3 s) loudness come from 10 ms slices of K-weighted energy. They are
+     * published every 100 ms, but their maxima follow every slice, so a burst that does not line up with the 100 ms
+     * updates is not under-read (EBU Tech 3341 cases 10 to 14). Integrated loudness and loudness range are gated
+     * from the 100 ms blocks, through histograms of the block loudness with 0.01 LU bins, which are allocated in
+     * prepare(), so process() never allocates
      */
     class LoudnessMeter {
     public:
         void prepare(const double sample_rate, const size_t num_channels, const size_t maximum_block_size) {
             num_channels_ = std::clamp<size_t>(num_channels, 1, kMaxChannels);
-            step_samples_ = std::max<size_t>(1, static_cast<size_t>(std::lround(sample_rate * .1)));
+            slice_samples_ = std::max<size_t>(1, static_cast<size_t>(std::lround(sample_rate * .01)));
             k_weighting_.prepare(sample_rate, num_channels_);
             true_peak_.prepare(num_channels_, maximum_block_size);
             for (size_t c = 0; c < kMaxChannels; ++c) {
@@ -83,8 +85,8 @@ namespace altvane::limiter {
          */
         void setAccumulating(const bool accumulating) {
             accumulating_ = accumulating;
-            // the step in progress has some uncounted audio in it
-            step_paused_ = step_paused_ || !accumulating;
+            // the slice in progress has some uncounted audio in it
+            slice_paused_ = slice_paused_ || !accumulating;
         }
 
         void process(std::span<const float* const> channels, const size_t num_samples) {
@@ -137,25 +139,27 @@ namespace altvane::limiter {
 
             size_t i = 0;
             while (i < num_samples) {
-                const auto count = std::min(num_samples - i, step_samples_ - step_filled_);
+                const auto count = std::min(num_samples - i, slice_samples_ - slice_filled_);
                 for (size_t c = 0; c < num_channels; ++c) {
                     const auto* x = weighted_[c].data() + i;
                     double sum = 0.0;
                     for (size_t n = 0; n < count; ++n) {
                         sum += x[n] * x[n];
                     }
-                    step_energy_ += sum;
+                    slice_energy_ += sum;
                 }
-                step_filled_ += count;
+                slice_filled_ += count;
                 i += count;
-                if (step_filled_ == step_samples_) {
-                    finishStep();
+                if (slice_filled_ == slice_samples_) {
+                    finishSlice();
                 }
             }
         }
 
         static constexpr size_t kMaxChannels = 2;
-        static constexpr size_t kMomentarySteps = 4, kShortTermSteps = 30;
+        // 10 ms slices: 10 make a 100 ms step (the gating blocks' hop and the publishing rate), 40 the momentary
+        // window and 300 the short-term window
+        static constexpr size_t kSlicesPerStep = 10, kMomentarySlices = 40, kShortTermSlices = 300;
         // gating histograms: -70 .. +10 LUFS in 0.01 LU bins
         static constexpr double kHistogramFloor = -70.0, kBinsPerLU = 100.0;
         static constexpr size_t kGatingBins = 8000;
@@ -165,29 +169,29 @@ namespace altvane::limiter {
             uint64_t count{0};
         };
 
-        size_t num_channels_{2}, step_samples_{4800};
+        size_t num_channels_{2}, slice_samples_{480};
         zldsp::loudness::KWeightingFilter<double> k_weighting_{false};
         zldsp::limiter::TruePeakEstimator<float> true_peak_;
         std::array<std::vector<double>, kMaxChannels> weighted_;
         std::array<double*, kMaxChannels> weighted_pointers_{};
         std::array<std::vector<float>, kMaxChannels> peaks_;
 
-        double step_energy_{0.0};
-        size_t step_filled_{0};
-        // the mean energy of the last 30 steps, newest at steps_head_
-        std::array<double, kShortTermSteps> steps_{};
-        size_t steps_head_{0}, steps_count_{0};
+        double slice_energy_{0.0};
+        size_t slice_filled_{0};
+        // the mean energy of the last 300 slices, newest at slices_head_
+        std::array<double, kShortTermSlices> slices_{};
+        size_t slices_head_{0}, slices_count_{0}, slice_in_step_{0};
 
         std::vector<Bin> gating_, range_;
         Bin gating_total_, range_total_;
         std::array<uint64_t, LoudnessReadings::kHistogramBins> histogram_{};
         float max_momentary_{LoudnessReadings::kNoLevel}, max_short_term_{LoudnessReadings::kNoLevel};
         float true_peak_max_{0.f};
-        uint64_t steps_measured_{0};
+        uint64_t slices_measured_{0};
         uint32_t generation_{0};
         bool accumulating_{true};
-        // the step in progress saw audio while not counting; the number of counted steps in a row
-        bool step_paused_{false};
+        // the slice in progress saw audio while not counting; the number of counted slices in a row
+        bool slice_paused_{false};
         size_t counted_run_{0};
         std::atomic<bool> reset_requested_{false};
 
@@ -196,11 +200,12 @@ namespace altvane::limiter {
         void clear() {
             k_weighting_.reset();
             true_peak_.reset();
-            step_energy_ = 0.0;
-            step_filled_ = 0;
-            steps_.fill(0.0);
-            steps_head_ = 0;
-            steps_count_ = 0;
+            slice_energy_ = 0.0;
+            slice_filled_ = 0;
+            slices_.fill(0.0);
+            slices_head_ = 0;
+            slices_count_ = 0;
+            slice_in_step_ = 0;
             std::fill(gating_.begin(), gating_.end(), Bin{});
             std::fill(range_.begin(), range_.end(), Bin{});
             gating_total_ = {};
@@ -209,17 +214,17 @@ namespace altvane::limiter {
             max_momentary_ = LoudnessReadings::kNoLevel;
             max_short_term_ = LoudnessReadings::kNoLevel;
             true_peak_max_ = 0.f;
-            steps_measured_ = 0;
-            step_paused_ = !accumulating_;
+            slices_measured_ = 0;
+            slice_paused_ = !accumulating_;
             counted_run_ = 0;
             ++generation_;
             publish(LoudnessReadings::kNoLevel, LoudnessReadings::kNoLevel);
         }
 
-        double meanOfLastSteps(const size_t n) const {
+        double meanOfLastSlices(const size_t n) const {
             double sum = 0.0;
             for (size_t k = 0; k < n; ++k) {
-                sum += steps_[(steps_head_ + kShortTermSteps - k) % kShortTermSteps];
+                sum += slices_[(slices_head_ + kShortTermSlices - k) % kShortTermSlices];
             }
             return sum / static_cast<double>(n);
         }
@@ -241,46 +246,53 @@ namespace altvane::limiter {
             ++total.count;
         }
 
-        void finishStep() {
-            steps_head_ = (steps_head_ + 1) % kShortTermSteps;
-            steps_[steps_head_] = step_energy_ / static_cast<double>(step_samples_);
-            steps_count_ = std::min(steps_count_ + 1, kShortTermSteps);
-            step_energy_ = 0.0;
-            step_filled_ = 0;
+        void finishSlice() {
+            slices_head_ = (slices_head_ + 1) % kShortTermSlices;
+            slices_[slices_head_] = slice_energy_ / static_cast<double>(slice_samples_);
+            slices_count_ = std::min(slices_count_ + 1, kShortTermSlices);
+            slice_energy_ = 0.0;
+            slice_filled_ = 0;
 
-            auto momentary = LoudnessReadings::kNoLevel, short_term = LoudnessReadings::kNoLevel;
-            // a window only counts when every step in it was measured while counting, so audio heard while the
-            // transport was stopped never reaches the integrated loudness or the range on resume
-            if (accumulating_ && !step_paused_) {
-                ++steps_measured_;
-                counted_run_ = std::min(counted_run_ + 1, kShortTermSteps);
+            // a window only counts when every slice in it was measured while counting, so audio heard while the
+            // transport was stopped never reaches the integrated loudness, the range or the maxima on resume
+            if (accumulating_ && !slice_paused_) {
+                ++slices_measured_;
+                counted_run_ = std::min(counted_run_ + 1, kShortTermSlices);
             } else {
                 counted_run_ = 0;
             }
-            step_paused_ = !accumulating_;
-            if (steps_count_ >= kMomentarySteps) {
-                const auto energy = meanOfLastSteps(kMomentarySteps);
-                momentary = energyToLoudness(energy);
-                if (counted_run_ >= kMomentarySteps) {
-                    // a 400 ms gating block every 100 ms (75 % overlap); the absolute gate is -70 LUFS
-                    if (momentary > kHistogramFloor) {
-                        add(gating_, gating_total_, momentary, energy);
-                    }
+            slice_paused_ = !accumulating_;
+
+            auto momentary = LoudnessReadings::kNoLevel, short_term = LoudnessReadings::kNoLevel;
+            double momentary_energy = 0.0, short_term_energy = 0.0;
+            if (slices_count_ >= kMomentarySlices) {
+                momentary_energy = meanOfLastSlices(kMomentarySlices);
+                momentary = energyToLoudness(momentary_energy);
+                if (counted_run_ >= kMomentarySlices) {
                     max_momentary_ = std::max(max_momentary_, momentary);
                 }
             }
-            if (steps_count_ >= kShortTermSteps) {
-                const auto energy = meanOfLastSteps(kShortTermSteps);
-                short_term = energyToLoudness(energy);
-                if (counted_run_ >= kShortTermSteps) {
-                    if (short_term > kHistogramFloor) {
-                        add(range_, range_total_, short_term, energy);
-                        const auto bin = static_cast<int>(std::floor(short_term)) - LoudnessReadings::kHistogramLow;
-                        if (bin >= 0 && bin < static_cast<int>(LoudnessReadings::kHistogramBins)) {
-                            ++histogram_[static_cast<size_t>(bin)];
-                        }
-                    }
+            if (slices_count_ >= kShortTermSlices) {
+                short_term_energy = meanOfLastSlices(kShortTermSlices);
+                short_term = energyToLoudness(short_term_energy);
+                if (counted_run_ >= kShortTermSlices) {
                     max_short_term_ = std::max(max_short_term_, short_term);
+                }
+            }
+
+            if (++slice_in_step_ < kSlicesPerStep) {
+                return;
+            }
+            slice_in_step_ = 0;
+            // a 400 ms gating block every 100 ms (75 % overlap); the absolute gate is -70 LUFS
+            if (counted_run_ >= kMomentarySlices && momentary > kHistogramFloor) {
+                add(gating_, gating_total_, momentary, momentary_energy);
+            }
+            if (counted_run_ >= kShortTermSlices && short_term > kHistogramFloor) {
+                add(range_, range_total_, short_term, short_term_energy);
+                const auto bin = static_cast<int>(std::floor(short_term)) - LoudnessReadings::kHistogramLow;
+                if (bin >= 0 && bin < static_cast<int>(LoudnessReadings::kHistogramBins)) {
+                    ++histogram_[static_cast<size_t>(bin)];
                 }
             }
             publish(momentary, short_term);
@@ -324,7 +336,7 @@ namespace altvane::limiter {
             r.true_peak_max = true_peak_max_ > 0.f
                                   ? 20.f * std::log10(true_peak_max_)
                                   : LoudnessReadings::kNoLevel;
-            r.seconds = static_cast<double>(steps_measured_) * .1;
+            r.seconds = static_cast<double>(slices_measured_) * .01;
             r.generation = generation_;
 
             // integrated: the relative gate is 10 LU below the mean of the blocks above the absolute gate

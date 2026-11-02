@@ -100,11 +100,12 @@ int main(int argc, char* argv[]) {
     }
 
     PluginProcessor p;
+    // oversampling before the prepare, which applies it (afterwards it waits for the message thread's timer)
+    set(p.parameters_, zlp::POversampling::kID, 2.f);
     p.setPlayConfigDetails(2, 2, kSampleRate, kBlock);
     p.prepareToPlay(kSampleRate, kBlock);
     set(p.parameters_, zlp::PInputGain::kID, 7.f);
     set(p.parameters_, zlp::POutputCeiling::kID, -1.f);
-    set(p.parameters_, zlp::POversampling::kID, 2.f);
 
     std::unique_ptr<juce::AudioProcessorEditor> editor_base(p.createEditor());
     auto* editor = dynamic_cast<altvane::limiter::Editor*>(editor_base.get());
