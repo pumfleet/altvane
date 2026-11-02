@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0
 
 First version of Altvane Leveler, an automatic vocal rider.
 
