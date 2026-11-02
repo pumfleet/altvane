@@ -1,0 +1,101 @@
+---
+// A figure control with a few named settings, as in the editors' segmented switches: radio buttons set as type, the
+// chosen one in Programme Ink on a 1.5px ink rule. With one option and `toggle`, it is a checkbox instead.
+interface Props {
+  name: string;
+  label: string;
+  options: { value: string; label: string }[];
+  value: string;
+  toggle?: boolean;
+}
+const { name, label, options, value, toggle = false } = Astro.props;
+const id = `choice-${name}-${Math.random().toString(36).slice(2, 7)}`;
+---
+{toggle ? (
+  <div class="choice">
+    <span class="choice__label" id={id}>{label}</span>
+    <div class="choice__options">
+      <label>
+        <input type="checkbox" name={name} value={options[0].value} checked={value === options[0].value} aria-labelledby={`${id} ${id}-on`} />
+        <span id={`${id}-on`}>{options[0].label}</span>
+      </label>
+    </div>
+  </div>
+) : (
+  <fieldset class="choice">
+    <legend class="choice__label">{label}</legend>
+    <div class="choice__options">
+      {options.map((o) => (
+        <label>
+          <input type="radio" name={`${name}-${id}`} data-name={name} value={o.value} checked={o.value === value} />
+          <span>{o.label}</span>
+        </label>
+      ))}
+    </div>
+  </fieldset>
+)}
+
+<style>
+  .choice {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+    display: grid;
+    row-gap: var(--s1);
+  }
+  .choice__label {
+    padding: 0;
+    font-size: 0.9375rem;
+    font-weight: 450;
+    font-stretch: 108%;
+  }
+  .choice__options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--s4);
+  }
+  label {
+    position: relative;
+    cursor: pointer;
+  }
+  input {
+    position: absolute;
+    opacity: 0;
+    inset: 0;
+    margin: 0;
+    cursor: pointer;
+  }
+  span {
+    display: inline-block;
+    padding-block: var(--s1) 3px;
+    font-size: 0.9375rem;
+    color: var(--ink-2);
+    border-bottom: 1.5px solid transparent;
+    transition: color 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
+  }
+  label:hover span {
+    color: var(--ink);
+    border-bottom-color: var(--spot);
+  }
+  input:checked + span {
+    color: var(--ink);
+    border-bottom-color: var(--ink);
+  }
+  input[type="checkbox"] + span::before {
+    content: "";
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: var(--s2);
+    border: 1px solid var(--ink);
+    vertical-align: 0;
+  }
+  input[type="checkbox"]:checked + span::before {
+    background: var(--ink);
+  }
+  input:focus-visible + span {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+</style>

@@ -5,30 +5,35 @@ import Programme from "../components/Programme.astro";
 import DialogueFigure from "../components/figures/DialogueFigure.astro";
 import CompressorFigure from "../components/figures/CompressorFigure.astro";
 import LimiterFigure from "../components/figures/LimiterFigure.astro";
+import DeEsserFigure from "../components/figures/DeEsserFigure.astro";
+import LevelerFigure from "../components/figures/LevelerFigure.astro";
 import Readings from "../components/Readings.astro";
 import Builds from "../components/Builds.astro";
 import Arrow from "../components/Arrow.astro";
-import { REPO, downloadLabel, product, releasesUrl } from "../data/products";
+import { type Product, REPO, getAction, product } from "../data/products";
 
 const eq = product("eq");
 const dialogue = product("dialogue");
 const compressor = product("compressor");
 const limiter = product("limiter");
+const deesser = product("deesser");
+const leveler = product("leveler");
+const get = (p: Product) => getAction(p);
 ---
 <Base
   title="Altvane: audio plug-ins, nothing approximate"
-  description="Altvane makes an equalizer, a dialogue isolator, a compressor and a limiter. Free and open source, for macOS, Windows and Linux."
+  description="Altvane makes an equalizer, a dialogue isolator, a compressor, a limiter, a de-esser and a vocal rider. Free and open source, for macOS, Windows and Linux."
 >
   <section class="sheet hero" aria-labelledby="hero-title">
     <div class="hero__copy">
       <h1 id="hero-title" class="hero__title">Nothing approximate.</h1>
       <p class="t-lead">
-        Altvane makes an equalizer, a dialogue isolator, a compressor and a limiter. What the screen shows is exactly
-        what the audio gets. Free and open source, for macOS, Windows and Linux.
+        Altvane makes an equalizer, a dialogue isolator, a compressor, a limiter, a de-esser and a vocal rider. Each
+        one shows you what it is doing to the audio. Free and open source, for macOS, Windows and Linux.
       </p>
       <div class="hero__programme">
         <Programme />
-        <p class="t-small">VST3, AU, LV2 and Standalone. Free, from GitHub Releases.</p>
+        <p class="t-small">VST3, AU, LV2 and Standalone, free. Released versions come from GitHub Releases; the rest build from source.</p>
       </div>
     </div>
     <div class="hero__figure">
@@ -53,7 +58,7 @@ const limiter = product("limiter");
       <Readings items={eq.readings} />
       <div class="series__actions">
         <a class="action" href={`/${eq.code}`}>About {eq.name} <Arrow /></a>
-        <a class="action action--quiet" href={releasesUrl(eq.code)}>{downloadLabel(eq)} <Arrow dir="down" /></a>
+        <a class="action action--quiet" href={get(eq).href} data-external={get(eq).arrow === "out" ? "" : undefined}>{get(eq).label} <Arrow dir={get(eq).arrow} /></a>
       </div>
     </div>
     <div class="series__figure series__figure--eq">
@@ -80,7 +85,7 @@ const limiter = product("limiter");
       <Readings items={dialogue.readings} />
       <div class="series__actions">
         <a class="action" href={`/${dialogue.code}`}>About {dialogue.name} <Arrow /></a>
-        <a class="action action--quiet" href={releasesUrl(dialogue.code)}>{downloadLabel(dialogue)}, macOS and Windows <Arrow dir="down" /></a>
+        <a class="action action--quiet" href={get(dialogue).href} data-external={get(dialogue).arrow === "out" ? "" : undefined}>{get(dialogue).label}, macOS and Windows <Arrow dir={get(dialogue).arrow} /></a>
       </div>
     </div>
   </section>
@@ -95,7 +100,7 @@ const limiter = product("limiter");
       <Readings items={compressor.readings} />
       <div class="series__actions">
         <a class="action" href={`/${compressor.code}`}>About {compressor.name} <Arrow /></a>
-        <a class="action action--quiet" href={releasesUrl(compressor.code)}>{downloadLabel(compressor)} <Arrow dir="down" /></a>
+        <a class="action action--quiet" href={get(compressor).href} data-external={get(compressor).arrow === "out" ? "" : undefined}>{get(compressor).label} <Arrow dir={get(compressor).arrow} /></a>
       </div>
     </div>
     <div class="series__figure">
@@ -116,7 +121,43 @@ const limiter = product("limiter");
       <Readings items={limiter.readings} />
       <div class="series__actions">
         <a class="action" href={`/${limiter.code}`}>About {limiter.name} <Arrow /></a>
-        <a class="action action--quiet" href={releasesUrl(limiter.code)}>{downloadLabel(limiter)} <Arrow dir="down" /></a>
+        <a class="action action--quiet" href={get(limiter).href} data-external={get(limiter).arrow === "out" ? "" : undefined}>{get(limiter).label} <Arrow dir={get(limiter).arrow} /></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="sheet series series--deesser" data-product="deesser" aria-labelledby="deesser-title">
+    <div class="series__head">
+      <h2 id="deesser-title" class="t-display">De-Esser</h2>
+      <p class="series__kind t-label">{deesser.kind}</p>
+    </div>
+    <div class="series__text">
+      <p class="t-lead">{deesser.summary}</p>
+      <Readings items={deesser.readings} />
+      <div class="series__actions">
+        <a class="action" href={`/${deesser.code}`}>About {deesser.name} <Arrow /></a>
+        <a class="action action--quiet" href={get(deesser).href} data-external={get(deesser).arrow === "out" ? "" : undefined}>{get(deesser).label} <Arrow dir={get(deesser).arrow} /></a>
+      </div>
+    </div>
+    <div class="series__figure">
+      <DeEsserFigure />
+    </div>
+  </section>
+
+  <section class="sheet series series--leveler" data-product="leveler" aria-labelledby="leveler-title">
+    <div class="series__figure">
+      <LevelerFigure />
+    </div>
+    <div class="series__head">
+      <h2 id="leveler-title" class="t-display">Leveler</h2>
+      <p class="series__kind t-label">{leveler.kind}</p>
+    </div>
+    <div class="series__text">
+      <p class="t-lead">{leveler.summary}</p>
+      <Readings items={leveler.readings} />
+      <div class="series__actions">
+        <a class="action" href={`/${leveler.code}`}>About {leveler.name} <Arrow /></a>
+        <a class="action action--quiet" href={get(leveler).href} data-external={get(leveler).arrow === "out" ? "" : undefined}>{get(leveler).label} <Arrow dir={get(leveler).arrow} /></a>
       </div>
     </div>
   </section>
@@ -130,7 +171,7 @@ const limiter = product("limiter");
       </p>
       <p class="t-body">
         The source, the build, the tests and the release workflow are public. Every release is built in CI from its
-        tag, for macOS, Windows and Linux, on Intel and Arm.
+        tag, for each platform the plug-in runs on: macOS, Windows and Linux, on Intel and Arm.
       </p>
       <a class="action" href={REPO} data-external>Read the source <Arrow dir="out" /></a>
     </div>
@@ -151,7 +192,8 @@ const limiter = product("limiter");
 
 <style>
   .hero {
-    height: clamp(640px, calc(100svh - 84px), 940px);
+    /* the first viewport, or more when the programme needs it */
+    min-height: clamp(640px, calc(100svh - 84px), 940px);
     padding-top: clamp(40px, 7vh, 88px);
     position: relative;
   }
@@ -268,6 +310,14 @@ const limiter = product("limiter");
   .series--limiter .series__head { grid-column: 9 / span 4; }
   .series--limiter .series__text { grid-column: 9 / span 4; }
 
+  .series--deesser .series__head { grid-column: 1 / span 5; }
+  .series--deesser .series__text { grid-column: 1 / span 5; }
+  .series--deesser .series__figure { grid-column: 7 / span 6; grid-row: 1 / span 2; }
+
+  .series--leveler .series__figure { grid-column: 1 / span 7; grid-row: 1 / span 2; }
+  .series--leveler .series__head { grid-column: 9 / span 4; }
+  .series--leveler .series__text { grid-column: 9 / span 4; }
+
   .series .t-display {
     font-size: clamp(2.75rem, 5.6vw, 5rem);
   }
@@ -316,6 +366,8 @@ const limiter = product("limiter");
     .series--dialogue .series__figure,
     .series--compressor .series__figure,
     .series--limiter .series__figure,
+    .series--deesser .series__figure,
+    .series--leveler .series__figure,
     .open__title,
     .open__text,
     .platforms__head,
@@ -324,7 +376,8 @@ const limiter = product("limiter");
       grid-row: auto;
     }
     .series--dialogue .series__figure,
-    .series--limiter .series__figure {
+    .series--limiter .series__figure,
+    .series--leveler .series__figure {
       order: 3;
     }
     .series--eq .series__figure {
@@ -366,7 +419,7 @@ const limiter = product("limiter");
 
     /* the hero reads title, claim, figure, then the downloads */
     .hero {
-      height: auto;
+      min-height: 0;
       row-gap: var(--s5);
     }
     .hero__copy {

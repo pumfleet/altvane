@@ -1,0 +1,124 @@
+---
+import Base from "../layouts/Base.astro";
+import ProductHero from "../components/ProductHero.astro";
+import Section from "../components/Section.astro";
+import Features from "../components/Features.astro";
+import Gestures from "../components/Gestures.astro";
+import Plate from "../components/Plate.astro";
+import Readings from "../components/Readings.astro";
+import Builds from "../components/Builds.astro";
+import Close from "../components/Close.astro";
+import DeEsserFigure from "../components/figures/DeEsserFigure.astro";
+import { product } from "../data/products";
+
+const p = product("deesser");
+---
+<Base title="Altvane De-Esser: a de-esser that knows an ess from a bright vowel" description={p.summary} product="deesser" image={p.editor}>
+  <ProductHero product={p}>
+    <div class="deess-hero">
+      <DeEsserFigure controls />
+      <p class="t-small deess-caption">
+        One moment of a voice through the de-esser's detection band, Vocal weighting, soft knee and dynamic shelf,
+        computed in your browser. Each column stands up to what is heard, and the cap on top is what the shelf takes
+        away. Switch to a bright vowel and Vocal leaves it alone where Allround does not. Drag the figure left or right
+        to move the band, as in the editor.
+      </p>
+    </div>
+  </ProductHero>
+
+  <Section id="features" title="What it does" note="Set it by ear, by eye, or by letting it listen.">
+    <Features
+      items={[
+        { lead: "An ess, not a bright vowel", text: "Vocal mode weighs the sibilance band against the body of the voice under it, so a bright vowel or an open, airy voice is left alone while the esses are caught. Allround reacts to anything in the band, for mixes, buses, cymbals and guitars." },
+        { lead: "Wide or split, shelf or bell", text: "Split band turns down only the top end: as a dynamic high shelf from the band's low edge, or as a dynamic bell over the band alone, sparing the air above it. Wide turns down the whole signal. With nothing to reduce, the output is the input, sample for sample, in every mode." },
+        { lead: "See every ess", text: "The history scrolls the signal and its sibilance band under the threshold, shows what was taken out of each ess in the sibilance colour, hangs the gain reduction from the top, and marks along the floor where sibilance was heard. Drag the threshold right there." },
+        { lead: "Sibilance finder", text: "While audio plays, it learns the average spectrum of the esses and pins their peak on the band view. One click fits the band to them." },
+        { lead: "Learn", text: "Play a passage and the threshold is set so a typical ess loses about 4 dB, and louder ones more." },
+        { lead: "Trigger and Delta", text: "Hear the detection band to place it, or hear only what is being taken away." },
+        { lead: "Everything else, done properly", text: "Look-ahead up to 15 ms, stereo link, mid or side only, an external side chain and output gain. Presets with a factory set, A/B compare, undo and redo, adjustable interface size and accent colour, keyboard control, screen-reader support and host parameter menus." },
+      ]}
+    />
+  </Section>
+
+  <Section id="editor" title="The editor" note="The level history across the top, the detection band on a live spectrum below it, and Threshold, Range and Learn beside them.">
+    <Plate {...p.editor!} caption="Altvane De-Esser 0.1.0." />
+  </Section>
+
+  <Section id="how" title="How it works">
+    <div class="prose">
+      <p class="t-body">
+        The side chain (the track, or an external input) passes the detection band, a fourth-order high-pass and an
+        optional fourth-order low-pass, and a peak envelope follows the band's level. In Vocal mode a slower envelope
+        of the band is compared with one of everything below it: an ess is about as loud as the voice under it, while
+        a vowel's high harmonics sit 20 to 30&nbsp;dB below its body, and the difference scales how much of the
+        overshoot counts.
+      </p>
+      <p class="t-body">
+        The reduction is the band's level above the threshold through a 6&nbsp;dB soft knee, limited by the range,
+        held for the look-ahead so it is in place when the ess arrives, and released faster after short esses than
+        long ones. The audio is delayed by the look-ahead and the reduction mixed in: the whole signal (Wide), a
+        second-order high shelf whose midpoint stays on the band's low edge however deep it goes (Shelf), or a bell
+        whose edges are the band's (Bell). Each is written as the input plus what changes, so it is exact when nothing
+        changes, and the controls are read on a fixed 32-sample grid, so the output never depends on your host's block
+        size.
+      </p>
+    </div>
+  </Section>
+
+  <Section id="gestures" title="Under the hand" note="Start from Vocal, Split and Shelf, with the band's low edge where the esses begin; the finder shows where that is.">
+    <Gestures
+      rows={[
+        ["Set the threshold", "Drag the line in the history (<kbd>Shift</kbd> for fine), or the Threshold knob; double-click the line to reset"],
+        ["Learn the threshold", "Learn (or <kbd>L</kbd>), play a passage with esses, then Learn again; it also stops by itself after 16 esses"],
+        ["Move the detection band", "Drag inside it; drag an edge to move that edge; scroll inside it to widen or narrow it"],
+        ["Open or close the band's top", "Drag the high edge to the far right, or double-click it"],
+        ["Fit the band to the esses", "Click the finder's pill (Sibilance at …) once it appears"],
+        ["Hear what it listens to", "Trigger"],
+        ["Hear what it takes", "Delta"],
+        ["Freeze the history", "Click it, or press <kbd>F</kbd> (<kbd>Esc</kbd> to go on)"],
+        ["Read a moment", "Hover the history"],
+        ["Reset a control", "<kbd>Cmd</kbd>-click or double-click it"],
+        ["Undo and redo", "<kbd>Cmd Z</kbd> and <kbd>Shift Cmd Z</kbd>"],
+      ]}
+    />
+  </Section>
+
+  <Section id="specs" title="Specifications" note="The accuracy figures are checks in the plug-in's test suite.">
+    <Readings items={p.readings} size="large" />
+    <div class="spec-table">
+      <Readings
+        items={[
+          { value: "Bit-exact", label: "output with nothing to reduce, in stereo; within 10⁻⁶ in mid/side" },
+          { value: "9–14 dB", label: "taken from a steady ess 12 dB over the threshold, range 24 dB" },
+          { value: "< 0.3 dB", label: "change at 300 Hz under an ess, split shelf" },
+          { value: "< 1 dB", label: "change at 16 kHz above a 5–8 kHz bell" },
+          { value: "1/6 octave", label: "finder, esses at 4.5, 7 and 9.5 kHz, at 44.1 and 96 kHz" },
+          { value: "±1.5 dB", label: "Learn, against the esses' median less 4 dB" },
+        ]}
+      />
+    </div>
+    <div class="specs-builds"><Builds /></div>
+  </Section>
+
+  <Close product={p} />
+</Base>
+
+<style>
+  .deess-hero {
+    max-width: 700px;
+  }
+  .deess-caption {
+    margin-top: var(--s5);
+    max-width: 58ch;
+  }
+  .prose {
+    display: grid;
+    gap: var(--s4);
+  }
+  .spec-table {
+    margin-top: var(--s6);
+  }
+  .specs-builds {
+    margin-top: var(--s7);
+  }
+</style>

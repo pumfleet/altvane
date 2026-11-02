@@ -13,7 +13,7 @@ import { product } from "../data/products";
 
 const p = product("eq");
 ---
-<Base title="Altvane EQ: parametric and dynamic equalizer" description={p.summary} product="eq">
+<Base title="Altvane EQ: parametric and dynamic equalizer" description={p.summary} product="eq" image={p.editor}>
   <ProductHero product={p}>
     <div class="eq-hero-figure">
       <EqFigure
@@ -42,7 +42,7 @@ const p = product("eq");
   </Section>
 
   <Section id="editor" title="The editor" note="A full-bleed frequency graph and a floating band panel. Nothing else competes for the screen.">
-    <Plate src="/images/eq-editor.png" width={1040} height={620} alt="The Altvane EQ editor: a dark frequency graph with six numbered band nodes on a white response curve, an analyzer below, and an output meter on the right." caption="Altvane EQ 0.1.0." />
+    <Plate {...p.editor!} caption="Altvane EQ." />
   </Section>
 
   <Section id="gestures" title="Under the hand" note="Values can be typed: double-click a value and enter 1.2k, 440, A4 or −3.5.">

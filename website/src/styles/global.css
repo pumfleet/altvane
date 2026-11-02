@@ -14,6 +14,8 @@
   --dialogue: #e0502a;
   --compressor: #0f7a5c;
   --limiter: #a8740a;
+  --deesser: #c0287a;
+  --leveler: #1683b8;
   --spot: var(--ink);
 
   --font: "Archivo Variable", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -44,6 +46,8 @@
 [data-product="dialogue"] { --spot: var(--dialogue); }
 [data-product="compressor"] { --spot: var(--compressor); }
 [data-product="limiter"] { --spot: var(--limiter); }
+[data-product="deesser"] { --spot: var(--deesser); }
+[data-product="leveler"] { --spot: var(--leveler); }
 
 *, *::before, *::after { box-sizing: border-box; }
 

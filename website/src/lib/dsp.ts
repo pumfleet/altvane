@@ -247,6 +247,321 @@ export function limit(peaks: Float64Array, { gain, ceiling, release }: Limit): F
 export const dbOf = (x: number) => 20 * Math.log10(Math.max(x, 1e-9));
 
 // ---------------------------------------------------------------------------------------------------------------
+// De-Esser: the detection band, the Vocal weighting, the soft knee and the dynamic shelf of
+// products/deesser/source/dsp (detector.hpp, gain_computer.hpp, Engine::responseDb), applied to the steady spectrum
+// of one moment of a voice
+
+export type DeEssSound = "ess" | "vowel";
+export type DeEssMode = "vocal" | "allround";
+
+export interface DeEss {
+  threshold: number; // dB
+  range: number; // dB
+  low: number; // Hz, the detection band's low edge (the band is open at the top)
+  mode: DeEssMode;
+  sound: DeEssSound;
+}
+
+const DE_RATE = 48000;
+const DE_KNEE = 6; // GainComputer::kKneeDb
+const BUTTERWORTH4_Q = [0.5411961, 1.306563]; // the two sections of the fourth-order high-pass
+const SQRT2 = Math.SQRT2;
+
+/** tan(pi f / fs): a TPT state-variable filter is its analog prototype at the prewarped frequency */
+const warp = (f: number) => Math.tan((Math.PI * Math.min(Math.max(f, 1), 0.4999 * DE_RATE)) / DE_RATE);
+
+/** |H|^2 of a second-order high-pass or low-pass with damping k, at prewarped s = jw, cutoff wc */
+function pass2(w: number, wc: number, k: number, high: boolean): number {
+  const re = wc * wc - w * w;
+  const im = k * wc * w;
+  const num = high ? w * w : wc * wc;
+  return (num * num) / (re * re + im * im);
+}
+
+/** the de-esser's high shelf, down to g: Engine::responseDb for Split, Shelf; in dB */
+export function deessShelfDb(f: number, low: number, reduction: number): number {
+  if (reduction <= 0) return 0;
+  const g = Math.pow(10, -reduction / 20);
+  const w = warp(f);
+  const wp = warp(Math.min(low, 0.45 * DE_RATE)) * Math.pow(g, 0.25);
+  // h = (wp^2 + k sqrt(g) wp s + g s^2) / (s^2 + k wp s + wp^2), s = jw
+  const nr = wp * wp - g * w * w;
+  const ni = SQRT2 * Math.sqrt(g) * wp * w;
+  const dr = wp * wp - w * w;
+  const di = SQRT2 * wp * w;
+  return 10 * Math.log10((nr * nr + ni * ni) / (dr * dr + di * di));
+}
+
+/** GainComputer::target: the reduction wanted for a band level `over` dB above the threshold */
+export function deessTarget(over: number, sibilance: number, range: number): number {
+  if (over <= -0.5 * DE_KNEE) return 0;
+  const t = over + 0.5 * DE_KNEE;
+  const r = over < 0.5 * DE_KNEE ? (t * t) / (2 * DE_KNEE) : over;
+  return Math.min(r * sibilance, range);
+}
+
+/** sibilanceConfidence: none with the band 12 dB under the body, all at level with it and above */
+export function deessConfidence(bandOverBody: number): number {
+  const t = Math.max(0, Math.min(1, (bandOverBody + 12) / 12));
+  return t * t * (3 - 2 * t);
+}
+
+export const DEESS_LO = 120;
+export const DEESS_HI = 20000;
+const DEESS_BINS = 480;
+
+export interface Spectrum {
+  freq: Float64Array;
+  power: Float64Array; // linear power per bin
+}
+
+/**
+ * a synthetic spectrum of one moment of a voice, as a steady level per bin: illustrative, not a recording. An ess is
+ * a broad hiss peaking near 7 kHz over a quiet voice; a bright vowel is a loud voice whose high harmonics sit
+ * 20 to 30 dB below its body, as the README puts it.
+ */
+export function deessSpectrum(sound: DeEssSound): Spectrum {
+  const freq = new Float64Array(DEESS_BINS);
+  const power = new Float64Array(DEESS_BINS);
+  for (let i = 0; i < DEESS_BINS; i++) {
+    const f = logFreq(i / (DEESS_BINS - 1), DEESS_LO, DEESS_HI);
+    const x = Math.log2(f / 1000);
+    const hump = (centre: number, width: number) => Math.exp(-Math.pow((x - Math.log2(centre / 1000)) / width, 2));
+    let db: number;
+    if (sound === "ess") {
+      const voice = -68 + 14 * hump(350, 1.1) + 6 * hump(1400, 0.6) - 4 * Math.max(0, x - 1);
+      const hiss = -54 + 22 * hump(7200, 0.75) + 6 * hump(4600, 0.35) + 3 * hump(10500, 0.4);
+      db = 10 * Math.log10(Math.pow(10, voice / 10) + Math.pow(10, hiss / 10));
+    } else {
+      // formants near 300 Hz, 800 Hz and 2.6 kHz, then the harmonics fall away; a little air at the top
+      const body = -34 + 18 * hump(300, 0.9) + 14 * hump(800, 0.45) + 9 * hump(2600, 0.4) - 5.5 * Math.max(0, x - 1.5);
+      const air = -62 + 4 * hump(8000, 1);
+      db = 10 * Math.log10(Math.pow(10, body / 10) + Math.pow(10, air / 10));
+    }
+    freq[i] = f;
+    power[i] = Math.pow(10, db / 10);
+  }
+  return { freq, power };
+}
+
+const powerDb = (p: number) => 10 * Math.log10(Math.max(p, 1e-12));
+
+export interface DeEssResult {
+  band: number; // dB, the detection band's level
+  body: number; // dB, the body below the band
+  sibilance: number; // 0..1
+  reduction: number; // dB, positive
+}
+
+/** the detector and the gain computer on one steady moment: the band and the body, the weighting, the knee, the range */
+export function deess(spec: Spectrum, s: DeEss): DeEssResult {
+  const wc = warp(s.low);
+  let band = 0;
+  let body = 0;
+  for (let i = 0; i < spec.freq.length; i++) {
+    const w = warp(spec.freq[i]);
+    band += spec.power[i] * pass2(w, wc, 1 / BUTTERWORTH4_Q[0], true) * pass2(w, wc, 1 / BUTTERWORTH4_Q[1], true);
+    body += spec.power[i] * pass2(w, wc, SQRT2, false);
+  }
+  const bandDb = powerDb(band);
+  const bodyDb = powerDb(body);
+  const sibilance = s.mode === "vocal" ? deessConfidence(bandDb - bodyDb) : 1;
+  return { band: bandDb, body: bodyDb, sibilance, reduction: deessTarget(bandDb - s.threshold, sibilance, s.range) };
+}
+
+/** the input and output level of each column of the spectrum, in dB, with the shelf applied at the reduction */
+export function deessColumns(spec: Spectrum, low: number, reduction: number, count: number) {
+  const cols: { lo: number; hi: number; input: number; output: number }[] = [];
+  const per = spec.freq.length / count;
+  for (let c = 0; c < count; c++) {
+    let input = 0;
+    let output = 0;
+    for (let i = Math.floor(c * per); i < Math.floor((c + 1) * per); i++) {
+      input += spec.power[i];
+      output += spec.power[i] * Math.pow(10, deessShelfDb(spec.freq[i], low, reduction) / 10);
+    }
+    cols.push({
+      lo: spec.freq[Math.floor(c * per)],
+      hi: spec.freq[Math.min(spec.freq.length - 1, Math.floor((c + 1) * per))],
+      input: powerDb(input),
+      output: powerDb(output),
+    });
+  }
+  return cols;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Leveler: the rider of products/leveler/source/dsp (rider.cpp, Engine::endHop) on the levels of a synthetic vocal,
+// once per 5 ms hop
+
+export interface Ride {
+  target: number; // dB
+  range: number; // ±dB
+  speed: number; // 0..1, 1.5 s to 40 ms
+  guard: number; // 0..1
+  lookahead: boolean;
+}
+
+export const RIDE_HOP = 0.005;
+export const RIDE_SECONDS = 8;
+const RIDE_LOOKAHEAD_HOPS = 6;
+const RIDE_LEVEL_HOPS = 20; // 100 ms
+const RIDE_FAST_HOPS = 4; // 20 ms
+const RIDE_HOLD = 0.3;
+const RIDE_ONSET = 0.03;
+const RIDE_ONSET_TIME = 0.005;
+const SILENCE_DB = -100;
+
+export type HopKind = "voice" | "breath" | "room";
+
+export interface Vocal {
+  level: Float64Array; // dB per hop, BS.1770-style loudness
+  kind: HopKind[];
+}
+
+/** loudnessDb: BS.1770 loudness of a mean square */
+const loudness = (ms: number) => (ms > 1e-10 ? -0.691 + 10 * Math.log10(ms) : SILENCE_DB);
+const meanSquare = (db: number) => Math.pow(10, (db + 0.691) / 10);
+
+/**
+ * eight seconds of a synthetic vocal, like the benchmark's: phrases spread over about 18 dB, cut into 240 ms
+ * syllables with 80 ms gaps, each swelling by ±30%, a breath before each phrase, over room noise at about −70 dB.
+ * Illustrative, not a recording.
+ */
+export function vocal(): Vocal {
+  const n = Math.round(RIDE_SECONDS / RIDE_HOP);
+  const level = new Float64Array(n).fill(-70);
+  const kind: HopKind[] = new Array(n).fill("room");
+  const phrases = [
+    { at: 0.62, level: -31, syllables: 4 },
+    { at: 2.44, level: -14, syllables: 4 },
+    { at: 4.3, level: -26, syllables: 3 },
+    { at: 5.84, level: -18, syllables: 6 },
+  ];
+  for (const ph of phrases) {
+    // the breath, 300 ms before the phrase
+    for (let t = ph.at - 0.36; t < ph.at - 0.12; t += RIDE_HOP) {
+      const h = Math.round(t / RIDE_HOP);
+      const u = (t - (ph.at - 0.36)) / 0.24;
+      level[h] = -40 + 20 * Math.log10(0.4 + 0.6 * Math.sin(Math.PI * u));
+      kind[h] = "breath";
+    }
+    for (let s = 0; s < ph.syllables; s++) {
+      const start = ph.at + s * 0.32;
+      for (let t = start; t < start + 0.24; t += RIDE_HOP) {
+        const h = Math.round(t / RIDE_HOP);
+        if (h >= n) break;
+        const u = (t - start) / 0.24;
+        // a swell of ±30% in amplitude, with 10 ms edges
+        const edge = Math.min(1, (t - start) / 0.01, (start + 0.24 - t) / 0.01);
+        const amp = (0.7 + 0.6 * Math.sin(Math.PI * u)) * Math.max(0.05, edge);
+        level[h] = ph.level + 20 * Math.log10(amp);
+        kind[h] = "voice";
+      }
+    }
+  }
+  return { level, kind };
+}
+
+/**
+ * the rider's gain in dB for each hop, and the gain each hop of the input is heard with: the detection runs on the
+ * input as it arrives, and with lookahead the audio is delayed by six hops, so a move is in place before its sound
+ */
+export function ride(v: Vocal, s: Ride): { gain: Float64Array; applied: Float64Array } {
+  const n = v.level.length;
+  const lo = -s.range;
+  const hi = s.range;
+  const boost = 1.5 * Math.pow(0.04 / 1.5, Math.max(0, Math.min(1, s.speed)));
+  const cut = boost * 0.5;
+  const energies = new Float64Array(RIDE_LEVEL_HOPS);
+  const voiced = new Array<boolean>(RIDE_LEVEL_HOPS).fill(false);
+  const gain = new Float64Array(n);
+  let g = 0;
+  let silent = 1e9;
+  let onsetLeft = 0;
+  const toward = (desired: number, time: number, scale = 1) => {
+    g += (desired - g) * (1 - Math.exp(-RIDE_HOP / Math.max(time, 1e-4))) * scale;
+  };
+  const rideTo = (level: number, scale: number, onset: boolean) => {
+    const desired = Math.max(lo, Math.min(hi, s.target - level));
+    let time = desired > g ? boost : cut;
+    if (onset) time = Math.min(time, RIDE_ONSET_TIME);
+    toward(desired, time, scale);
+  };
+  for (let h = 0; h < n; h++) {
+    const slot = h % RIDE_LEVEL_HOPS;
+    energies[slot] = meanSquare(v.level[h]);
+    let fast = 0;
+    for (let i = 0; i < RIDE_FAST_HOPS; i++) fast += energies[(slot + RIDE_LEVEL_HOPS - i) % RIDE_LEVEL_HOPS];
+    const fastDb = loudness(fast / RIDE_FAST_HOPS);
+    const floor = s.target - 24;
+    const state = fastDb < floor ? "silent" : v.kind[h] === "voice" ? "voiced" : "unvoiced";
+    voiced[slot] = state === "voiced";
+    let ve = 0;
+    let vh = 0;
+    for (let i = 0; i < RIDE_LEVEL_HOPS; i++) {
+      if (voiced[i]) {
+        ve += energies[i];
+        vh++;
+      }
+    }
+    const voicedDb = vh > 0 ? loudness(ve / vh) : SILENCE_DB;
+    if (state === "voiced") {
+      if (silent > RIDE_HOLD) onsetLeft = RIDE_ONSET;
+      silent = 0;
+      const onset = onsetLeft > 0;
+      onsetLeft = Math.max(onsetLeft - RIDE_HOP, 0);
+      rideTo(voicedDb, 1, onset);
+    } else if (state === "unvoiced") {
+      const k = 1 - Math.max(0, Math.min(1, s.guard));
+      if (k > 0) rideTo(fastDb, k * k * k, false);
+    } else {
+      silent += RIDE_HOP;
+      onsetLeft = 0;
+      if (silent > RIDE_HOLD) toward(Math.max(lo, Math.min(hi, 0)), Math.max(2 * boost, 0.3));
+    }
+    g = Math.max(lo, Math.min(hi, g));
+    gain[h] = g;
+  }
+  // the gain set at the end of a hop is ramped in over the next one, onto audio delayed by the lookahead
+  const delay = s.lookahead ? RIDE_LOOKAHEAD_HOPS : 0;
+  const applied = new Float64Array(n);
+  for (let t = 0; t < n; t++) {
+    const h = t + delay - 1;
+    applied[t] = h < 0 ? 0 : gain[Math.min(n - 1, h)];
+  }
+  return { gain, applied };
+}
+
+/**
+ * the standard deviation of the 100 ms loudness over the voiced hops, before and after: the benchmark's spread. Each
+ * reading is taken over the voiced hops of its 100 ms, as the rider reads the voice.
+ */
+export function rideSpread(v: Vocal, applied: Float64Array): { before: number; after: number } {
+  const before: number[] = [];
+  const after: number[] = [];
+  for (let t = RIDE_LEVEL_HOPS; t < v.level.length; t++) {
+    if (v.kind[t] !== "voice") continue;
+    let a = 0;
+    let b = 0;
+    let k = 0;
+    for (let i = t - RIDE_LEVEL_HOPS + 1; i <= t; i++) {
+      if (v.kind[i] !== "voice") continue;
+      a += meanSquare(v.level[i]);
+      b += meanSquare(v.level[i] + applied[i]);
+      k++;
+    }
+    before.push(loudness(a / k));
+    after.push(loudness(b / k));
+  }
+  const sd = (xs: number[]) => {
+    const m = xs.reduce((s, x) => s + x, 0) / xs.length;
+    return Math.sqrt(xs.reduce((s, x) => s + (x - m) * (x - m), 0) / xs.length);
+  };
+  return { before: sd(before), after: sd(after) };
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 
 export function formatFreq(f: number): string {
   if (f >= 1000) return `${(f / 1000).toFixed(f >= 10000 ? 1 : 2)} kHz`;

@@ -46,11 +46,12 @@ const path = Astro.url.pathname.replace(/\/$/, "");
     transform: translateY(-2px);
   }
   .header__nav {
-    grid-column: 6 / span 5;
+    grid-column: 5 / span 6;
   }
   .header__nav ul {
     display: flex;
-    gap: clamp(20px, 3vw, 48px);
+    flex-wrap: wrap;
+    gap: 0 clamp(20px, 2.4vw, 40px);
   }
   .header__nav a,
   .header__source {
@@ -62,6 +63,7 @@ const path = Astro.url.pathname.replace(/\/$/, "");
     padding-block: var(--s2);
     background: linear-gradient(var(--spot), var(--spot)) left bottom / 0 1.5px no-repeat;
     transition: background-size 0.5s var(--ease-out), color 0.2s;
+    white-space: nowrap;
   }
   .header__nav a:hover,
   .header__source:hover {
@@ -92,7 +94,8 @@ const path = Astro.url.pathname.replace(/\/$/, "");
     margin-left: 0;
   }
 
-  @media (max-width: 760px) {
+  /* six product names need the row to themselves below this */
+  @media (max-width: 1000px) {
     .header__row {
       row-gap: var(--s2);
     }
@@ -107,7 +110,7 @@ const path = Astro.url.pathname.replace(/\/$/, "");
       grid-row: 2;
     }
     .header__nav ul {
-      gap: var(--s5);
+      gap: 0 var(--s5);
     }
   }
 </style>

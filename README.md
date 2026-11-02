@@ -24,7 +24,7 @@ products/<code>/      one directory per product: CMakeLists.txt, source/, tests/
 packaging/            installer scripts shared by every product
 tools/icons/          renders each product's app icon and installer art
 scripts/              upstream engine sync and checks
-website/              altvane.com: the Astro site (see website/README.md)
+website/              altvane.co: the Astro site (see website/README.md)
 ```
 
 ## Build

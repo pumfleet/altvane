@@ -12,7 +12,7 @@ import { product } from "../data/products";
 
 const p = product("dialogue");
 ---
-<Base title="Altvane Dialogue: neural dialogue isolation" description={p.summary} product="dialogue">
+<Base title="Altvane Dialogue: neural dialogue isolation" description={p.summary} product="dialogue" image={p.editor}>
   <ProductHero product={p}>
     <DialogueFigure controls rows={26} />
   </ProductHero>
@@ -22,16 +22,17 @@ const p = product("dialogue");
       items={[
         { lead: "Three levels", text: "Voice, Ambience and Reverb, each from Off to +12 dB. The stems always add up to the input, so with every level at 0 dB the plug-in is transparent, sample for sample." },
         { lead: "See what you keep", text: "The spectrum stacks what each stem keeps at its level, under a faint outline of the input: turn the ambience down and its layer shrinks. Solo a stem, or press Removed to hear exactly what is being taken away." },
+        { lead: "Stems on their own outputs", text: "Turn on the plug-in's Voice, Ambience and Reverb outputs in your host and each stem arrives on its own channels, at its level and the output gain, to mix on its own track. Together they add up to the main output." },
         { lead: "Sensitivity across the spectrum", text: "Each stem has a six-point curve from 120 Hz to 11 kHz. Raise the voice's curve at the top to keep consonants, or raise the ambience's at the bottom to clear rumble and wind." },
-        { lead: "Eco or High", text: "Eco or High quality. Linked runs one analysis of the mid and applies it to both channels; Stereo analyses each channel on its own. 44.1–192 kHz, mono or stereo." },
-        { lead: "Latency your host can trust", text: "A fixed, reported latency of about 80 ms at 512-sample buffers, compensated exactly by your host. Offline bounces wait for the model; in real time, a late frame plays unprocessed instead of dropping out." },
+        { lead: "Linked, Stereo or Mid/Side", text: "Eco or High quality. Linked runs one analysis of the mid and applies it to both channels; Stereo analyses each channel on its own; Mid/Side analyses the mid and the side on their own, for centred dialogue in a wide ambience. 44.1–192 kHz, mono or stereo." },
+        { lead: "Latency your host can trust", text: "A fixed, reported latency of 70.6 ms at 48 kHz and 512-sample blocks, 60 ms of it the model's frame and look-ahead, compensated exactly by your host. Offline bounces wait for the model; in real time, a frame that would be late plays unprocessed instead of dropping out." },
         { lead: "Everything else, done properly", text: "Presets with a factory set, A/B compare, undo and redo, adjustable interface size and accent colour, keyboard control, screen-reader support and host parameter menus." },
       ]}
     />
   </Section>
 
   <Section id="editor" title="The editor" note="Hero knobs in the stems' colours, the spectrum above, and quality, stereo mode, latency and output in the footer.">
-    <Plate src="/images/dialogue-editor.png" width={1800} height={1160} alt="The Altvane Dialogue editor: a dark spectrum with the voice layer in cream over blue ambience and violet reverb, and three knobs below labelled Voice at 0.0 dB, Ambience at −20.0 dB and Reverb at −10.0 dB." caption="Altvane Dialogue 0.1.0." />
+    <Plate {...p.editor!} caption="Altvane Dialogue, from an earlier build: Mid/Side has since joined the stereo modes, and the 80.0 ms its footer reads is now 70.6 ms." />
   </Section>
 
   <Section id="how" title="How it works">
@@ -44,8 +45,10 @@ const p = product("dialogue");
       </p>
       <p class="t-body">
         Other sample rates are converted to 48 kHz and back, and what that round trip loses (everything above about
-        20 kHz) is added back from the input, following the ambience level. The network and its weights are compiled into
-        the plug-in, so there are no files to install at run time.
+        20 kHz) is added back from the input, following the ambience level. The network is Altvane's own C++
+        implementation, with the large matrix products on Apple's Accelerate on macOS, and its weights are built into
+        the plug-in, so there are no files to install at run time. Stereo and Mid/Side run two analyses, computed
+        together so each weight is read once per frame.
       </p>
     </div>
   </Section>
@@ -63,22 +66,22 @@ const p = product("dialogue");
     />
   </Section>
 
-  <Section id="specs" title="Specifications" note="Release build on an M5 Max, at 48 kHz, as a share of one core per instance.">
+  <Section id="specs" title="Specifications" note="Separation is scored as SDR on a synthetic room with known parts: speech, its reflections and reverb, rumble, hum and hiss. High quality, Linked.">
     <Readings
       size="large"
       items={[
-        { value: "8%", label: "Eco, Linked" },
-        { value: "22%", label: "High, Linked" },
-        { value: "80 ms", label: "latency at 512-sample buffers" },
+        { value: "11.9 dB", label: "voice stem against the dry voice; the input scores 6.3 dB" },
+        { value: "113.8 dB", label: "the stems summed against the input, float precision" },
+        { value: "70.6 ms", label: "latency at 48 kHz, 64- to 512-sample blocks" },
       ]}
     />
     <div class="spec-table">
       <Readings
         items={[
-          { value: "16%", label: "Eco, Stereo" },
-          { value: "43%", label: "High, Stereo" },
+          { value: "74.1 ms", label: "latency at 44.1 kHz, 512-sample blocks" },
+          { value: "71.4 ms", label: "latency at 96 kHz, 512-sample blocks" },
           { value: "44.1–192", label: "kHz, mono or stereo" },
-          { value: "macOS, Windows", label: "macOS 11+, Windows x64; VST3, AU, LV2, Standalone" },
+          { value: "macOS, Windows", label: "macOS 11+ on Apple silicon and Intel, Windows x64; VST3, AU, LV2, Standalone" },
         ]}
       />
     </div>

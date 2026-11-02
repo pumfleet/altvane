@@ -1,11 +1,12 @@
 ---
 import Arrow from "./Arrow.astro";
-import { type Product, downloadLabel, releasesUrl, sourceUrl } from "../data/products";
+import { type Product, getAction, getNote, sourceUrl } from "../data/products";
 
 interface Props {
   product: Product;
 }
 const { product: p } = Astro.props;
+const get = getAction(p);
 ---
 <section class="sheet phero" aria-labelledby="product-title">
   <h1 id="product-title" class="t-display phero__title">
@@ -15,8 +16,8 @@ const { product: p } = Astro.props;
     <p class="t-label">{p.kind}</p>
     <p class="t-lead">{p.summary}</p>
     <div class="phero__actions">
-      <a class="action" href={releasesUrl(p.code)}>{downloadLabel(p)} <Arrow dir="down" /></a>
-      <p class="t-small">Free, for {p.platformNote ?? "macOS, Windows and Linux"}. From GitHub Releases.</p>
+      <a class="action" href={get.href} data-external={get.arrow === "out" ? "" : undefined}>{get.label} <Arrow dir={get.arrow} /></a>
+      <p class="t-small">{getNote(p)}</p>
       <a class="action action--quiet" href={sourceUrl(p.code)} data-external>Source and README <Arrow dir="out" /></a>
     </div>
   </div>

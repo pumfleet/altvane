@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-26T23:45:00Z",
+  "generatedAt": "2026-10-30T18:00:00Z",
   "title": "Design System: Altvane",
   "extensions": {
     "colorMeta": {
@@ -77,6 +77,36 @@
           "oklch(72.1% 0.112 76.8)",
           "oklch(83.6% 0.073 76.8)",
           "oklch(95.0% 0.023 76.8)"
+        ]
+      },
+      "deesser": {
+        "role": "secondary",
+        "displayName": "De-Esser Rhodamine",
+        "canonical": "oklch(54.7% 0.199 353.3)",
+        "tonalRamp": [
+          "oklch(15.0% 0.074 353.3)",
+          "oklch(26.4% 0.149 353.3)",
+          "oklch(37.9% 0.199 353.3)",
+          "oklch(49.3% 0.199 353.3)",
+          "oklch(60.7% 0.199 353.3)",
+          "oklch(72.1% 0.182 353.3)",
+          "oklch(83.6% 0.118 353.3)",
+          "oklch(95.0% 0.038 353.3)"
+        ]
+      },
+      "leveler": {
+        "role": "secondary",
+        "displayName": "Leveler Cerulean",
+        "canonical": "oklch(57.9% 0.121 237.2)",
+        "tonalRamp": [
+          "oklch(15.0% 0.045 237.2)",
+          "oklch(26.4% 0.090 237.2)",
+          "oklch(37.9% 0.121 237.2)",
+          "oklch(49.3% 0.121 237.2)",
+          "oklch(60.7% 0.121 237.2)",
+          "oklch(72.1% 0.111 237.2)",
+          "oklch(83.6% 0.072 237.2)",
+          "oklch(95.0% 0.023 237.2)"
         ]
       },
       "paper": {
@@ -246,7 +276,7 @@
       },
       {
         "name": "header",
-        "value": "760px"
+        "value": "1000px"
       },
       {
         "name": "stack",
@@ -283,8 +313,8 @@
       "name": "Programme",
       "kind": "custom",
       "refersTo": "programme-row",
-      "description": "The download list set like a concert programme: one ruled row per plug-in with its version and a download link; the spot ink draws across the row on hover.",
-      "html": "<ol class=\"ds-programme\"><li style=\"--spot: #2a3fd4\"><a class=\"ds-programme__name\" href=\"#\">Altvane EQ</a><span class=\"ds-programme__meta\">0.1.0</span><a class=\"ds-programme__get\" href=\"#\">Download <svg viewBox=\"0 0 18 18\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"square\"><path d=\"M9 2v12M4 9l5 5 5-5M3 16.5h12\"/></svg></a></li><li style=\"--spot: #e0502a\"><a class=\"ds-programme__name\" href=\"#\">Altvane Dialogue</a><span class=\"ds-programme__meta\">0.1.0, macOS on Apple silicon for now</span><a class=\"ds-programme__get\" href=\"#\">Download <svg viewBox=\"0 0 18 18\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"square\"><path d=\"M9 2v12M4 9l5 5 5-5M3 16.5h12\"/></svg></a></li><li style=\"--spot: #0f7a5c\"><a class=\"ds-programme__name\" href=\"#\">Altvane Compressor</a><span class=\"ds-programme__meta\">In development</span><a class=\"ds-programme__get ds-programme__get--quiet\" href=\"#\">Details <svg viewBox=\"0 0 18 18\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"square\"><path d=\"M2 9h13M10 4l5 5-5 5\"/></svg></a></li></ol>",
+      "description": "The download list set like a concert programme: one ruled row per plug-in with its version and a download link, or \"From source\" and a build link before its first release; the spot ink draws across the row on hover.",
+      "html": "<ol class=\"ds-programme\"><li style=\"--spot: #2a3fd4\"><a class=\"ds-programme__name\" href=\"#\">Altvane EQ</a><span class=\"ds-programme__meta\">From source</span><a class=\"ds-programme__get\" href=\"#\">Build <svg viewBox=\"0 0 18 18\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"square\"><path d=\"M5 13 14 4M6 4h8v8\"/></svg></a></li><li style=\"--spot: #e0502a\"><a class=\"ds-programme__name\" href=\"#\">Altvane Dialogue</a><span class=\"ds-programme__meta\">From source, macOS 11+ and Windows x64 for now</span><a class=\"ds-programme__get\" href=\"#\">Build <svg viewBox=\"0 0 18 18\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"square\"><path d=\"M5 13 14 4M6 4h8v8\"/></svg></a></li><li style=\"--spot: #a8740a\"><a class=\"ds-programme__name\" href=\"#\">Altvane Limiter</a><span class=\"ds-programme__meta\">0.1.0</span><a class=\"ds-programme__get\" href=\"#\">Download <svg viewBox=\"0 0 18 18\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"square\"><path d=\"M9 2v12M4 9l5 5 5-5M3 16.5h12\"/></svg></a></li></ol>",
       "css": ".ds-programme { list-style: none; margin: 0; padding: 0; max-width: 30rem; border-top: 1.5px solid var(--ink, #111213); font-family: var(--font, 'Archivo Variable', 'Helvetica Neue', Helvetica, Arial, sans-serif); color: var(--ink, #111213); } .ds-programme li { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'name get' 'meta get'; align-items: center; column-gap: 24px; padding: 12px 0 13px; border-bottom: 1px solid var(--rule, #d5d7d6); position: relative; } .ds-programme li::before { content: ''; position: absolute; left: 0; top: -1px; width: 0; height: 1.5px; background: var(--spot, #111213); transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1); } .ds-programme li:hover::before, .ds-programme li:focus-within::before { width: 100%; } .ds-programme__name { grid-area: name; font-stretch: 112%; font-weight: 450; font-size: 1.1875rem; letter-spacing: -0.012em; color: inherit; text-decoration: none; } .ds-programme__meta { grid-area: meta; font-size: 0.8125rem; line-height: 1.45; color: var(--ink-3, #6b6d70); font-variant-numeric: tabular-nums lining-nums; } .ds-programme__get { grid-area: get; display: inline-flex; align-items: center; gap: 8px; font-weight: 500; font-stretch: 108%; font-size: 0.9375rem; color: inherit; text-decoration: none; padding: 8px 0 8px 12px; } .ds-programme__get svg { width: 16px; height: 16px; transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1); } .ds-programme__get:hover svg { transform: translateY(2px); } .ds-programme__get--quiet { color: var(--ink-3, #6b6d70); font-weight: 450; } .ds-programme__get--quiet:hover { color: var(--ink, #111213); } .ds-programme__get--quiet:hover svg { transform: translateX(3px); } .ds-programme a:focus-visible { outline: 2px solid var(--ink, #111213); outline-offset: 3px; }"
     },
     {
@@ -292,7 +322,7 @@
       "kind": "custom",
       "refersTo": "reading",
       "description": "Measured values on hairlines in tabular lining figures, each with the condition it was measured under.",
-      "html": "<dl class=\"ds-readings\"><div><dt>0.01 dB</dt><dd>curve accuracy in the zero-latency modes</dd></div><div><dt>8%</dt><dd>of one core in Eco on an M5 Max</dd></div><div><dt>80 ms</dt><dd>latency at 512-sample buffers</dd></div></dl>",
+      "html": "<dl class=\"ds-readings\"><div><dt>0.01 dB</dt><dd>curve accuracy in the zero-latency modes</dd></div><div><dt>70.6 ms</dt><dd>latency at 48 kHz, 512-sample blocks</dd></div><div><dt>44.1–192</dt><dd>kHz, mono or stereo</dd></div></dl>",
       "css": ".ds-readings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; border-top: 1px solid var(--rule, #d5d7d6); font-family: var(--font, 'Archivo Variable', 'Helvetica Neue', Helvetica, Arial, sans-serif); color: var(--ink, #111213); } .ds-readings div { padding: 16px 16px 16px 0; border-bottom: 1px solid var(--rule, #d5d7d6); } .ds-readings div:last-child:nth-child(odd) { grid-column: 1 / -1; } .ds-readings dt { font-stretch: 115%; font-weight: 380; font-size: 1.625rem; letter-spacing: -0.025em; line-height: 1.1; white-space: nowrap; font-variant-numeric: tabular-nums lining-nums; } .ds-readings dd { margin: 4px 0 0; font-size: 0.8125rem; line-height: 1.4; color: var(--ink-3, #6b6d70); max-width: 18ch; }"
     },
     {
@@ -330,7 +360,7 @@
   ],
   "narrative": {
     "northStar": "The Musica Viva Sheet",
-    "overview": "Every Altvane plug-in is announced the way a concert in a Swiss poster series is: one cool white sheet, lowercase grotesk set flush left on a strict twelve-column grid, and one large geometric figure. The figure is not illustration. It is computed from the product's real mechanism (EQ's filter response as concentric arcs, Dialogue's stems summing to the input, the Compressor's gain computer as columns under a knee, the Limiter's lookahead holding a waveform under its ceiling), it draws in once from the product's neutral state, and it answers the pointer and the keyboard. The sheet carries the precision claim; the figure proves it.\n\nThe page is quiet and dense in the way a printed programme is dense: near-black ink, hairline rules, registration ticks on every column line, small tabular readings with the condition they were measured under. Hierarchy comes from Archivo's width axis and from scale, not from colour, boxes or weight. Each product owns exactly one printed spot ink, and that ink appears only in its figure, its own rules and the links that name it. Actions are set type standing on a rule with a drawn arrow; nothing on the sheet is a filled button.\n\nThe world rejects the plug-in category's defaults: a dark hero, a GUI screenshot used as the hook, feature cards and format badges. Screenshots do appear, but only further down a product page, framed as a plate.",
+    "overview": "Every Altvane plug-in is announced the way a concert in a Swiss poster series is: one cool white sheet, lowercase grotesk set flush left on a strict twelve-column grid, and one large geometric figure. The figure is not illustration. It is computed from the product's real mechanism (EQ's filter response as concentric arcs, Dialogue's stems summing to the input, the Compressor's gain computer as columns under a knee, the Limiter's lookahead holding a waveform under its ceiling, the De-Esser's shelf biting the top off an ess, the Leveler's moves gathering a vocal's phrases on its target), it draws in once from the product's neutral state, and it answers the pointer and the keyboard. The sheet carries the precision claim; the figure proves it.\n\nThe page is quiet and dense in the way a printed programme is dense: near-black ink, hairline rules, registration ticks on every column line, small tabular readings with the condition they were measured under. Hierarchy comes from Archivo's width axis and from scale, not from colour, boxes or weight. Each product owns exactly one printed spot ink, and that ink appears only in its figure, its own rules and the links that name it. Actions are set type standing on a rule with a drawn arrow; nothing on the sheet is a filled button.\n\nThe world rejects the plug-in category's defaults: a dark hero, a GUI screenshot used as the hook, feature cards and format badges. Screenshots do appear, but only further down a product page, framed as a plate.",
     "keyCharacteristics": [
       "Cool white stock, near-black ink, one spot ink per product.",
       "Archivo Variable across its width axis: expanded and light for names, normal for text, tabular figures for readings.",
