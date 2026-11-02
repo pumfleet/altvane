@@ -40,22 +40,22 @@ jobs:
             os: macos-latest
             pluginval-binary: ./pluginval/Builds/pluginval_artefacts/RelWithDebugInfo/pluginval.app/Contents/MacOS/pluginval
             cmake_extra_flags: -DWITH_ADDRESS_SANITIZER=ON -DWITH_THREAD_SANITIZER=OFF -DALTVANE_FORMATS="VST3;AU" -DALTVANE_SIMD_TARGET="NEON"
-            pluginval_disabled: Plugin state restoration
+            pluginval_disabled: ""
           - name: macOS Thread Sanitizer
             os: macos-latest
             pluginval-binary: ./pluginval/Builds/pluginval_artefacts/RelWithDebugInfo/pluginval.app/Contents/MacOS/pluginval
             cmake_extra_flags: -DWITH_ADDRESS_SANITIZER=OFF -DWITH_THREAD_SANITIZER=ON -DALTVANE_FORMATS="VST3;AU" -DALTVANE_SIMD_TARGET="NEON"
-            pluginval_disabled: Plugin state restoration
+            pluginval_disabled: ""
           - name: Linux Address Sanitizer
             os: ubuntu-latest
             pluginval-binary: ./pluginval/Builds/pluginval_artefacts/RelWithDebugInfo/pluginval
             cmake_extra_flags: -DCMAKE_C_COMPILER=clang-21 -DCMAKE_CXX_COMPILER=clang++-21 -DWITH_ADDRESS_SANITIZER=ON -DWITH_THREAD_SANITIZER=OFF -DALTVANE_FORMATS="VST3" -DALTVANE_SIMD_TARGET="AVX2"
-            pluginval_disabled: Plugin state restoration
+            pluginval_disabled: ""
           - name: Linux Thread Sanitizer
             os: ubuntu-latest
             pluginval-binary: ./pluginval/Builds/pluginval_artefacts/RelWithDebugInfo/pluginval
             cmake_extra_flags: -DCMAKE_C_COMPILER=clang-21 -DCMAKE_CXX_COMPILER=clang++-21 -DWITH_ADDRESS_SANITIZER=OFF -DWITH_THREAD_SANITIZER=ON -DALTVANE_FORMATS="VST3" -DALTVANE_SIMD_TARGET="AVX2"
-            pluginval_disabled: Plugin state restoration,Background thread state
+            pluginval_disabled: Background thread state
 
     steps:
       - name: Set up Clang (Linux)
