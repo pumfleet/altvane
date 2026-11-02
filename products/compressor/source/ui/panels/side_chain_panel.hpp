@@ -31,6 +31,10 @@ namespace altvane::compressor {
 
         void mouseUp(const juce::MouseEvent& e) override;
 
+        void visibilityChanged() override;
+
+        SideEqView& getEqForTesting() { return eq_; }
+
     private:
         CompBridge& bridge_;
         ui::Chip internal_{"Internal"}, external_{"External"}, listen_{"Listen"}, swap_{"Swap"}, eq_on_{"EQ"};

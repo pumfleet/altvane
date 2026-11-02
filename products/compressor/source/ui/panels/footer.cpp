@@ -9,6 +9,7 @@
 #include "footer.hpp"
 
 #include "altvane_ui/theme/fonts.hpp"
+#include "altvane_ui/widgets/help_balloon.hpp"
 #include "../theme/compressor_tokens.hpp"
 
 namespace altvane::compressor {
@@ -31,8 +32,8 @@ namespace altvane::compressor {
     Footer::Footer(CompBridge& bridge) : bridge_(bridge) {
         oversample_.setComponentID(zlp::POversample::kID);
         oversample_.setTitle("Oversampling");
-        oversample_.setTooltip("Runs the compressor at a higher rate to reduce aliasing from fast gain changes. "
-            "Adds latency.");
+        ui::setHelp(oversample_, "Oversampling", "Runs the compressor at a higher rate to reduce aliasing from fast "
+                    "gain changes. Adds latency.");
         oversample_.build_menu = [this] {
             juce::PopupMenu menu;
             const auto current = bridge_.getChoice(zlp::POversample::kID);
@@ -47,11 +48,11 @@ namespace altvane::compressor {
 
         delta_.setComponentID(zlp::PCompDelta::kID);
         delta_.setOnColour(colour::kWarning);
-        delta_.setTooltip("Hear only what the compressor changes");
+        ui::setHelp(delta_, "Delta", "Hear only what the compressor changes.");
         delta_.on_click = [this] { bridge_.toggle(zlp::PCompDelta::kID, "Delta"); };
 
         time_.setTitle("Display time");
-        time_.setTooltip("How much history the level display shows");
+        ui::setHelp(time_, "Display time", "How much history the level display shows.");
         time_.build_menu = [this] {
             juce::PopupMenu menu;
             const auto current = bridge_.getDisplayChoice(zlstate::PAnalyzerTimeLength::kID);
@@ -65,7 +66,7 @@ namespace altvane::compressor {
         };
 
         scale_.setTitle("Scale");
-        scale_.setTooltip("The dB range of the level display, the knee display and the meters");
+        ui::setHelp(scale_, "Scale", "The dB range of the level display, the knee display and the meters.");
         scale_.build_menu = [this] {
             juce::PopupMenu menu;
             const auto current = bridge_.getDisplayChoice(zlstate::PAnalyzerMinDB::kID);
@@ -79,14 +80,14 @@ namespace altvane::compressor {
             bridge_.setDisplay(zlstate::PAnalyzerMinDB::kID, static_cast<float>(id - 1));
         };
 
-        peak_.setTooltip("Show peak levels");
-        rms_.setTooltip("Show RMS levels");
+        ui::setHelp(peak_, "Peak", "Show peak levels.");
+        ui::setHelp(rms_, "RMS", "Show RMS levels.");
         peak_.on_click = [this] { bridge_.setDisplay(zlstate::PAnalyzerMagType::kID, 0.f); };
         rms_.on_click = [this] { bridge_.setDisplay(zlstate::PAnalyzerMagType::kID, 1.f); };
 
         bypass_.setComponentID(zlp::PCompON::kID);
         bypass_.setToggleable(true);
-        bypass_.setTooltip("Bypass the compressor, keeping its latency so nothing jumps");
+        ui::setHelp(bypass_, "Bypass", "Turns the compressor off, keeping its latency so nothing jumps.");
         bypass_.setOnColour(colour::kDanger);
         bypass_.on_click = [this] { bridge_.toggle(zlp::PCompON::kID, "Bypass"); };
 

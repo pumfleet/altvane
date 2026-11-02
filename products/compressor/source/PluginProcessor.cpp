@@ -49,9 +49,19 @@ PluginProcessor::PluginProcessor() :
     equalize_attach_(*this, parameters_, equalize_controller_),
     ext_side_(*parameters_.getRawParameterValue(zlp::PExtSide::kID)),
     side_out_(*parameters_.getRawParameterValue(zlp::PSideOut::kID)) {
+    addListener(this);
 }
 
-PluginProcessor::~PluginProcessor() = default;
+PluginProcessor::~PluginProcessor() {
+    removeListener(this);
+}
+
+void PluginProcessor::audioProcessorChanged(juce::AudioProcessor*, const ChangeDetails& details) {
+    // Altvane: the engine reports its latency from the message thread; keep a copy the audio thread may read
+    if (details.latencyChanged) {
+        reported_latency_.store(getLatencySamples(), std::memory_order::relaxed);
+    }
+}
 
 //==============================================================================
 const juce::String PluginProcessor::getName() const {
@@ -107,19 +117,29 @@ void PluginProcessor::changeProgramName(int, const juce::String&) {
 //==============================================================================
 void PluginProcessor::prepareToPlay(const double sample_rate, const int samples_per_block) {
     // prepare to play
-    float_buffer_.setSize(4, samples_per_block);
+    max_block_size_ = static_cast<size_t>(std::max(1, samples_per_block));
+    const auto block = static_cast<int>(max_block_size_);
+    float_buffer_.setSize(4, block);
     float_buffer_.clear();
     main_pointers_[0] = float_buffer_.getWritePointer(0);
     main_pointers_[1] = float_buffer_.getWritePointer(1);
     float_side_pointers_[0] = float_buffer_.getWritePointer(2);
     float_side_pointers_[1] = float_buffer_.getWritePointer(3);
-    double_buffer_.setSize(2, samples_per_block);
+    double_buffer_.setSize(2, block);
     double_side_pointers_[0] = double_buffer_.getWritePointer(0);
     double_side_pointers_[1] = double_buffer_.getWritePointer(1);
     double_buffer_.clear();
-    compress_controller_.prepare(sample_rate, static_cast<size_t>(samples_per_block));
-    equalize_controller_.prepare(sample_rate, static_cast<size_t>(samples_per_block));
+    compress_controller_.prepare(sample_rate, max_block_size_);
+    equalize_controller_.prepare(sample_rate, max_block_size_);
     sample_rate_.store(sample_rate, std::memory_order::relaxed);
+    // Altvane: the input kept for host bypass, long enough for the longest latency (20 ms of lookahead and the
+    // oversamplers' filters, at most 74 samples) and a block on top
+    const auto capacity = static_cast<size_t>(std::ceil(sample_rate * .02)) + 128 + max_block_size_ + 1;
+    for (auto& dry : dry_buffers_) {
+        dry.assign(capacity, 0.0);
+    }
+    dry_pos_ = 0;
+    reported_latency_.store(getLatencySamples(), std::memory_order::relaxed);
     // determine current channel layout
     const auto* main_bus = getBus(true, 0);
     const auto* aux_bus = getBus(true, 1);
@@ -183,21 +203,75 @@ void PluginProcessor::processBlockBypassed(juce::AudioBuffer<double>& buffer, ju
     processBlockInternal<true>(buffer);
 }
 
-template <bool IsBypassed>
-void PluginProcessor::processBlockInternal(juce::AudioBuffer<float>& buffer) {
+template <bool IsBypassed, typename T>
+void PluginProcessor::processBlockInternal(juce::AudioBuffer<T>& buffer) {
     juce::ScopedNoDenormals no_denormals;
-    if (buffer.getNumSamples() == 0)
+    if (buffer.getNumSamples() == 0 || channel_layout_ == ChannelLayout::kInvalid) {
         return; // ignore empty blocks
+    }
+    // Altvane: the engine's buffers hold the prepared block size; hosts may send more, so work in pieces of at
+    // most that (upstream overran its buffers)
+    const auto total = static_cast<size_t>(buffer.getNumSamples());
+    const auto num_channels = std::min(buffer.getNumChannels(), 4);
+    for (size_t start = 0; start < total; start += max_block_size_) {
+        const auto num_samples = std::min(max_block_size_, total - start);
+        std::array<T*, 4> io{};
+        for (int chan = 0; chan < num_channels; ++chan) {
+            io[static_cast<size_t>(chan)] = buffer.getWritePointer(chan) + start;
+        }
+        // Altvane: host bypass plays the input delayed by the reported latency, whatever the engine, delta, the
+        // side-chain listen or a solo would play (upstream played them in bypass too)
+        const auto dry_start = pushDry(io, num_samples);
+        processPiece<IsBypassed>(io, num_samples);
+        if constexpr (IsBypassed) {
+            playDry(io, num_samples, dry_start);
+        }
+    }
+}
+
+template <typename T>
+size_t PluginProcessor::pushDry(const std::array<T*, 4>& io, const size_t num_samples) {
+    const auto start = dry_pos_;
+    const auto capacity = dry_buffers_[0].size();
+    for (size_t chan = 0; chan < getNumMainChannels(); ++chan) {
+        auto& dry = dry_buffers_[chan];
+        auto pos = start;
+        for (size_t i = 0; i < num_samples; ++i) {
+            dry[pos] = static_cast<double>(io[chan][i]);
+            pos = pos + 1 == capacity ? 0 : pos + 1;
+        }
+    }
+    dry_pos_ = (start + num_samples) % capacity;
+    return start;
+}
+
+template <typename T>
+void PluginProcessor::playDry(const std::array<T*, 4>& io, const size_t num_samples, const size_t start) const {
+    const auto capacity = dry_buffers_[0].size();
+    // the buffer holds the longest latency and a block on top
+    const auto latency = static_cast<size_t>(std::max(0, reported_latency_.load(std::memory_order::relaxed)));
+    const auto delay = std::min(latency, capacity - max_block_size_ - 1);
+    for (size_t chan = 0; chan < getNumMainChannels(); ++chan) {
+        const auto& dry = dry_buffers_[chan];
+        auto pos = (start + capacity - delay) % capacity;
+        for (size_t i = 0; i < num_samples; ++i) {
+            io[chan][i] = static_cast<T>(dry[pos]);
+            pos = pos + 1 == capacity ? 0 : pos + 1;
+        }
+    }
+}
+
+template <bool IsBypassed>
+void PluginProcessor::processPiece(const std::array<float*, 4>& io, const size_t buffer_size) {
     const auto c_ext_side = ext_side_.load(std::memory_order::relaxed) > .5f;
     const auto c_side_out = side_out_.load(std::memory_order::relaxed) > .5f;
-    const auto buffer_size = static_cast<size_t>(buffer.getNumSamples());
     auto main_pointers = main_pointers_;
     auto double_side_pointers = double_side_pointers_;
     auto float_side_pointers = float_side_pointers_;
 
     switch (channel_layout_) {
     case ChannelLayout::kMain1Aux0: {
-        main_pointers[0] = buffer.getWritePointer(0);
+        main_pointers[0] = io[0];
         zldsp::vector::copy(main_pointers[1], main_pointers[0], buffer_size);
 
         zldsp::vector::copy<double, float>(double_side_pointers, main_pointers, buffer_size);
@@ -214,11 +288,11 @@ void PluginProcessor::processBlockInternal(juce::AudioBuffer<float>& buffer) {
         break;
     }
     case ChannelLayout::kMain1Aux1: {
-        main_pointers[0] = buffer.getWritePointer(0);
+        main_pointers[0] = io[0];
         zldsp::vector::copy(main_pointers[1], main_pointers[0], buffer_size);
 
         if (c_ext_side) {
-            zldsp::vector::copy(double_side_pointers[0], buffer.getReadPointer(1), buffer_size);
+            zldsp::vector::copy(double_side_pointers[0], io[1], buffer_size);
             zldsp::vector::copy(double_side_pointers[1], double_side_pointers[0], buffer_size);
         } else {
             zldsp::vector::copy<double, float>(double_side_pointers, main_pointers, buffer_size);
@@ -236,12 +310,12 @@ void PluginProcessor::processBlockInternal(juce::AudioBuffer<float>& buffer) {
         break;
     }
     case ChannelLayout::kMain1Aux2: {
-        main_pointers[0] = buffer.getWritePointer(0);
+        main_pointers[0] = io[0];
         zldsp::vector::copy(main_pointers[1], main_pointers[0], buffer_size);
 
         if (c_ext_side) {
-            zldsp::vector::copy(double_side_pointers[0], buffer.getReadPointer(1), buffer_size);
-            zldsp::vector::copy(double_side_pointers[1], buffer.getReadPointer(2), buffer_size);
+            zldsp::vector::copy(double_side_pointers[0], io[1], buffer_size);
+            zldsp::vector::copy(double_side_pointers[1], io[2], buffer_size);
         } else {
             zldsp::vector::copy<double, float>(double_side_pointers, main_pointers, buffer_size);
         }
@@ -264,8 +338,8 @@ void PluginProcessor::processBlockInternal(juce::AudioBuffer<float>& buffer) {
         break;
     }
     case ChannelLayout::kMain2Aux0: {
-        main_pointers[0] = buffer.getWritePointer(0);
-        main_pointers[1] = buffer.getWritePointer(1);
+        main_pointers[0] = io[0];
+        main_pointers[1] = io[1];
 
         zldsp::vector::copy<double, float>(double_side_pointers, main_pointers, buffer_size);
         equalize_controller_.process(double_side_pointers, buffer_size);
@@ -281,11 +355,11 @@ void PluginProcessor::processBlockInternal(juce::AudioBuffer<float>& buffer) {
         break;
     }
     case ChannelLayout::kMain2Aux1: {
-        main_pointers[0] = buffer.getWritePointer(0);
-        main_pointers[1] = buffer.getWritePointer(1);
+        main_pointers[0] = io[0];
+        main_pointers[1] = io[1];
 
         if (c_ext_side) {
-            zldsp::vector::copy(double_side_pointers[0], buffer.getWritePointer(2), buffer_size);
+            zldsp::vector::copy(double_side_pointers[0], io[2], buffer_size);
             zldsp::vector::copy(double_side_pointers[1], double_side_pointers[0], buffer_size);
         } else {
             zldsp::vector::copy<double, float>(double_side_pointers, main_pointers, buffer_size);
@@ -303,12 +377,12 @@ void PluginProcessor::processBlockInternal(juce::AudioBuffer<float>& buffer) {
         break;
     }
     case ChannelLayout::kMain2Aux2: {
-        main_pointers[0] = buffer.getWritePointer(0);
-        main_pointers[1] = buffer.getWritePointer(1);
+        main_pointers[0] = io[0];
+        main_pointers[1] = io[1];
 
         if (c_ext_side) {
-            zldsp::vector::copy(double_side_pointers[0], buffer.getWritePointer(2), buffer_size);
-            zldsp::vector::copy(double_side_pointers[1], buffer.getWritePointer(3), buffer_size);
+            zldsp::vector::copy(double_side_pointers[0], io[2], buffer_size);
+            zldsp::vector::copy(double_side_pointers[1], io[3], buffer_size);
         } else {
             zldsp::vector::copy<double, float>(double_side_pointers, main_pointers, buffer_size);
         }
@@ -330,23 +404,19 @@ void PluginProcessor::processBlockInternal(juce::AudioBuffer<float>& buffer) {
 }
 
 template <bool IsBypassed>
-void PluginProcessor::processBlockInternal(juce::AudioBuffer<double>& buffer) {
-    juce::ScopedNoDenormals no_denormals;
-    if (buffer.getNumSamples() == 0)
-        return; // ignore empty blocks
+void PluginProcessor::processPiece(const std::array<double*, 4>& io, const size_t buffer_size) {
     const auto c_ext_side = ext_side_.load(std::memory_order::relaxed) > .5f;
     const auto c_side_out = side_out_.load(std::memory_order::relaxed) > .5f;
-    const auto buffer_size = static_cast<size_t>(buffer.getNumSamples());
     auto main_pointers = main_pointers_;
     auto double_side_pointers = double_side_pointers_;
     auto float_side_pointers = float_side_pointers_;
 
     switch (channel_layout_) {
     case ChannelLayout::kMain1Aux0: {
-        zldsp::vector::copy(main_pointers[0], buffer.getWritePointer(0), buffer_size);
+        zldsp::vector::copy(main_pointers[0], io[0], buffer_size);
         zldsp::vector::copy(main_pointers[1], main_pointers[0], buffer_size);
 
-        double_side_pointers[0] = buffer.getWritePointer(0);
+        double_side_pointers[0] = io[0];
         zldsp::vector::copy(double_side_pointers[1], double_side_pointers[0], buffer_size);
         equalize_controller_.process(double_side_pointers, buffer_size);
         zldsp::vector::copy<float, double>(float_side_pointers, double_side_pointers, buffer_size);
@@ -363,10 +433,10 @@ void PluginProcessor::processBlockInternal(juce::AudioBuffer<double>& buffer) {
         break;
     }
     case ChannelLayout::kMain1Aux1: {
-        zldsp::vector::copy(main_pointers[0], buffer.getWritePointer(0), buffer_size);
+        zldsp::vector::copy(main_pointers[0], io[0], buffer_size);
         zldsp::vector::copy(main_pointers[1], main_pointers[0], buffer_size);
 
-        double_side_pointers[0] = c_ext_side ? buffer.getWritePointer(1) : buffer.getWritePointer(0);
+        double_side_pointers[0] = c_ext_side ? io[1] : io[0];
         zldsp::vector::copy(double_side_pointers[1], double_side_pointers[0], buffer_size);
         equalize_controller_.process(double_side_pointers, buffer_size);
         zldsp::vector::copy<float, double>(float_side_pointers, double_side_pointers, buffer_size);
@@ -374,25 +444,25 @@ void PluginProcessor::processBlockInternal(juce::AudioBuffer<double>& buffer) {
         compress_controller_.process(main_pointers, float_side_pointers, buffer_size, IsBypassed);
 
         if (equalize_controller_.getSoloOn()) {
-            zldsp::vector::copy(buffer.getWritePointer(0), equalize_controller_.getSoloPointers()[0], buffer_size);
+            zldsp::vector::copy(io[0], equalize_controller_.getSoloPointers()[0], buffer_size);
         } else if (c_side_out) {
             if (c_ext_side) {
-                zldsp::vector::copy(buffer.getWritePointer(0), double_side_pointers[0], buffer_size);
+                zldsp::vector::copy(io[0], double_side_pointers[0], buffer_size);
             }
         } else {
-            zldsp::vector::copy(buffer.getWritePointer(0), main_pointers[0], buffer_size);
+            zldsp::vector::copy(io[0], main_pointers[0], buffer_size);
         }
         break;
     }
     case ChannelLayout::kMain1Aux2: {
-        zldsp::vector::copy(main_pointers[0], buffer.getWritePointer(0), buffer_size);
+        zldsp::vector::copy(main_pointers[0], io[0], buffer_size);
         zldsp::vector::copy(main_pointers[1], main_pointers[0], buffer_size);
 
         if (c_ext_side) {
-            double_side_pointers[0] = buffer.getWritePointer(1);
-            double_side_pointers[1] = buffer.getWritePointer(2);
+            double_side_pointers[0] = io[1];
+            double_side_pointers[1] = io[2];
         } else {
-            double_side_pointers[0] = buffer.getWritePointer(0);
+            double_side_pointers[0] = io[0];
             zldsp::vector::copy(double_side_pointers[1], double_side_pointers[0], buffer_size);
         }
         equalize_controller_.process(double_side_pointers, buffer_size);
@@ -403,7 +473,7 @@ void PluginProcessor::processBlockInternal(juce::AudioBuffer<double>& buffer) {
         if (equalize_controller_.getSoloOn()) {
             zldsp::splitter::InplaceMSSplitter<double>::split(equalize_controller_.getSoloPointers()[0],
                                                               equalize_controller_.getSoloPointers()[1], buffer_size);
-            zldsp::vector::copy(buffer.getWritePointer(0),
+            zldsp::vector::copy(io[0],
                                 equalize_controller_.getSoloPointers()[0], buffer_size);
         } else if (c_side_out) {
             if (c_ext_side) {
@@ -411,44 +481,44 @@ void PluginProcessor::processBlockInternal(juce::AudioBuffer<double>& buffer) {
                 // are only filled while a band is soloed)
                 zldsp::splitter::InplaceMSSplitter<double>::split(double_side_pointers[0], double_side_pointers[1],
                                                                   buffer_size);
-                zldsp::vector::copy(buffer.getWritePointer(0), double_side_pointers[0], buffer_size);
+                zldsp::vector::copy(io[0], double_side_pointers[0], buffer_size);
             }
         } else {
-            zldsp::vector::copy(buffer.getWritePointer(0), main_pointers[0], buffer_size);
+            zldsp::vector::copy(io[0], main_pointers[0], buffer_size);
         }
         break;
     }
     case ChannelLayout::kMain2Aux0: {
-        zldsp::vector::copy(main_pointers[0], buffer.getWritePointer(0), buffer_size);
-        zldsp::vector::copy(main_pointers[1], buffer.getWritePointer(1), buffer_size);
+        zldsp::vector::copy(main_pointers[0], io[0], buffer_size);
+        zldsp::vector::copy(main_pointers[1], io[1], buffer_size);
 
-        double_side_pointers[0] = buffer.getWritePointer(0);
-        double_side_pointers[1] = buffer.getWritePointer(1);
+        double_side_pointers[0] = io[0];
+        double_side_pointers[1] = io[1];
         equalize_controller_.process(double_side_pointers, buffer_size);
         zldsp::vector::copy<float, double>(float_side_pointers, double_side_pointers, buffer_size);
 
         compress_controller_.process(main_pointers, float_side_pointers, buffer_size, IsBypassed);
 
         if (equalize_controller_.getSoloOn()) {
-            zldsp::vector::copy(buffer.getWritePointer(0), equalize_controller_.getSoloPointers()[0], buffer_size);
-            zldsp::vector::copy(buffer.getWritePointer(1), equalize_controller_.getSoloPointers()[1], buffer_size);
+            zldsp::vector::copy(io[0], equalize_controller_.getSoloPointers()[0], buffer_size);
+            zldsp::vector::copy(io[1], equalize_controller_.getSoloPointers()[1], buffer_size);
         } else if (c_side_out) {
         } else {
-            zldsp::vector::copy(buffer.getWritePointer(0), main_pointers[0], buffer_size);
-            zldsp::vector::copy(buffer.getWritePointer(1), main_pointers[1], buffer_size);
+            zldsp::vector::copy(io[0], main_pointers[0], buffer_size);
+            zldsp::vector::copy(io[1], main_pointers[1], buffer_size);
         }
         break;
     }
     case ChannelLayout::kMain2Aux1: {
-        zldsp::vector::copy(main_pointers[0], buffer.getWritePointer(0), buffer_size);
-        zldsp::vector::copy(main_pointers[1], buffer.getWritePointer(1), buffer_size);
+        zldsp::vector::copy(main_pointers[0], io[0], buffer_size);
+        zldsp::vector::copy(main_pointers[1], io[1], buffer_size);
 
         if (c_ext_side) {
-            double_side_pointers[0] = buffer.getWritePointer(2);
+            double_side_pointers[0] = io[2];
             zldsp::vector::copy(double_side_pointers[1], double_side_pointers[0], buffer_size);
         } else {
-            double_side_pointers[0] = buffer.getWritePointer(0);
-            double_side_pointers[1] = buffer.getWritePointer(1);
+            double_side_pointers[0] = io[0];
+            double_side_pointers[1] = io[1];
         }
         equalize_controller_.process(double_side_pointers, buffer_size);
         zldsp::vector::copy<float, double>(float_side_pointers, double_side_pointers, buffer_size);
@@ -456,29 +526,29 @@ void PluginProcessor::processBlockInternal(juce::AudioBuffer<double>& buffer) {
         compress_controller_.process(main_pointers, float_side_pointers, buffer_size, IsBypassed);
 
         if (equalize_controller_.getSoloOn()) {
-            zldsp::vector::copy(buffer.getWritePointer(0), equalize_controller_.getSoloPointers()[0], buffer_size);
-            zldsp::vector::copy(buffer.getWritePointer(1), equalize_controller_.getSoloPointers()[0], buffer_size);
+            zldsp::vector::copy(io[0], equalize_controller_.getSoloPointers()[0], buffer_size);
+            zldsp::vector::copy(io[1], equalize_controller_.getSoloPointers()[0], buffer_size);
         } else if (c_side_out) {
             if (c_ext_side) {
-                zldsp::vector::copy(buffer.getWritePointer(0), double_side_pointers[0], buffer_size);
-                zldsp::vector::copy(buffer.getWritePointer(1), double_side_pointers[0], buffer_size);
+                zldsp::vector::copy(io[0], double_side_pointers[0], buffer_size);
+                zldsp::vector::copy(io[1], double_side_pointers[0], buffer_size);
             }
         } else {
-            zldsp::vector::copy(buffer.getWritePointer(0), main_pointers[0], buffer_size);
-            zldsp::vector::copy(buffer.getWritePointer(1), main_pointers[1], buffer_size);
+            zldsp::vector::copy(io[0], main_pointers[0], buffer_size);
+            zldsp::vector::copy(io[1], main_pointers[1], buffer_size);
         }
         break;
     }
     case ChannelLayout::kMain2Aux2: {
-        zldsp::vector::copy(main_pointers[0], buffer.getWritePointer(0), buffer_size);
-        zldsp::vector::copy(main_pointers[1], buffer.getWritePointer(1), buffer_size);
+        zldsp::vector::copy(main_pointers[0], io[0], buffer_size);
+        zldsp::vector::copy(main_pointers[1], io[1], buffer_size);
 
         if (c_ext_side) {
-            double_side_pointers[0] = buffer.getWritePointer(2);
-            double_side_pointers[1] = buffer.getWritePointer(3);
+            double_side_pointers[0] = io[2];
+            double_side_pointers[1] = io[3];
         } else {
-            double_side_pointers[0] = buffer.getWritePointer(0);
-            double_side_pointers[1] = buffer.getWritePointer(1);
+            double_side_pointers[0] = io[0];
+            double_side_pointers[1] = io[1];
         }
         equalize_controller_.process(double_side_pointers, buffer_size);
         zldsp::vector::copy<float, double>(float_side_pointers, double_side_pointers, buffer_size);
@@ -486,16 +556,16 @@ void PluginProcessor::processBlockInternal(juce::AudioBuffer<double>& buffer) {
         compress_controller_.process(main_pointers, float_side_pointers, buffer_size, IsBypassed);
 
         if (equalize_controller_.getSoloOn()) {
-            zldsp::vector::copy(buffer.getWritePointer(0), equalize_controller_.getSoloPointers()[0], buffer_size);
-            zldsp::vector::copy(buffer.getWritePointer(1), equalize_controller_.getSoloPointers()[1], buffer_size);
+            zldsp::vector::copy(io[0], equalize_controller_.getSoloPointers()[0], buffer_size);
+            zldsp::vector::copy(io[1], equalize_controller_.getSoloPointers()[1], buffer_size);
         } else if (c_side_out) {
             if (c_ext_side) {
-                zldsp::vector::copy(buffer.getWritePointer(0), double_side_pointers[0], buffer_size);
-                zldsp::vector::copy(buffer.getWritePointer(1), double_side_pointers[1], buffer_size);
+                zldsp::vector::copy(io[0], double_side_pointers[0], buffer_size);
+                zldsp::vector::copy(io[1], double_side_pointers[1], buffer_size);
             }
         } else {
-            zldsp::vector::copy(buffer.getWritePointer(0), main_pointers[0], buffer_size);
-            zldsp::vector::copy(buffer.getWritePointer(1), main_pointers[1], buffer_size);
+            zldsp::vector::copy(io[0], main_pointers[0], buffer_size);
+            zldsp::vector::copy(io[1], main_pointers[1], buffer_size);
         }
         break;
     }

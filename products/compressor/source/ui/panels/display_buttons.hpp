@@ -14,7 +14,7 @@ namespace altvane::compressor {
     /**
      * a button that floats over the display; the two kinds are the knee tab and the side-chain pill
      */
-    class DisplayButton final : public juce::Component, public juce::SettableTooltipClient {
+    class DisplayButton final : public juce::Component {
     public:
         enum class Kind {
             // a vertical "KNEE" tab on the edge of the knee display

@@ -146,7 +146,10 @@ int main(const int argc, char* argv[]) {
     set(p, zlp::PAttack::kID, 10.f);
     set(p, zlp::PRelease::kID, 120.f);
     set(p, zlp::POutGain::kID, 4.f);
-    run(6.0);
+    // long enough for the history to fill the display
+    run(10.0);
+    // the README's picture (docs/screenshot.png, at scale 2)
+    writePNG(*editor, out_dir.getChildFile("00_screenshot.png"), scale_factor);
     writePNG(*editor, out_dir.getChildFile("01_default.png"), scale_factor);
 
     // heavy: fast and deep
@@ -182,6 +185,16 @@ int main(const int argc, char* argv[]) {
     setDisplay(p, zlstate::PSideControlDisplay::kID, 1.f);
     run(4.0);
     writePNG(*editor, out_dir.getChildFile("04_side_chain.png"), scale_factor);
+    // the presence band selected, with its values along the top, then soloed
+    auto& side_eq = editor->getSideChainForTesting().getEqForTesting();
+    side_eq.select(1);
+    run(1.0);
+    writePNG(*editor, out_dir.getChildFile("04b_side_chain_band.png"), scale_factor);
+    side_eq.setSolo(1);
+    run(1.0);
+    writePNG(*editor, out_dir.getChildFile("04c_side_chain_solo.png"), scale_factor);
+    side_eq.setSolo(zlp::kBandNum);
+    side_eq.select(-1);
     setDisplay(p, zlstate::PSideControlDisplay::kID, 0.f);
     run(.6);
 
@@ -198,6 +211,12 @@ int main(const int argc, char* argv[]) {
     run(2.0);
     writePNG(*editor, out_dir.getChildFile("06_bypassed.png"), scale_factor);
     set(p, zlp::PCompON::kID, 1.f);
+
+    // a help balloon
+    editor->getHelpForTesting().showFor(editor->getCardForTesting().getMoreButton());
+    run(.5);
+    writePNG(*editor, out_dir.getChildFile("06b_help.png"), scale_factor);
+    editor->getHelpForTesting().hide();
 
     editor->openPresetsForTesting();
     run(.5);

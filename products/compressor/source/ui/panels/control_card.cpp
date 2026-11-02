@@ -9,6 +9,7 @@
 #include "control_card.hpp"
 
 #include "altvane_ui/theme/fonts.hpp"
+#include "altvane_ui/widgets/help_balloon.hpp"
 #include "../model/formats.hpp"
 #include "../theme/compressor_tokens.hpp"
 
@@ -47,12 +48,12 @@ namespace altvane::compressor {
 
     // ---------------------------------------------------------------- DirectionPicker
 
-    class DirectionPicker::Segment final : public juce::Component, public juce::SettableTooltipClient {
+    class DirectionPicker::Segment final : public juce::Component {
     public:
         Segment(DirectionPicker& owner, const int index) : owner_(owner), index_(index) {
             setTitle(kDirectionNames[static_cast<size_t>(index)]);
-            setTooltip(juce::String(kDirectionNames[static_cast<size_t>(index)]) + ": "
-                       + kDirectionHints[static_cast<size_t>(index)]);
+            ui::setHelp(*this, kDirectionNames[static_cast<size_t>(index)],
+                        juce::String(kDirectionHints[static_cast<size_t>(index)]) + ".");
             setWantsKeyboardFocus(true);
             setMouseClickGrabsKeyboardFocus(false);
         }
@@ -184,7 +185,7 @@ namespace altvane::compressor {
 
         style_.setComponentID(zlp::PCompStyle::kID);
         style_.setTitle("Style");
-        style_.setTooltip("How the detector and envelope behave. Changes the feel, not the settings.");
+        ui::setHelp(style_, "Style", "How the detector and envelope behave. Changes the feel, not the settings.");
         style_.build_menu = [this] {
             juce::PopupMenu menu;
             const auto current = bridge_.getChoice(zlp::PCompStyle::kID);
@@ -206,11 +207,13 @@ namespace altvane::compressor {
         };
 
         direction_.setComponentID(zlp::PCompDirection::kID);
+        ui::setHelp(direction_, "Direction", "Compress turns loud parts down, inflate brings quiet parts up, expand "
+                    "turns quiet parts down and shape brings loud parts up.");
         direction_.on_change = [this](const int index) {
             bridge_.set(zlp::PCompDirection::kID, static_cast<float>(index), "Direction");
         };
 
-        more_.setTooltip("Detection, envelope shaping and the output clipper");
+        ui::setHelp(more_, "Advanced", "Detection, envelope shaping and the output clipper.");
         more_.on_click = [this] {
             if (on_more) {
                 on_more();
@@ -257,22 +260,24 @@ namespace altvane::compressor {
         range_.setChip(juce::String::fromUTF8("\xe2\x88\x9e"));
         range_.on_chip = [this] { bridge_.toggle(zlp::PRangeINF::kID, "Infinite Range"); };
 
-        threshold_.setTooltip("Level where the gain change starts. Also drag the line on the display.");
-        ratio_.setTooltip("How strongly the level beyond the threshold is changed. 100:1 behaves like a limiter.");
-        knee_.setTooltip("Half-width of the soft knee around the threshold. 0 dB is a hard knee.");
-        range_.setTooltip("The most gain the compressor may change. Turn on " + juce::String::fromUTF8("\xe2\x88\x9e")
-                          + " for no limit.");
-        attack_.setTooltip("How fast the gain change reacts once the level crosses the threshold.");
-        release_.setTooltip("How fast the gain change recovers after the level drops.");
-        hold_.setTooltip("Keeps the gain change steady for this long before release starts.");
-        lookahead_.setTooltip("Positive values delay the audio so the detector reacts early; negative values delay "
-            "the side chain. Adds latency.");
-        makeup_.setTooltip("Output gain after compression. Learn sets it to match the input loudness.");
-        wet_.setTooltip("Scales the whole gain change. Below 100% is parallel compression.");
+        ui::setHelp(threshold_, "Threshold", "Level where the gain change starts. Also drag the line on the display "
+                    "or the elbow of the knee curve.");
+        ui::setHelp(ratio_, "Ratio", "How strongly the level beyond the threshold is changed. 100:1 behaves like a "
+                    "limiter.");
+        ui::setHelp(knee_, "Knee", "Half-width of the soft knee around the threshold. 0 dB is a hard knee.");
+        ui::setHelp(range_, "Range", "The most gain the compressor may change. Turn on "
+                    + juce::String::fromUTF8("\xe2\x88\x9e") + " for no limit.");
+        ui::setHelp(attack_, "Attack", "How fast the gain change reacts once the level crosses the threshold.");
+        ui::setHelp(release_, "Release", "How fast the gain change recovers after the level drops.");
+        ui::setHelp(hold_, "Hold", "Keeps the gain change steady for this long before release starts.");
+        ui::setHelp(lookahead_, "Lookahead", "Positive values delay the audio so the detector reacts early; "
+                    "negative values delay the side chain. Adds latency.");
+        ui::setHelp(makeup_, "Makeup", "Output gain after compression. Learn sets it to match the input loudness.");
+        ui::setHelp(wet_, "Wet", "Scales the whole gain change. Below 100% is parallel compression.");
 
         learn_.setOnColour(colour::kWarning);
-        learn_.setTooltip("Play the loudest part, then click again: makeup is set so the output matches the input "
-            "loudness.");
+        ui::setHelp(learn_, "Learn", "Play the loudest part, then click again: makeup is set so the output matches "
+                    "the input loudness.");
         learn_.on_click = [this] { toggleLearn(); };
 
         addAndMakeVisible(style_);

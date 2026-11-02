@@ -18,6 +18,11 @@ namespace zlstate {
 
         static juce::Result read(const juce::File& file, juce::MemoryBlock& processor_state);
 
+        /**
+         * the preset file text for a processor state (Altvane: used to generate factory presets)
+         */
+        static juce::String toText(const juce::ValueTree& processor_state);
+
     private:
         static juce::var valueTreeToJson(const juce::ValueTree& tree);
 

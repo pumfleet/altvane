@@ -19,7 +19,7 @@
 #include "ipps.h"
 #endif
 
-class PluginProcessor : public juce::AudioProcessor {
+class PluginProcessor : public juce::AudioProcessor, private juce::AudioProcessorListener {
 public:
     zlstate::DummyProcessor dummy_processor_;
     juce::AudioProcessorValueTreeState parameters_;
@@ -108,12 +108,42 @@ private:
     std::atomic<float> &ext_side_, &side_out_;
     std::atomic<double> sample_rate_{48000.0};
     ChannelLayout channel_layout_{kInvalid};
+    size_t max_block_size_{1};
+
+    // Altvane: the main input of the last few blocks, which host bypass plays delayed by the reported latency
+    std::array<std::vector<double>, 2> dry_buffers_;
+    size_t dry_pos_{0};
+    std::atomic<int> reported_latency_{0};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PluginProcessor)
 
-    template <bool IsBypassed = false>
-    void processBlockInternal(juce::AudioBuffer<float>& buffer);
+    size_t getNumMainChannels() const {
+        return channel_layout_ == kMain1Aux0 || channel_layout_ == kMain1Aux1 || channel_layout_ == kMain1Aux2 ? 1 : 2;
+    }
 
-    template <bool IsBypassed = false>
-    void processBlockInternal(juce::AudioBuffer<double>& buffer);
+    template <bool IsBypassed, typename T>
+    void processBlockInternal(juce::AudioBuffer<T>& buffer);
+
+    /**
+     * one piece of a block, at most the prepared size; io holds the main channels, then the side-chain ones
+     */
+    template <bool IsBypassed>
+    void processPiece(const std::array<float*, 4>& io, size_t buffer_size);
+
+    template <bool IsBypassed>
+    void processPiece(const std::array<double*, 4>& io, size_t buffer_size);
+
+    /**
+     * keep the main input for host bypass; returns where it starts in the dry buffers
+     */
+    template <typename T>
+    size_t pushDry(const std::array<T*, 4>& io, size_t num_samples);
+
+    template <typename T>
+    void playDry(const std::array<T*, 4>& io, size_t num_samples, size_t start) const;
+
+    void audioProcessorParameterChanged(juce::AudioProcessor*, int, float) override {
+    }
+
+    void audioProcessorChanged(juce::AudioProcessor*, const ChangeDetails& details) override;
 };

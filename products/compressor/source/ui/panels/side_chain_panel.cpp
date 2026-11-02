@@ -8,6 +8,7 @@
 // You should have received a copy of the GNU Affero General Public License along with Altvane Compressor. If not, see <https://www.gnu.org/licenses/>.
 #include "side_chain_panel.hpp"
 
+#include "altvane_ui/widgets/help_balloon.hpp"
 #include "../model/formats.hpp"
 #include "../theme/compressor_tokens.hpp"
 
@@ -26,8 +27,8 @@ namespace altvane::compressor {
         setTitle("Side chain");
         setFocusContainerType(FocusContainerType::focusContainer);
 
-        internal_.setTooltip("The detector listens to the track itself");
-        external_.setTooltip("The detector listens to the side-chain input");
+        ui::setHelp(internal_, "Internal", "The detector listens to the track itself.");
+        ui::setHelp(external_, "External", "The detector listens to the side-chain input.");
         internal_.setComponentID(zlp::PExtSide::kID);
         external_.setComponentID(zlp::PExtSide::kID);
         internal_.on_click = [this] { bridge_.set(zlp::PExtSide::kID, 0.f, "Side-Chain Source"); };
@@ -35,7 +36,7 @@ namespace altvane::compressor {
 
         listen_.setComponentID(zlp::PSideOut::kID);
         listen_.setOnColour(colour::kWarning);
-        listen_.setTooltip("Hear the side-chain signal. Click to latch, hold to listen only while pressed.");
+        ui::setHelp(listen_, "Listen", "Hear the side-chain signal. Click to latch, hold to listen only while pressed.");
         listen_.addMouseListener(this, false);
         // the keyboard and accessibility clients toggle; the mouse is handled in mouseDown / mouseUp
         listen_.on_click = [this] {
@@ -46,7 +47,8 @@ namespace altvane::compressor {
 
         stereo_.setComponentID(zlp::PSideStereoMode::kID);
         stereo_.setTitle("Stereo");
-        stereo_.setTooltip("Detect on mid / side or left / right. The max modes let the louder channel drive both.");
+        ui::setHelp(stereo_, "Stereo",
+                    "Detect on mid / side or left / right. The max modes let the louder channel drive both.");
         stereo_.build_menu = [this] {
             juce::PopupMenu menu;
             const auto current = bridge_.getChoice(zlp::PSideStereoMode::kID);
@@ -60,28 +62,32 @@ namespace altvane::compressor {
         };
 
         swap_.setComponentID(zlp::PSideStereoSwap::kID);
-        swap_.setTooltip("Swap the two side-chain channels (mid and side, or left and right)");
+        ui::setHelp(swap_, "Swap", "Swap the two side-chain channels (mid and side, or left and right).");
         swap_.on_click = [this] { bridge_.toggle(zlp::PSideStereoSwap::kID, "Side-Chain Swap"); };
 
         eq_on_.setComponentID(zlp::PSideEQBypass::kID);
-        eq_on_.setTooltip("Turn the whole side-chain EQ on or off without losing its bands");
+        ui::setHelp(eq_on_, "Side-chain EQ", "Turn the whole side-chain EQ on or off without losing its bands.");
         eq_on_.on_click = [this] { bridge_.toggle(zlp::PSideEQBypass::kID, "Side-Chain EQ"); };
 
         const auto knob = [this](ui::Knob& k, const char* id, const juce::String& name,
                                  std::function<juce::String(float)> format, const juce::String& help) {
             ui::bindValue(k, bridge_.getEditor(), bridge_.para(id), name);
             k.format = std::move(format);
-            k.setTooltip(help);
+            ui::setHelp(k, name, help);
             addAndMakeVisible(k);
         };
-        knob(gain_, zlp::PSideGain::kID, "Gain", formats::signedDB, "Level of the side chain going into the detector");
+        knob(gain_, zlp::PSideGain::kID, "Gain", formats::signedDB, "Level of the side chain going into the detector.");
         knob(link_, zlp::PSideStereoLink::kID, "Link", formats::percent,
-             "0% detects each channel on its own; 100% applies the same gain change to both");
+             "0% detects each channel on its own; 100% applies the same gain change to both.");
         knob(amount1_, zlp::PSideStereoWet1::kID, "Mid", formats::percent,
              "How much of the gain change reaches this channel");
         knob(amount2_, zlp::PSideStereoWet2::kID, "Side", formats::percent,
              "How much of the gain change reaches this channel");
         gain_.setBipolar(true);
+        // the amounts are labelled by the stereo mode
+        ui::setHelp(amount1_, "Mid or left amount", "How much of the gain change reaches the mid, or the left channel.");
+        ui::setHelp(amount2_, "Side or right amount",
+                    "How much of the gain change reaches the side, or the right channel.");
 
         for (auto* c : std::initializer_list<juce::Component*>{
                  &internal_, &external_, &listen_, &stereo_, &swap_, &eq_on_, &eq_
@@ -134,6 +140,13 @@ namespace altvane::compressor {
         }
     }
 
+    void SideChainPanel::visibilityChanged() {
+        // a solo is not left playing behind a closed drawer
+        if (!isVisible()) {
+            eq_.setSolo(zlp::kBandNum);
+        }
+    }
+
     void SideChainPanel::resized() {
         auto b = getLocalBounds();
         b.removeFromTop(1);
@@ -141,6 +154,7 @@ namespace altvane::compressor {
         divider_x_ = 300.f;
         eq_.setBounds(b);
         eq_on_.setBounds(b.getX() + 10, b.getY() + 8, eq_on_.getIdealWidth() + 8, 22);
+        eq_.setToolsInset(eq_on_.getRight() - b.getX() + 10);
 
         auto row = controls.removeFromTop(26);
         listen_.setBounds(row.removeFromRight(listen_.getIdealWidth() + 8));
