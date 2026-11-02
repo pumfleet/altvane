@@ -10,6 +10,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <altvane_ui/session/session.hpp>
+#include <altvane_ui/util/peak_exchange.hpp>
 
 #include "params.hpp"
 #include "dsp/engine.hpp"
@@ -105,7 +106,7 @@ namespace altvane::leveler {
         /**
          * the output peaks since the last call, in dB (message thread)
          */
-        std::array<float, 2> takeOutputPeaks();
+        std::array<float, 2> takeOutputPeaks() { return output_peaks_.take(); }
 
         /**
          * the message-thread work the timer does (latency changes, automation writes), for tests
@@ -130,7 +131,7 @@ namespace altvane::leveler {
         int max_block_{512};
         std::atomic<bool> prepared_{false};
         juce::SmoothedValue<float> bypass_mix_, output_gain_;
-        std::array<std::atomic<float>, 2> output_peak_{};
+        ui::PeakExchange output_peaks_;
         std::atomic<int> key_channels_{0};
         std::atomic<bool> playing_{false};
 

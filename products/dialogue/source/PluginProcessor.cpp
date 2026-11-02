@@ -11,14 +11,6 @@
 #include "ui/editor.hpp"
 
 namespace altvane::dialogue {
-    namespace {
-        void storePeak(std::atomic<float>& peak, const float value) {
-            auto current = peak.load(std::memory_order::relaxed);
-            while (value > current && !peak.compare_exchange_weak(current, value, std::memory_order::relaxed)) {
-            }
-        }
-    }
-
     PluginProcessor::PluginProcessor() :
         AudioProcessor(BusesProperties()
                        .withInput("Input", juce::AudioChannelSet::stereo(), true)
@@ -142,7 +134,7 @@ namespace altvane::dialogue {
         }
         updateControls();
         for (int c = 0; c < channels; ++c) {
-            storePeak(input_peak_[static_cast<size_t>(c)], buffer.getMagnitude(c, 0, buffer.getNumSamples()));
+            input_peaks_.store(static_cast<size_t>(c), buffer.getMagnitude(c, 0, buffer.getNumSamples()));
         }
 
         // what the 48 kHz round trip loses (above 24 kHz) follows the ambience, the stem it belongs to
@@ -202,7 +194,7 @@ namespace altvane::dialogue {
             }
         }
         for (int c = 0; c < channels; ++c) {
-            storePeak(output_peak_[static_cast<size_t>(c)], buffer.getMagnitude(c, 0, buffer.getNumSamples()));
+            output_peaks_.store(static_cast<size_t>(c), buffer.getMagnitude(c, 0, buffer.getNumSamples()));
         }
         // a stereo stem output on a mono instance carries its stem on both channels
         if (channels == 1) {
@@ -219,22 +211,6 @@ namespace altvane::dialogue {
         if (channels == 1 && buffer.getNumChannels() > layout_channels) {
             buffer.copyFrom(1, 0, buffer, 0, 0, buffer.getNumSamples());
         }
-    }
-
-    std::array<float, 2> PluginProcessor::takePeaks(std::array<std::atomic<float>, 2>& peaks) {
-        std::array<float, 2> result{};
-        for (size_t c = 0; c < 2; ++c) {
-            result[c] = juce::Decibels::gainToDecibels(peaks[c].exchange(0.f, std::memory_order::relaxed), -120.f);
-        }
-        return result;
-    }
-
-    std::array<float, 2> PluginProcessor::takeInputPeaks() {
-        return takePeaks(input_peak_);
-    }
-
-    std::array<float, 2> PluginProcessor::takeOutputPeaks() {
-        return takePeaks(output_peak_);
     }
 
     void PluginProcessor::getStateInformation(juce::MemoryBlock& dest_data) {

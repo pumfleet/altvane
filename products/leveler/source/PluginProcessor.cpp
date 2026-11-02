@@ -12,12 +12,6 @@
 
 namespace altvane::leveler {
     namespace {
-        void storePeak(std::atomic<float>& peak, const float value) {
-            auto current = peak.load(std::memory_order::relaxed);
-            while (value > current && !peak.compare_exchange_weak(current, value, std::memory_order::relaxed)) {
-            }
-        }
-
         // the session-only part of the state: automation mode and the rider fader, never in presets
         const juce::Identifier kSessionTag{"Session"};
         const juce::Identifier kModeProperty{"mode"};
@@ -162,7 +156,7 @@ namespace altvane::leveler {
             }
         }
         for (int c = 0; c < channels; ++c) {
-            storePeak(output_peak_[static_cast<size_t>(c)], main.getMagnitude(c, 0, main.getNumSamples()));
+            output_peaks_.store(static_cast<size_t>(c), main.getMagnitude(c, 0, main.getNumSamples()));
         }
     }
 
@@ -236,14 +230,6 @@ namespace altvane::leveler {
 
     bool PluginProcessor::isManualRide() const {
         return engine_.getControls().manual.load();
-    }
-
-    std::array<float, 2> PluginProcessor::takeOutputPeaks() {
-        std::array<float, 2> result{};
-        for (size_t c = 0; c < 2; ++c) {
-            result[c] = juce::Decibels::gainToDecibels(output_peak_[c].exchange(0.f, std::memory_order::relaxed), -120.f);
-        }
-        return result;
     }
 
     void PluginProcessor::getStateInformation(juce::MemoryBlock& dest_data) {
