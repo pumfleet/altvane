@@ -12,8 +12,13 @@ target_compile_features(AltvaneUITests PRIVATE cxx_std_20)
 
 target_compile_definitions(AltvaneUITests
         PRIVATE
+        # the JUCE configuration altvane_add_plugin gives products (libwebp, for one, doesn't build with clang-cl here)
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
+        JUCE_USE_FLAC=0
+        JUCE_USE_OGGVORBIS=0
+        JUCE_USE_WEBP=0
+        JUCE_SILENCE_XCODE_15_LINKER_WARNING=1
         # the typing tests pump the message loop, which JUCE only allows with modal loops (as in the product tests)
         JUCE_MODAL_LOOPS_PERMITTED=1
         # what altvane_ui reads from a plugin's settings (juce_add_plugin, altvane_add_plugin)
@@ -34,5 +39,5 @@ target_link_libraries(AltvaneUITests
 )
 set_target_properties(AltvaneUITests PROPERTIES FOLDER "Targets" XCODE_GENERATE_SCHEME ON)
 
-# Catch2 exits with 4 when a test SKIPs (e.g. no decimal-comma locale installed)
+# Catch2 exits with 4 when a test SKIPs (the read-only folder test on Windows, or when run as root)
 catch_discover_tests(AltvaneUITests PROPERTIES SKIP_RETURN_CODE 4)
