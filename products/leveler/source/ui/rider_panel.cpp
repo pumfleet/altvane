@@ -8,6 +8,8 @@
 // You should have received a copy of the GNU Affero General Public License along with Altvane Leveler. If not, see <https://www.gnu.org/licenses/>.
 #include "rider_panel.hpp"
 
+#include <altvane_ui/util/value_format.hpp>
+
 #include "theme/leveler_tokens.hpp"
 
 namespace altvane::leveler {
@@ -23,8 +25,10 @@ namespace altvane::leveler {
         setRange({-scale_, scale_, .01f}, 0.f);
         format = [](const float v) { return params::formatDb(v); };
         parse = [](const juce::String& t) -> std::optional<float> {
-            const auto clean = t.replace(juce::String::fromUTF8("\xe2\x88\x92"), "-").retainCharacters("+-.0123456789");
-            return clean.containsAnyOf("0123456789") ? std::optional<float>(clean.getFloatValue()) : std::nullopt;
+            if (const auto v = ui::format::parseLenient(t)) {
+                return static_cast<float>(*v);
+            }
+            return std::nullopt;
         };
         // a hand on the fader: in Read mode it edits the automation, otherwise it rides over the engine
         on_begin = [this] {

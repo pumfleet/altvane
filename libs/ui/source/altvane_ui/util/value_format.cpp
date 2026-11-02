@@ -56,6 +56,11 @@ namespace altvane::ui::format {
         return with_unit ? s + " dB" : s;
     }
 
+    juce::String decibels(const double db, const bool force_sign) {
+        const auto sign = db < -.04 ? kMinus : force_sign && db > .04 ? juce::String("+") : juce::String();
+        return sign + juce::String(std::abs(db), 1) + " dB";
+    }
+
     juce::String q(const double q) {
         return juce::String(q, q < 10.0 ? 2 : 1);
     }
@@ -95,6 +100,11 @@ namespace altvane::ui::format {
         }
         const auto v = t.getDoubleValue();
         return std::isfinite(v) ? std::optional<double>{v} : std::nullopt;
+    }
+
+    std::optional<double> parseLenient(const juce::String& text) {
+        const auto t = text.replace(kMinus, "-").retainCharacters("+-.0123456789");
+        return t.containsAnyOf("0123456789") ? std::optional<double>{t.getDoubleValue()} : std::nullopt;
     }
 
     std::optional<double> parseFreq(const juce::String& text) {

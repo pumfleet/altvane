@@ -26,8 +26,7 @@ namespace altvane::dialogue::params {
                                           if (t.trim().equalsIgnoreCase("off")) {
                                               return kLevelOff;
                                           }
-                                          return t.replace(juce::String::fromUTF8("\xe2\x88\x92"), "-")
-                                                  .retainCharacters("+-.0123456789").getFloatValue();
+                                          return static_cast<float>(ui::format::parseLenient(t).value_or(0.0));
                                       })
                                       .withLabel("dB");
         for (size_t s = 0; s < dsp::kNumStems; ++s) {

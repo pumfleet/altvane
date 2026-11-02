@@ -9,6 +9,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <altvane_ui/util/value_format.hpp>
 
 /**
  * Altvane Leveler's parameters; the IDs are part of every saved session and preset, never change them
@@ -39,9 +40,8 @@ namespace altvane::leveler::params {
     /**
      * signed dB with the typographic minus, as everywhere else in the interface
      */
-    inline juce::String formatDb(const float db, const int decimals = 1) {
-        return (db > .04f ? "+" : db < -.04f ? juce::String::fromUTF8("\xe2\x88\x92") : "")
-               + juce::String(std::abs(db), decimals) + " dB";
+    inline juce::String formatDb(const float db) {
+        return ui::format::decibels(db, true);
     }
 
     inline juce::String formatPercent(const float v) {
