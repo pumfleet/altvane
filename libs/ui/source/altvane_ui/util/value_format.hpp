@@ -19,6 +19,11 @@ namespace altvane::ui::format {
 
     juce::String gain(double db, bool with_unit = true, bool force_sign = true);
 
+    /**
+     * dB to one decimal, "−3.5 dB", and "+3.5 dB" with force_sign; no sign within 0.04 dB of zero
+     */
+    juce::String decibels(double db, bool force_sign);
+
     juce::String q(double q);
 
     juce::String ms(double ms);
@@ -36,4 +41,10 @@ namespace altvane::ui::format {
      * parse "-3", "+3.5", "3.5 dB", using either a hyphen or a minus sign
      */
     std::optional<double> parseNumber(const juce::String& text);
+
+    /**
+     * a number in loosely typed text, keeping only its digits, signs and points: "−3.5 dB" is -3.5, "1,5" is 15
+     * (nullopt without digits)
+     */
+    std::optional<double> parseLenient(const juce::String& text);
 }

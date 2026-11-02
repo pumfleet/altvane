@@ -13,7 +13,7 @@ namespace altvane::leveler::params {
         constexpr int kVersion = 1;
 
         float parseNumber(const juce::String& t) {
-            return t.replace(juce::String::fromUTF8("\xe2\x88\x92"), "-").retainCharacters("+-.0123456789").getFloatValue();
+            return static_cast<float>(ui::format::parseLenient(t).value_or(0.0));
         }
 
         juce::AudioParameterFloatAttributes dbAttributes() {

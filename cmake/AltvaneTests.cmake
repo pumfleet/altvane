@@ -3,7 +3,7 @@
 #   altvane_add_tests(<plugin-target> <test-dir>)
 #
 # builds every .cpp under <test-dir> into <plugin-target>Tests, linked against the plugin's compiled code (see
-# altvane_link_plugin_code), and registers the cases with CTest.
+# altvane_link_plugin_code) and the shared test helpers (libs/testing), and registers the cases with CTest.
 
 # Required for ctest (which is just an easier way to run in cross-platform CI)
 # See: https://github.com/catchorg/Catch2/issues/2026
@@ -28,7 +28,7 @@ function(altvane_add_tests plugin_target test_dir)
     set(tests "${plugin_target}Tests")
     add_executable(${tests} ${test_files})
     altvane_link_plugin_code(${tests} ${plugin_target})
-    target_link_libraries(${tests} PRIVATE Catch2::Catch2WithMain)
+    target_link_libraries(${tests} PRIVATE Catch2::Catch2WithMain altvane_testing)
     set_target_properties(${tests} PROPERTIES XCODE_GENERATE_SCHEME ON)
 
     catch_discover_tests(${tests})

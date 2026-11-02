@@ -12,12 +12,6 @@
 
 namespace altvane::deesser {
     namespace {
-        void storePeak(std::atomic<float>& peak, const float value) {
-            auto current = peak.load(std::memory_order::relaxed);
-            while (value > current && !peak.compare_exchange_weak(current, value, std::memory_order::relaxed)) {
-            }
-        }
-
         int choice(const std::atomic<float>* value) {
             return juce::roundToInt(value->load(std::memory_order::relaxed));
         }
@@ -140,7 +134,7 @@ namespace altvane::deesser {
             return;
         }
         for (int c = 0; c < channels; ++c) {
-            storePeak(input_peak_[static_cast<size_t>(c)], main.getMagnitude(c, 0, n));
+            input_peaks_.store(static_cast<size_t>(c), main.getMagnitude(c, 0, n));
         }
 
         // the side chain's view keeps its channel pointers inside itself: it has to outlive the engine's use of them
@@ -156,28 +150,12 @@ namespace altvane::deesser {
         engine_.process(main.getArrayOfWritePointers(), channels, side, side_channels, n);
 
         for (int c = 0; c < channels; ++c) {
-            storePeak(output_peak_[static_cast<size_t>(c)], main.getMagnitude(c, 0, n));
+            output_peaks_.store(static_cast<size_t>(c), main.getMagnitude(c, 0, n));
         }
         // anything beyond the main output (e.g. the side chain's channels) is not ours to pass on
         for (auto c = getTotalNumOutputChannels(); c < buffer.getNumChannels(); ++c) {
             buffer.clear(c, 0, n);
         }
-    }
-
-    std::array<float, 2> PluginProcessor::takePeaks(std::array<std::atomic<float>, 2>& peaks) {
-        std::array<float, 2> result{};
-        for (size_t c = 0; c < 2; ++c) {
-            result[c] = juce::Decibels::gainToDecibels(peaks[c].exchange(0.f, std::memory_order::relaxed), -120.f);
-        }
-        return result;
-    }
-
-    std::array<float, 2> PluginProcessor::takeInputPeaks() {
-        return takePeaks(input_peak_);
-    }
-
-    std::array<float, 2> PluginProcessor::takeOutputPeaks() {
-        return takePeaks(output_peak_);
     }
 
     void PluginProcessor::getStateInformation(juce::MemoryBlock& dest_data) {

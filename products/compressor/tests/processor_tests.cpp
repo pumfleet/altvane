@@ -10,7 +10,8 @@
 #include <catch2/generators/catch_generators.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
-#include "alloc_counter.hpp"
+#include <altvane_testing/alloc_counter.hpp>
+
 #include "test_helpers.hpp"
 
 using Catch::Matchers::WithinAbs;

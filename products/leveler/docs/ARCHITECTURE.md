@@ -92,7 +92,7 @@ and frame loop.
 - `ui/rider_panel`: `RiderFader`, a `ui::ValueControl` with range handles and an idle marker, plus the mode chips and
   the Max, Min and Idle fields.
 - `ui/control_deck`: the knobs, Learn and Lookahead.
-- `ui/chrome`: the footer and the output rail.
+- `ui/chrome`: the footer. The output rail is the shared `ui::OutputRail` (`libs/ui/widgets/output_rail`).
 - `ui/theme/leveler_tokens.hpp`: colours and sizes.
 - Factory presets (`ui/factory_presets`) are installed once into `Presets/Factory`.
 

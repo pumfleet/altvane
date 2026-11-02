@@ -9,9 +9,10 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include <altvane_testing/alloc_counter.hpp>
+
 #include "PluginProcessor.hpp"
 #include "dsp/learner.hpp"
-#include "alloc_counter.hpp"
 #include "signals.hpp"
 
 using namespace altvane::deesser;

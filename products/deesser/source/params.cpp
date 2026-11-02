@@ -15,7 +15,7 @@ namespace altvane::deesser::params {
         constexpr int kVersion = 1;
 
         float parseNumber(const juce::String& t) {
-            return t.replace(juce::String::fromUTF8("\xe2\x88\x92"), "-").retainCharacters("+-.0123456789").getFloatValue();
+            return static_cast<float>(ui::format::parseLenient(t).value_or(0.0));
         }
 
         float parseHz(const juce::String& t) {
@@ -59,9 +59,7 @@ namespace altvane::deesser::params {
     }
 
     juce::String formatDb(const float db) {
-        // the typographic minus, as everywhere else in the interface
-        const auto sign = db < -.04f ? juce::String::fromUTF8("\xe2\x88\x92") : juce::String();
-        return sign + juce::String(std::abs(db), 1) + " dB";
+        return ui::format::decibels(db, false);
     }
 
     juce::String formatHz(const float hz) {

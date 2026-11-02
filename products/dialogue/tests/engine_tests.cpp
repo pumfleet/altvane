@@ -11,8 +11,9 @@
 #include <functional>
 #include <limits>
 
+#include <altvane_testing/alloc_counter.hpp>
+
 #include "PluginProcessor.hpp"
-#include "alloc_counter.hpp"
 
 using namespace altvane::dialogue;
 

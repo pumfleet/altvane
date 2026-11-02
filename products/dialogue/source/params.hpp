@@ -9,6 +9,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <altvane_ui/util/value_format.hpp>
 
 #include "dsp/stems.hpp"
 
@@ -51,8 +52,7 @@ namespace altvane::dialogue::params {
         if (db <= kLevelOff + .05f) {
             return "Off";
         }
-        // the typographic minus, as everywhere else in the interface
-        return (db > .04f ? "+" : db < -.04f ? juce::String::fromUTF8("\xe2\x88\x92") : "") + juce::String(std::abs(db), 1) + " dB";
+        return ui::format::decibels(db, true);
     }
 
     juce::AudioProcessorValueTreeState::ParameterLayout createLayout();

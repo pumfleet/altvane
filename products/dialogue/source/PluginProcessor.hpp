@@ -10,6 +10,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <altvane_ui/session/session.hpp>
+#include <altvane_ui/util/peak_exchange.hpp>
 
 #include "params.hpp"
 #include "dsp/rate_bridge.hpp"
@@ -90,9 +91,9 @@ namespace altvane::dialogue {
         /**
          * the input and output peaks since the last call, in dB (message thread)
          */
-        std::array<float, 2> takeInputPeaks();
+        std::array<float, 2> takeInputPeaks() { return input_peaks_.take(); }
 
-        std::array<float, 2> takeOutputPeaks();
+        std::array<float, 2> takeOutputPeaks() { return output_peaks_.take(); }
 
     private:
         dsp::RateBridge bridge_;
@@ -109,10 +110,9 @@ namespace altvane::dialogue {
         bool stem_outputs_{false};
         juce::AudioBuffer<float> stem_scratch_;
         juce::SmoothedValue<float> bypass_mix_, output_gain_, residual_gain_, stem_residual_gain_;
-        std::array<std::atomic<float>, 2> input_peak_{}, output_peak_{};
+        ui::PeakExchange input_peaks_, output_peaks_;
 
         void updateControls();
         void process(juce::AudioBuffer<float>& buffer, bool force_bypass);
-        static std::array<float, 2> takePeaks(std::array<std::atomic<float>, 2>& peaks);
     };
 }
