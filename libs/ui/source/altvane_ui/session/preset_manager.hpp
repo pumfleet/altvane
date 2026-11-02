@@ -60,6 +60,11 @@ namespace altvane::ui {
         static juce::File getDirectory();
 
         /**
+         * keep presets in another folder (an empty File restores the default), so tests never touch the user's
+         */
+        static void setDirectoryOverride(const juce::File& dir);
+
+        /**
          * copy the product's factory presets into the preset folder once per version, never over user edits
          * @param presets relative path (e.g. "Factory/Interview") -> preset file contents
          */

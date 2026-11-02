@@ -84,9 +84,23 @@ namespace altvane::ui {
         captureReference();
     }
 
+    namespace {
+        juce::File& directoryOverride() {
+            static juce::File dir;
+            return dir;
+        }
+    }
+
     juce::File PresetManager::getDirectory() {
+        if (directoryOverride() != juce::File()) {
+            return directoryOverride();
+        }
         return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
                .getChildFile(JucePlugin_Manufacturer).getChildFile(JucePlugin_Name).getChildFile("Presets");
+    }
+
+    void PresetManager::setDirectoryOverride(const juce::File& dir) {
+        directoryOverride() = dir;
     }
 
     void PresetManager::installFactoryPresets(const std::vector<std::pair<juce::String, juce::String>>& presets,
