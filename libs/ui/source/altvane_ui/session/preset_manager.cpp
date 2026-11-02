@@ -206,8 +206,11 @@ namespace altvane::ui {
             return false;
         }
         const auto target = file.getSiblingFile(name + kExtension);
-        // on case-insensitive file systems a new case of the same name is this file, not another preset
-        if ((target.exists() && target != file) || !file.moveFileTo(target)) {
+        // on a case-insensitive file system a new case of the same name is this file, not another preset; ask the
+        // file system (File's == ignores case on every macOS volume, case-sensitive ones too)
+        const auto id = file.getFileIdentifier();
+        const auto same_file = id != 0 && target.getFileIdentifier() == id;
+        if ((target.exists() && !same_file) || !file.moveFileTo(target)) {
             return false;
         }
         if (isFavourite(file)) {

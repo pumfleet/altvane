@@ -68,6 +68,13 @@ jobs:
                   platforms = {line for line in lines if line and not line.startswith("#")}
                   exclude += [{"product": product, "name": name} for name, platform in runners.items()
                               if platform not in platforms]
+          # a runner must keep a product: matrix include would turn an entry whose name is left in no combination
+          # into a job of its own, with no product (e.g. dispatching dialogue). Such a runner builds what was asked.
+          for name in runners:
+              skipped = [e for e in exclude if e["name"] == name]
+              if len(skipped) == len(products):
+                  print(f"::warning::{products} not supported on {name} ({runners[name]}); building it there anyway")
+                  exclude = [e for e in exclude if e["name"] != name]
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               out.write(f"products={json.dumps(products)}\n")
               out.write(f"names={json.dumps(list(runners))}\n")
