@@ -28,6 +28,12 @@
  */
 class PluginProcessor final : public juce::AudioProcessor, private juce::Timer {
 public:
+    /**
+     * the layout of the saved state, sessions and presets alike: raise it only with a migration in
+     * PluginProcessor.cpp (see altvane_ui/session/state_schema.hpp)
+     */
+    static constexpr int kStateVersion = 1;
+
     zlstate::DummyProcessor dummy_processor_;
     juce::AudioProcessorValueTreeState parameters_;
     juce::AudioProcessorValueTreeState na_parameters_;

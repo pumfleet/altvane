@@ -24,6 +24,16 @@ First version of Altvane Leveler, an automatic vocal rider.
 - Loading a session restores the fader without the host taking it for an automation write.
 - Presets and A/B never move the fader, and loading a preset never changes the automation mode.
 
+### Sessions and presets
+
+- Sessions and presets record the layout of the state they were saved in (`schema_version="1"` on the state's root),
+  so a later version can upgrade them. A state without it, saved before, loads as it always has; one saved by a
+  newer version loads every setting this version has and leaves the rest.
+- Restoring a session or preset puts each switch exactly where it was saved. One a host had left between on and off
+  (0.4 is off) went on reporting that value to the host.
+- The rider fader is saved at the value it reports, so a restored session saves back unchanged. It was saved at its
+  default, 0 dB, and restored a step's rounding error away from it.
+
 ### Interface
 
 - An 8-second history of input, output and music levels, the target and floor lines (draggable), the gain and the

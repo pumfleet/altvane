@@ -18,6 +18,12 @@
 namespace altvane::leveler {
     class PluginProcessor final : public juce::AudioProcessor, private juce::Timer {
     public:
+        /**
+         * the layout of the saved state, sessions and presets alike: raise it only with a migration in
+         * PluginProcessor.cpp (see altvane_ui/session/state_schema.hpp)
+         */
+        static constexpr int kStateVersion = 1;
+
         // edit history, A/B slots and current preset of the editor, kept so they survive closing the editor
         ui::Session session_;
         juce::AudioProcessorValueTreeState parameters_;

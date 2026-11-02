@@ -8,6 +8,8 @@
 // You should have received a copy of the GNU Affero General Public License along with Altvane Compressor. If not, see <https://www.gnu.org/licenses/>.
 #include "factory_presets.hpp"
 
+#include <altvane_ui/session/state_schema.hpp>
+
 #include "../PluginProcessor.hpp"
 #include "../state/preset_json.hpp"
 
@@ -150,6 +152,8 @@ namespace altvane::compressor {
             juce::ValueTree state(zlstate::schema::kProcessorState);
             state.appendChild(parameters, nullptr);
             state.appendChild(defaults(p.na_parameters_), nullptr);
+            // written in this build's layout, so it says so
+            state.setProperty(altvane::ui::state_schema::kAttribute, PluginProcessor::kStateVersion, nullptr);
             result.emplace_back(juce::String("Factory/") + preset.name, zlstate::PresetJson::toText(state));
         }
         return result;

@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Sessions and presets record the layout of the state they were saved in (`schema_version="1"` on the state's root),
+  so a later version can upgrade them. A state without it, saved before, loads as it always has; one saved by a
+  newer version loads every setting this version has and leaves the rest.
+
+### Fixed
+
+- Restoring a session or preset puts each switch exactly where it was saved. One a host had left between on and off
+  (0.4 is off) went on reporting that value to the host.
+
 ## 0.1.0
 
 First release of Altvane EQ (developed as "Contour"), based on the ZL Equalizer 2.x engine (forked at 1.4.1).

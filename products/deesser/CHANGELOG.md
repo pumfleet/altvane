@@ -7,6 +7,14 @@
 - Program-dependent release: after an ess the reduction now releases in 40 ms after a short one, up to 120 ms after a
   long one (0.25 s or more), as intended. The length of the ess was forgotten as soon as it ended, so every release
   took 40 ms.
+- Restoring a session or preset puts each switch exactly where it was saved. One a host had left between on and off
+  (0.4 is off) went on reporting that value to the host.
+
+### Changed
+
+- Sessions and presets record the layout of the state they were saved in (`schema_version="1"` on the state's root),
+  so a later version can upgrade them. A state without it, saved before, loads as it always has; one saved by a
+  newer version loads every setting this version has and leaves the rest.
 
 ## 0.1.0
 
