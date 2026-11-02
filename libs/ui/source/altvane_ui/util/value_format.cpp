@@ -28,9 +28,28 @@ namespace altvane::ui::format {
             return std::round(v * scale) / scale < limit;
         }
 
+        /**
+         * v with this many decimals and always a decimal point: juce::String(v, decimals) follows the global C++
+         * locale, which a host may set ("1,23" in German), and prints every decimal when decimals is 0
+         */
+        juce::String fixed(const double v, const int decimals) {
+            const auto scale = std::pow(10.0, decimals);
+            if (!std::isfinite(v) || std::abs(v) * scale >= 1e15) {
+                return std::isnan(v) ? juce::String("nan") : std::isinf(v) ? juce::String(v < 0.0 ? "-inf" : "inf")
+                                                                           : juce::String(v, decimals);
+            }
+            const auto n = std::llround(std::abs(v) * scale);
+            const auto unit = std::llround(scale);
+            auto s = juce::String(n / unit);
+            if (decimals > 0) {
+                s << "." << juce::String(n % unit).paddedLeft('0', decimals);
+            }
+            return v < 0.0 && n != 0 ? "-" + s : s;
+        }
+
         juce::String signedNumber(const double v, const int decimals, const bool force_sign) {
             const auto rounded = std::round(v * std::pow(10.0, decimals)) / std::pow(10.0, decimals);
-            const auto magnitude = juce::String(std::abs(rounded), decimals);
+            const auto magnitude = fixed(std::abs(rounded), decimals);
             if (rounded < 0.0) {
                 return kMinus + magnitude;
             }
@@ -45,16 +64,16 @@ namespace altvane::ui::format {
         juce::String s;
         juce::String unit;
         if (showsBelow(hz, 100.0, 1)) {
-            s = juce::String(hz, 1);
+            s = fixed(hz, 1);
             unit = " Hz";
         } else if (showsBelow(hz, 1000.0, 0)) {
             s = juce::String(juce::roundToInt(hz));
             unit = " Hz";
         } else if (showsBelow(hz / 1000.0, 10.0, 2)) {
-            s = juce::String(hz / 1000.0, 2);
+            s = fixed(hz / 1000.0, 2);
             unit = " kHz";
         } else {
-            s = juce::String(hz / 1000.0, 1);
+            s = fixed(hz / 1000.0, 1);
             unit = " kHz";
         }
         return with_unit ? s + unit : s;
@@ -66,15 +85,14 @@ namespace altvane::ui::format {
     }
 
     juce::String q(const double q) {
-        return juce::String(q, showsBelow(q, 10.0, 2) ? 2 : 1);
+        return fixed(q, showsBelow(q, 10.0, 2) ? 2 : 1);
     }
 
     juce::String ms(const double ms) {
         if (!showsBelow(ms, 1000.0, 0)) {
-            return juce::String(ms / 1000.0, 2) + " s";
+            return fixed(ms / 1000.0, 2) + " s";
         }
-        // juce::String(v, 0) prints every decimal, so whole milliseconds are rounded here
-        return (showsBelow(ms, 100.0, 1) ? juce::String(ms, 1) : juce::String(juce::roundToInt(ms))) + " ms";
+        return fixed(ms, showsBelow(ms, 100.0, 1) ? 1 : 0) + " ms";
     }
 
     juce::String percent(const double p) {

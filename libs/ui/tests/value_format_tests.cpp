@@ -11,8 +11,9 @@
 
 #include <clocale>
 #include <limits>
+#include <iomanip>
 #include <locale>
-#include <stdexcept>
+#include <sstream>
 #include <string>
 
 #include <altvane_ui/util/value_format.hpp>
@@ -25,19 +26,24 @@ namespace {
     const juce::String kMinus = format::kMinus;
 
     /**
-     * switch the C and C++ locales to one with a decimal comma, if the system has one, for the scope
+     * numbers as German writes them: 1.234,5
+     */
+    struct CommaDecimal final : std::numpunct<char> {
+        char do_decimal_point() const override { return ','; }
+        char do_thousands_sep() const override { return '.'; }
+        std::string do_grouping() const override { return "\3"; }
+    };
+
+    /**
+     * for the scope, a global C++ locale with a decimal comma (as a host may set), and the C locale too where the
+     * system has one installed
      */
     class CommaLocale final {
     public:
-        CommaLocale() {
+        CommaLocale() : cpp_previous_(std::locale::global(std::locale(std::locale::classic(), new CommaDecimal))) {
             previous_ = std::setlocale(LC_ALL, nullptr);
-            for (const auto* name : {"de_DE.UTF-8", "de_DE.utf8", "de_DE", "fr_FR.UTF-8", "German_Germany.1252", "de-DE"}) {
+            for (const auto* name : {"de_DE.UTF-8", "de_DE.utf8", "de_DE", "German_Germany.1252", "de-DE"}) {
                 if (std::setlocale(LC_ALL, name) != nullptr) {
-                    active_ = true;
-                    try {
-                        cpp_previous_ = std::locale::global(std::locale(name));
-                    } catch (const std::runtime_error&) {
-                    }
                     break;
                 }
             }
@@ -48,12 +54,9 @@ namespace {
             std::locale::global(cpp_previous_);
         }
 
-        bool isActive() const { return active_; }
-
     private:
+        std::locale cpp_previous_;
         std::string previous_;
-        std::locale cpp_previous_{std::locale()};
-        bool active_{false};
     };
 }
 
@@ -227,9 +230,10 @@ TEST_CASE("formatted values parse back to what they show", "[format][parse]") {
 
 TEST_CASE("formatting and parsing ignore the process locale", "[format][parse]") {
     const CommaLocale locale;
-    if (!locale.isActive()) {
-        SKIP("no locale with a decimal comma is installed");
-    }
+    // the test itself: the locale does write a decimal comma
+    std::ostringstream check;
+    check << std::fixed << std::setprecision(1) << 1.5;
+    REQUIRE(check.str() == "1,5");
     CHECK(format::freq(1234.0) == "1.23 kHz");
     CHECK(format::gain(-3.5) == kMinus + "3.50 dB");
     CHECK(format::ms(1500.0) == "1.50 s");
