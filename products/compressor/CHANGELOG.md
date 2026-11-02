@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0
 
 First version of Altvane Compressor, based on the ZL Compressor engine (forked at 0.6.1, upstream commit `2f7b45c`).
 
