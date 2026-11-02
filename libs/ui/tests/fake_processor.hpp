@@ -122,7 +122,8 @@ namespace altvane::ui::test {
     class TempDir final {
     public:
         explicit TempDir(const juce::File& parent = juce::File::getSpecialLocation(juce::File::tempDirectory)) :
-            dir_(parent.getNonexistentChildFile("altvane_ui_tests", "", false)) {
+            // unique, not just unused: ctest -j runs each test case in its own process at the same time
+            dir_(parent.getChildFile("altvane_ui_tests_" + juce::Uuid().toString())) {
             dir_.createDirectory();
         }
 

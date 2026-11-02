@@ -34,4 +34,5 @@ target_link_libraries(AltvaneUITests
 )
 set_target_properties(AltvaneUITests PROPERTIES FOLDER "Targets" XCODE_GENERATE_SCHEME ON)
 
-catch_discover_tests(AltvaneUITests)
+# Catch2 exits with 4 when a test SKIPs (e.g. no decimal-comma locale installed)
+catch_discover_tests(AltvaneUITests PROPERTIES SKIP_RETURN_CODE 4)
